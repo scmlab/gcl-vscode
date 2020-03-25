@@ -1,0 +1,69 @@
+{
+	"name": "Guacamole",
+	"displayName": "Guacamole",
+	"description": "Guacamole on vscode",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.41.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onCommand:extension.load"
+	],
+	"main": "./lib/js/src/Main.bs.js",
+	"contributes": {
+		"languages": [
+			{
+				"id": "gcl",
+				"extensions": [
+					".gcl"
+				],
+				"aliases": [
+					"Guacamole"
+				],
+				"filenames": []
+			}
+		],
+		"commands": [
+			{
+				"command": "extension.load",
+				"title": "Load"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "extension.load",
+				"key": "ctrl+c ctrl+x",
+				"mac": "ctrl+c ctrl+x"
+			}
+		]
+	},
+	"scripts": {
+		"build": "bsb -make-world && npx webpack --mode=production",
+		"watch-style": "npx less-watch-compiler style/ dist/",
+		"watch-view": "npm run watch-style & npx webpack --mode=production --watch",
+		"watch-code": "npx webpack --mode=production --watch",
+		"watch": "npm run watch-view",
+		"clean": "bsb -clean-world"
+	},
+	"devDependencies": {
+		"less-loader": "^5.0.0",
+		"less-watch-compiler": "^1.14.6",
+		"vscode-test": "^1.2.2",
+		"webpack": "^4.42.0",
+		"webpack-cli": "^3.3.11"
+	},
+	"dependencies": {
+		"agda-mode": "github:banacorn/agda-mode#dev",
+		"bs-nd": "^0.1.5",
+		"bs-platform": "^7.2",
+		"bs-webapi": "^0.15.3",
+		"reason-promise": "^1.0.1",
+		"react": "^16.9.0",
+		"react-dom": "^16.9.0",
+		"reason-react": ">=0.7.0",
+		"reason-react-update": "^0.1.1"
+	}
+}
