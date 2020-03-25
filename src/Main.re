@@ -58,6 +58,12 @@ let activate = (context: ExtensionContext.t) => {
   )
   ->Js.Array.push(context->ExtensionContext.subscriptions)
   ->ignore;
+
+  Commands.registerCommand("workbench.action.files.save", () =>
+    getState(context)->Option.forEach(Js.log)
+  )
+  ->Js.Array.push(context->ExtensionContext.subscriptions)
+  ->ignore;
 };
 
 let deactive = () => {
