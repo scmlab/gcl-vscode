@@ -1,0 +1,32 @@
+{
+  "name": "gcl-vscode",
+  "reason": {
+    "react-jsx": 3
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "package-specs": [
+    {
+      "module": "commonjs",
+      "in-source": false
+    }
+  ],
+  "suffix": ".bs.js",
+  "namespace": true,
+  "bs-dependencies": [
+    "agda-mode",
+    "bs-webapi",
+    "bs-nd",
+    "reason-promise",
+    "reason-react",
+    "reason-react-update"
+  ],
+  "bsc-flags": [
+    "-bs-g"
+  ],
+  "refmt": 3
+}
