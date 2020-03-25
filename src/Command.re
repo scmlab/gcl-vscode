@@ -3,8 +3,8 @@ open Belt;
 let load = state => {
   Js.log("load!");
   View.activate(state);
-  // looking for Agda
-  AgdaMode.Process.PathSearch.run("agda")
+  // looking for GCL
+  AgdaMode.Process.PathSearch.run("gcl")
   ->Promise.get(
       fun
       | Error(e) => {

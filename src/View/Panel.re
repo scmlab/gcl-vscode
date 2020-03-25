@@ -22,8 +22,8 @@ let make = () => {
     [||],
   );
 
-  <section className="agda-mode native-key-bindings" tabIndex=(-1)>
-    <div className="agda-mode-header"> {ReasonReact.string(header)} </div>
-    <div className="agda-mode-body"> {ReasonReact.string(body)} </div>
+  <section className="gcl native-key-bindings" tabIndex=(-1)>
+    <div className="gcl-header"> {ReasonReact.string(header)} </div>
+    <div className="gcl-body"> {ReasonReact.string(body)} </div>
   </section>;
 };

@@ -55,14 +55,14 @@ let html = (distPath, styleUri, scriptUri) => {
 
 let createPanel = (state: State.t) => {
   let fileName =
-    Node.Path.basename_ext(state.editor.document.fileName, ".agda");
+    Node.Path.basename_ext(state.editor.document.fileName, ".gcl");
 
   let distPath = Node.Path.join2(state.context.extensionPath, "dist");
 
   let panel =
     Window.createWebviewPanel'(
       "panel",
-      "Agda [" ++ fileName ++ "]",
+      "GCL [" ++ fileName ++ "]",
       {preserveFocus: true, viewColumn: 3},
       // None,
       Some(
