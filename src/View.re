@@ -1,5 +1,5 @@
 // open Belt;
-open Vscode;
+open AgdaModeVscode.Vscode;
 
 type message =
   | Display(string, string);

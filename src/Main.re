@@ -1,5 +1,5 @@
 open Belt;
-open Vscode;
+open AgdaModeVscode.Vscode;
 
 module States = {
   let dict: Js.Dict.t(State.t) = Js.Dict.empty();
