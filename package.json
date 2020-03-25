@@ -56,6 +56,7 @@
 		"webpack-cli": "^3.3.11"
 	},
 	"dependencies": {
+		"@glennsl/bs-json": "^5.0.1",
 		"agda-mode": "github:banacorn/agda-mode#dev",
 		"bs-nd": "^0.1.5",
 		"bs-platform": "^7.2",
