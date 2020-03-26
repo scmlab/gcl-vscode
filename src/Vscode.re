@@ -1,3 +1,7 @@
+[@unboxed]
+type any =
+  | Any('a): any;
+
 module Api = {
   type t;
 
@@ -178,7 +182,6 @@ module Webview = {
   [@bs.get] external cspSource: t => string = "cspSource";
   [@bs.get] external html: t => string = "html";
   [@bs.set] external setHtml: (t, string) => unit = "html";
-
   [@bs.get] external options: t => WebviewOptions.t = "options";
   // methods
   [@bs.send] external asWebviewUri: (t, Uri.t) => Uri.t = "asWebviewUri";
@@ -186,68 +189,87 @@ module Webview = {
 };
 
 module WebviewPanel = {
-  type options = {
-    enableFindWidget: option(bool),
-    retainContextWhenHidden: option(bool),
+  type t;
+
+  // https://code.visualstudio.com/api/references/vscode-api#WebviewPanelOnDidChangeViewStateEvent
+  module OnDidChangeViewStateEvent = {
+    type webviewPanel = t;
+    type t;
+    // properties
+    [@bs.get] external webviewPanel: t => webviewPanel = "webviewPanel";
   };
 
-  module IconPath = {
-    [@unboxed]
-    type t =
-      | IconPath('a): t;
-
-    type both = {
-      dark: Uri.t,
-      light: Uri.t,
-    };
-
-    type case =
-      | Single(Uri.t)
-      | Both(Uri.t, Uri.t);
-
-    let single = (uri: Uri.t) => IconPath(uri);
-    let both = (dark: Uri.t, light: Uri.t) => IconPath({dark, light});
-
-    let classify = (IconPath(v): t): case =>
-      if ([%raw {|v.dark === undefined|}]) {
-        Single(Obj.magic(v): Uri.t);
-      } else {
-        Both(Obj.magic(v): Uri.t, Obj.magic(v): Uri.t);
-      };
-  };
-
+  // https://code.visualstudio.com/api/references/vscode-api#WebviewPanelOptions
   module Options = {
-    type t = {
-      enableFindWidget: option(bool),
-      retainContextWhenHidden: option(bool),
-    };
+    type t;
+    // properties
+    [@bs.get]
+    external enableFindWidget: t => option(bool) = "enableFindWidget";
+    [@bs.get]
+    external retainContextWhenHidden: t => option(bool) =
+      "retainContextWhenHidden";
   };
 
-  type t = {
-    active: bool,
-    iconPath: option(IconPath.t),
-    options: Options.t,
-    title: string,
-    viewColumn: option(ViewColumn.t),
-    viewType: string,
-    visible: bool,
-    webview: Webview.t,
-  };
-
-  [@bs.send] external dispose: t => unit = "dispose";
+  // events
   [@bs.send]
-  external reveal:
-    (t, ~viewColumn: ViewColumn.t=?, ~preserveFocus: bool=?, unit) => unit =
-    "reveal";
-
-  type onDidChangeViewStateEvent = {webviewPanel: t};
-
-  [@bs.send]
-  external onDidChangeViewState: (t, onDidChangeViewStateEvent) => Disposable.t =
+  external onDidChangeViewState:
+    (t, OnDidChangeViewStateEvent.t => unit) => Disposable.t =
     "onDidChangeViewState";
-
   [@bs.send]
   external onDidDispose: (t, unit => unit) => Disposable.t = "onDidDispose";
+
+  // properties
+  [@bs.get] external active: t => bool = "active";
+  type uriOrLightAndDark =
+    | Uri(Uri.t)
+    | LightAndDark(
+        {
+          .
+          "dark": Uri.t,
+          "light": Uri.t,
+        },
+      );
+
+  [@bs.get]
+  external iconPath_raw: t => option(Js.Dict.t(Uri.t)) = "iconPath";
+  let iconPath = (self): option(uriOrLightAndDark) => {
+    iconPath_raw(self)
+    ->Belt.Option.map(case =>
+        if (Belt.Option.isSome(Js.Dict.get(case, "dark"))) {
+          LightAndDark(
+            Obj.magic(case): {
+                              .
+                              "dark": Uri.t,
+                              "light": Uri.t,
+                            },
+          );
+        } else {
+          Uri(Obj.magic(case): Uri.t);
+        }
+      );
+  };
+  [@bs.get] external options: t => Options.t = "options";
+  [@bs.get] external title: t => string = "title";
+  [@bs.get] external viewColumn: t => option(ViewColumn.t) = "viewColumn";
+  [@bs.get] external viewType: t => string = "viewType";
+  [@bs.get] external visible: t => bool = "visible";
+  [@bs.get] external webview: t => Webview.t = "webview";
+  // methods
+  [@bs.send] external dispose: t => unit = "dispose";
+  [@bs.send]
+  external reveal_raw:
+    (t, ~viewColumn: int=?, ~preserveFocus: bool=?, unit) => unit =
+    "reveal";
+  let reveal = (self: t, ~viewColumn=?, ~preserveFocus=?, ()): unit => {
+    let viewColumn = viewColumn->Belt.Option.map(ViewColumn.toEnum);
+    switch (viewColumn, preserveFocus) {
+    | (None, None) => reveal_raw(self, ())
+    | (None, Some(preserveFocus)) => reveal_raw(self, ~preserveFocus, ())
+    | (Some(viewColumn), None) => reveal_raw(self, ~viewColumn, ())
+    | (Some(viewColumn), Some(preserveFocus)) =>
+      reveal_raw(self, ~viewColumn, ~preserveFocus, ())
+    };
+  };
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#Position
@@ -403,9 +425,6 @@ module TextEditorOptions = {
   let cursorStyle = (self: t): option(TextEditorCursorStyle.t) =>
     cursorStyle_raw(self)->Belt.Option.map(TextEditorCursorStyle.fromEnum);
 
-  [@unboxed]
-  type any =
-    | Any('a): any;
   type boolOrString =
     | Bool(bool)
     | String(string);

@@ -88,7 +88,8 @@ let createPanel = (state: State.t) => {
   // ->Js.Array.push(state.context.subscriptions)
   // ->ignore;
 
-  panel.webview
+  panel
+  ->WebviewPanel.webview
   ->Webview.setHtml(html(distPath, "style.css", "bundled-view.js"));
 
   panel->WebviewPanel.onDidDispose(() => {state.panel = None}) |> ignore;
@@ -122,5 +123,5 @@ let activate = state =>
   };
 
 let postMessage = (panel: WebviewPanel.t, message: message): unit => {
-  panel.webview->Webview.postMessage(message) |> ignore;
+  panel->WebviewPanel.webview->Webview.postMessage(message) |> ignore;
 };
