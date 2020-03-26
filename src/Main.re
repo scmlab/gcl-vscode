@@ -11,8 +11,8 @@ module States = {
   let getByFileName = fileName => {
     dict->Js.Dict.get(fileName);
   };
-
   let set = (fileName, state) => {
+    Js.log2("[ states ][ set ]", fileName);
     // update the dict
     dict->Js.Dict.set(fileName, state);
   };
@@ -24,20 +24,28 @@ module States = {
     ->Option.isSome;
   };
 
-  let dispose = () => {
+  let disposeByFileName = fileName => {
+    Js.log2("[ states ][ delete ]", fileName);
+    getByFileName(fileName)->Option.forEach(State.dispose);
+    [%raw "delete dict[fileName] "] |> ignore;
+  };
+
+  let disposeAll = () => {
     dict->Js.Dict.entries->Array.map(((_, state)) => State.dispose(state));
   };
 };
 
 let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
-let getOrMakeState = context =>
-  Window.activeTextEditor
+let getActiveGCLEditor = () =>
   // initializing only GCL files
-  ->Option.flatMap(editor =>
-      isGCL(editor->TextEditor.document->TextDocument.fileName)
-        ? Some(editor) : None
-    )
+  Window.activeTextEditor->Option.flatMap(editor =>
+    isGCL(editor->TextEditor.document->TextDocument.fileName)
+      ? Some(editor) : None
+  );
+
+let getOrMakeState = context =>
+  getActiveGCLEditor()
   ->Option.map(editor =>
       switch (States.get(editor)) {
       | None =>
@@ -48,45 +56,26 @@ let getOrMakeState = context =>
       }
     );
 
+let get = () => getActiveGCLEditor()->Option.flatMap(States.get);
+
+let addToSubscriptions = (f, context) =>
+  f->Js.Array.push(context->ExtensionContext.subscriptions)->ignore;
+
 let activate = (context: ExtensionContext.t) => {
-  // // initialize the current opend TextEditor if it's a GCL file
-  // Window.activeTextEditor->Option.forEach(editor => {
-  //   let fileName = editor.document.fileName;
-  //   if (isGCL(fileName)) {
-  //     let state = State.make(context, editor);
-  //     States.set(fileName, state);
-  //   };
-  // });
-
-  // initialize the current opened GCL files
-  // Workspace.textDocuments
-  // ->Array.keep(isGCL)
-  // ->Array.forEach(textDoc => {
-  //     let state = State.make(context, editor);
-  //     States.set(textDoc.fileName, state);
-  //   })
-  // ->Js.log;
-
-  // Workspace.textDocuments->Array.map(textDoc => textDoc.fileName)->Js.log;
-
-  // Workspace.onDidOpenTextDocument(textDoc => {
-  //   textDoc.fileName->Js.log2("[open]")
-  // })
-  // ->Js.Array.push(context->ExtensionContext.subscriptions)
-  // ->ignore;
-
-  // Workspace.onDidCloseTextDocument(textDoc => {
-  //   textDoc.fileName->Js.log2("[close]")
-  // })
-  // ->Js.Array.push(context->ExtensionContext.subscriptions)
-  // ->ignore;
-
-  // when a TextEditor gets activated, reveal the corresponding Panel (if any)
-  Window.onDidChangeActiveTextEditor(editor => {
-    editor->Option.flatMap(States.get)->Option.forEach(View.activate)
-  })
-  ->Js.Array.push(context->ExtensionContext.subscriptions)
-  ->ignore;
+  // when a GCL file becomes a non-GCL file
+  Workspace.onDidRenameFiles(event =>
+    event
+    ->Option.map(Vscode.FileRenameEvent.files)
+    ->Option.forEach(files => {
+        files
+        ->Array.keep(file => file##oldUri->Uri.path->isGCL)
+        ->Array.keep(file => file##newUri->Uri.path->isGCL->(!))
+        ->Array.forEach(file => {
+            States.disposeByFileName(file##oldUri->Uri.path)
+          })
+      })
+  )
+  ->addToSubscriptions(context);
 
   // when a TextEditor gets closed, close the corresponding Panel (if any)
   Workspace.onDidCloseTextDocument(textDoc => {
@@ -95,23 +84,30 @@ let activate = (context: ExtensionContext.t) => {
     ->Option.flatMap(States.getByFileName)
     ->Option.forEach(State.dispose)
   })
-  ->Js.Array.push(context->ExtensionContext.subscriptions)
-  ->ignore;
+  ->addToSubscriptions(context);
+
+  // when a TextEditor gets activated, reveal the corresponding Panel (if any)
+  Window.onDidChangeActiveTextEditor(editor => {
+    editor->Option.flatMap(States.get)->Option.forEach(View.activate)
+  })
+  ->addToSubscriptions(context);
 
   // on load
   Commands.registerCommand("extension.load", () =>
     getOrMakeState(context)->Option.forEach(Command.load)
   )
-  ->Js.Array.push(context->ExtensionContext.subscriptions)
-  ->ignore;
+  ->addToSubscriptions(context);
+
   // on save
-  // Commands.registerCommand("workbench.action.files.save", () =>
-  //   getState(context)->Option.forEach(Js.log)
-  // )
-  // ->Js.Array.push(context->ExtensionContext.subscriptions)
-  // ->ignore;
+  Commands.registerCommand("workbench.action.files.save", () =>
+    get()
+    ->Option.forEach(state =>
+        state.editor->TextEditor.document->TextDocument.fileName->Js.log
+      )
+  )
+  ->addToSubscriptions(context);
 };
 
 let deactive = () => {
-  States.dispose();
+  States.disposeAll();
 };
