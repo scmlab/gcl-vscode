@@ -352,19 +352,95 @@ module TextDocument = {
 
 // https://code.visualstudio.com/api/references/vscode-api#TextEditorCursorStyle
 module TextEditorCursorStyle = {
-  type t;
+  type t =
+    | Block
+    | BlockOutline
+    | Line
+    | LineThing
+    | Underline
+    | UnderlineThin;
+  let toEnum =
+    fun
+    | Block => 2
+    | BlockOutline => 5
+    | Line => 1
+    | LineThing => 4
+    | Underline => 3
+    | UnderlineThin => 6;
+  let fromEnum =
+    fun
+    | 2 => Block
+    | 5 => BlockOutline
+    | 1 => Line
+    | 4 => LineThing
+    | 3 => Underline
+    | _ => UnderlineThin;
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#TextEditorLineNumbersStyle
+module TextEditorLineNumbersStyle = {
+  type t =
+    | Off
+    | On
+    | Relative;
+  let toEnum =
+    fun
+    | Off => 0
+    | On => 1
+    | Relative => 2;
+  let fromEnum =
+    fun
+    | 0 => Off
+    | 1 => On
+    | _ => Relative;
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#TextEditorOptions
 module TextEditorOptions = {
   type t;
   // properties
-  // [@bs.get]
-  // external cursorStyle: t => option(TextEditorCursorStyle.t) = "cursorStyle";
-  // external insertSpaces: t => option(TextEditorCursorStyle.t) = "insertSpaces";
-  // insertSpaces?: boolean | string
-  // lineNumbers?: TextEditorLineNumbersStyle
-  // tabSize?: number | string
+  [@bs.get] external cursorStyle_raw: t => option(int) = "cursorStyle";
+  let cursorStyle = (self: t): option(TextEditorCursorStyle.t) =>
+    cursorStyle_raw(self)->Belt.Option.map(TextEditorCursorStyle.fromEnum);
+
+  [@unboxed]
+  type any =
+    | Any('a): any;
+  type boolOrString =
+    | Bool(bool)
+    | String(string);
+  type numberOrString =
+    | Number(int)
+    | String(string);
+
+  [@bs.get] external insertSpaces_raw: t => option(any) = "insertSpaces";
+  let insertSpaces = (self): option(boolOrString) => {
+    insertSpaces_raw(self)
+    ->Belt.Option.map(case =>
+        if (Js.typeof(case) == "boolean") {
+          Bool(Obj.magic(case): bool);
+        } else {
+          String(Obj.magic(case): string);
+        }
+      );
+  };
+  [@bs.get] external lineNumbers_raw: t => option(int) = "lineNumbers";
+
+  let lineNumbers = (self: t): option(TextEditorLineNumbersStyle.t) =>
+    lineNumbers_raw(self)
+    ->Belt.Option.map(TextEditorLineNumbersStyle.fromEnum);
+
+  [@bs.get] external tabSize_raw: t => option(any) = "tabSize";
+  let tabSize = (self): option(numberOrString) => {
+    tabSize_raw(self)
+    ->Belt.Option.map(case =>
+        if (Js.typeof(case) == "number") {
+          Number(Obj.magic(case): int);
+        } else {
+          String(Obj.magic(case): string);
+        }
+      );
+  };
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#Selection
