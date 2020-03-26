@@ -117,7 +117,45 @@ module Uri = {
 };
 
 module ViewColumn = {
-  type t = int;
+  type t =
+    | Active
+    | Beside
+    | Eight
+    | Five
+    | Four
+    | Nine
+    | One
+    | Seven
+    | Six
+    | Three
+    | Two;
+
+  let toEnum =
+    fun
+    | Active => (-1)
+    | Beside => (-2)
+    | Eight => 8
+    | Five => 5
+    | Four => 4
+    | Nine => 9
+    | One => 1
+    | Seven => 7
+    | Six => 6
+    | Three => 3
+    | Two => 2;
+  let fromEnum =
+    fun
+    | (-1) => Active
+    | (-2) => Beside
+    | 8 => Eight
+    | 5 => Five
+    | 4 => Four
+    | 9 => Nine
+    | 1 => One
+    | 7 => Seven
+    | 6 => Six
+    | 3 => Three
+    | _ => Two;
 };
 module WebviewOptions = {
   type portMapping;
@@ -266,10 +304,27 @@ module TextLine = {
   [@bs.get] external text: t => string = "text";
 };
 
+// https://code.visualstudio.com/api/references/vscode-api#EndOfLine
+module EndOfLine = {
+  type t =
+    | CRLF
+    | LF;
+
+  let toEnum =
+    fun
+    | CRLF => 2
+    | LF => 1;
+  let fromEnum =
+    fun
+    | 2 => CRLF
+    | _ => LF;
+};
+
 module TextDocument = {
   type t;
   // properties
-  [@bs.get] external eol: t => int = "eol";
+  [@bs.get] external eol_raw: t => int = "eol";
+  let eol = (self: t): EndOfLine.t => EndOfLine.fromEnum(eol_raw(self));
   [@bs.get] external fileName: t => string = "fileName";
   [@bs.get] external isClosed: t => bool = "isClosed";
   [@bs.get] external isDirty: t => bool = "isDirty";
@@ -295,19 +350,61 @@ module TextDocument = {
   [@bs.send] external validateRange: (t, Range.t) => Range.t = "validateRange";
 };
 
+// https://code.visualstudio.com/api/references/vscode-api#TextEditorCursorStyle
+module TextEditorCursorStyle = {
+  type t;
+};
+
 // https://code.visualstudio.com/api/references/vscode-api#TextEditorOptions
 module TextEditorOptions = {
   type t;
+  // properties
+  // [@bs.get]
+  // external cursorStyle: t => option(TextEditorCursorStyle.t) = "cursorStyle";
+  // external insertSpaces: t => option(TextEditorCursorStyle.t) = "insertSpaces";
+  // insertSpaces?: boolean | string
+  // lineNumbers?: TextEditorLineNumbersStyle
+  // tabSize?: number | string
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#Selection
 module Selection = {
   type t;
+  // constructors
+  [@bs.new] external make: (Position.t, Position.t) => t = "Selection";
+  [@bs.new] external makeWithNumbers: (int, int, int, int) => t = "Selection";
+  // properties
+  [@bs.get] external active: t => Position.t = "active";
+  [@bs.get] external anchor: t => Position.t = "anchor";
+  [@bs.get] external end_: t => Position.t = "end";
+  [@bs.get] external isEmpty: t => bool = "isEmpty";
+  [@bs.get] external isReversed: t => bool = "isReversed";
+  [@bs.get] external isSingleLine: t => bool = "isSingleLine";
+  [@bs.get] external start: t => Position.t = "start";
+  // methods
+  [@bs.send] external contains: (t, Position.t) => bool = "contains";
+  [@bs.send] external containsRange: (t, Range.t) => bool = "contains";
+  [@bs.send]
+  external intersection: (t, Range.t) => option(Range.t) = "intersection";
+  [@bs.send] external isEqual: (t, Range.t) => bool = "isEqual";
+  [@bs.send] external union: (t, Range.t) => Range.t = "union";
+  [@bs.send] external with_: (t, Position.t, Position.t) => Range.t = "with";
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#TextEditorEdit
 module TextEditorEdit = {
   type t;
+  // methods
+  [@bs.send] external delete: (t, Range.t) => unit = "delete";
+  [@bs.send] external deleteAtSelection: (t, Selection.t) => unit = "delete";
+  [@bs.send] external insert: (t, Position.t, string) => unit = "insert";
+  [@bs.send] external replace: (t, Position.t, string) => unit = "replace";
+  [@bs.send] external replaceAtRange: (t, Range.t, string) => unit = "replace";
+  [@bs.send]
+  external replaceAtSelection: (t, Selection.t, string) => unit = "replace";
+  [@bs.send] external setEndOfLine_raw: (t, int) => unit = "setEndOfLine";
+  let setEndOfLine = (self: t, eol: EndOfLine.t): unit =>
+    setEndOfLine_raw(self, EndOfLine.toEnum(eol));
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#SnippetString
@@ -337,7 +434,9 @@ module TextEditor = {
   [@bs.get] external options: t => TextEditorOptions.t = "options";
   [@bs.get] external selection: t => Selection.t = "selection";
   [@bs.get] external selections: t => array(Selection.t) = "selections";
-  [@bs.get] external viewColumn: t => option(ViewColumn.t) = "viewColumn";
+  [@bs.get] external viewColumn_raw: t => option(int) = "viewColumn";
+  let viewColumn = (self: t): option(ViewColumn.t) =>
+    viewColumn_raw(self)->Belt.Option.map(ViewColumn.fromEnum);
   [@bs.get] external visibleRanges: t => array(Range.t) = "visibleRanges";
   // methods
   [@bs.send]
@@ -421,7 +520,9 @@ module TextEditor = {
   external setDecorationsWithOptions:
     (t, TextEditorDecorationType.t, array(DecorationOptions.t)) => unit =
     "setDecorations";
-  [@bs.send] external show: (t, option(ViewColumn.t)) => unit = "show";
+  [@bs.send] external show_raw: (t, option(int)) => unit = "show";
+  let show = (self: t, viewColumn: option(ViewColumn.t)): unit =>
+    show_raw(self, viewColumn->Belt.Option.map(ViewColumn.toEnum));
 };
 
 module Terminal = {
