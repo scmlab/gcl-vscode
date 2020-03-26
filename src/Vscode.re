@@ -1198,14 +1198,42 @@ module FileSystemWatcher = {
   type t;
 };
 
-// https://code.visualstudio.com/api/references/vscode-api#ConfigurationScope
-module ConfigurationScope = {
-  type t;
-};
-
 // https://code.visualstudio.com/api/references/vscode-api#WorkspaceConfiguration
 module WorkspaceConfiguration = {
   type t;
+  // methods
+  [@bs.send] external get: (t, string) => option('a) = "get";
+  [@bs.send] external getWithDefault: (t, string, 'a) => 'a = "get";
+  [@bs.send] external has: (t, string) => bool = "has";
+  [@bs.send]
+  external inspect:
+    (t, string) =>
+    option({
+      .
+      "defaultLanguageValue": 'a,
+      "defaultValue": 'a,
+      "globalLanguageValue": 'a,
+      "globalValue": 'a,
+      "key": string,
+      "languageIds": array(string),
+      "workspaceFolderLanguageValue": 'a,
+      "workspaceFolderValue": 'a,
+      "workspaceLanguageValue": 'a,
+      "workspaceValue": 'a,
+    }) =
+    "inspect";
+  [@bs.send]
+  external updateGlobalSettings:
+    (t, string, 'a, [@bs.as 1] _, option(bool)) => Promise.t(unit) =
+    "update";
+  [@bs.send]
+  external updateWorkspaceSettings:
+    (t, string, 'a, [@bs.as 2] _, option(bool)) => Promise.t(unit) =
+    "update";
+  [@bs.send]
+  external updateWorkspaceFolderSettings:
+    (t, string, 'a, [@bs.as 3] _, option(bool)) => Promise.t(unit) =
+    "update";
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#TextDocumentContentProvider
@@ -1323,9 +1351,22 @@ module Workspace = {
     "findFiles";
   [@bs.module "vscode"] [@bs.scope "workspace"]
   external getConfiguration:
+    (option(string), option(Uri.t)) => WorkspaceConfiguration.t =
+    "getConfiguration";
+  external getConfigurationOfTextDocument:
+    (option(string), option(TextDocument.t)) => WorkspaceConfiguration.t =
+    "getConfiguration";
+  external getConfigurationOfWorkspaceFolder:
+    (option(string), option(WorkspaceFolder.t)) => WorkspaceConfiguration.t =
+    "getConfiguration";
+  external getConfigurationOfLanguage:
     (
-      ~section: option(ConfigurationScope.t)=?,
-      ~scope: Js.nullable(ConfigurationScope.t)=?
+      option(string),
+      option({
+        .
+        "languageId": string,
+        "uri": Uri.t,
+      })
     ) =>
     WorkspaceConfiguration.t =
     "getConfiguration";

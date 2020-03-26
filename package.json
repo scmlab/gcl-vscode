@@ -45,6 +45,7 @@
 				"guacamole.gclPath": {
 					"type": "string",
 					"default": "",
+					"scope": "machine-overridable",
 					"description": "Path to the GCL program."
 				}
 			}
