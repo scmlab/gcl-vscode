@@ -1,5 +1,5 @@
 {
-	"name": "gcl-vscode",
+	"name": "Guacamole",
 	"displayName": "Guacamole",
 	"description": "Guacamole on vscode",
 	"version": "0.0.1",
@@ -38,7 +38,17 @@
 				"key": "ctrl+c ctrl+x",
 				"mac": "ctrl+c ctrl+x"
 			}
-		]
+		],
+		"configuration": {
+			"title": "Guacamole",
+			"properties": {
+				"guacamole.gclPath": {
+					"type": "string",
+					"default": "",
+					"description": "Path to the GCL program."
+				}
+			}
+		}
 	},
 	"scripts": {
 		"build": "bsb -make-world && npx webpack --mode=production",
