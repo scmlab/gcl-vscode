@@ -1,4 +1,4 @@
-let vscode = AgdaModeVscode.Vscode.Api.acquireVsCodeApi();
+let vscode = Vscode.Api.acquireVsCodeApi();
 
 [@react.component]
 let make = () => {
@@ -8,8 +8,8 @@ let make = () => {
   React.useEffect1(
     () => {
       Js.log("init");
-      vscode->AgdaModeVscode.Vscode.Api.postMessage("from view");
-      AgdaModeVscode.Vscode.Api.onMessage((msg: View.message) => {
+      vscode->Vscode.Api.postMessage("from view");
+      Vscode.Api.onMessage((msg: View.message) => {
         Js.log2(" >>> ", msg);
         switch (msg) {
         | View.Display(header, body) =>

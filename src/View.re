@@ -1,5 +1,5 @@
 // open Belt;
-open AgdaModeVscode.Vscode;
+open Vscode;
 
 type message =
   | Display(string, string);
@@ -55,7 +55,10 @@ let html = (distPath, styleUri, scriptUri) => {
 
 let createPanel = (state: State.t) => {
   let fileName =
-    Node.Path.basename_ext(state.editor.document.fileName, ".gcl");
+    Node.Path.basename_ext(
+      state.editor.document->TextDocument.fileName,
+      ".gcl",
+    );
 
   let distPath =
     Node.Path.join2(state.context->ExtensionContext.extensionPath, "dist");

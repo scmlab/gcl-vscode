@@ -1,4 +1,4 @@
-open AgdaModeVscode.Vscode;
+open Vscode;
 open Belt;
 
 type t = {
