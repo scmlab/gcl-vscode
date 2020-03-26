@@ -5,7 +5,7 @@ module States = {
   let dict: Js.Dict.t(State.t) = Js.Dict.empty();
 
   let get = editor => {
-    dict->Js.Dict.get(editor.TextEditor.document->TextDocument.fileName);
+    dict->Js.Dict.get(editor->TextEditor.document->TextDocument.fileName);
   };
 
   let getByFileName = fileName => {
@@ -20,7 +20,7 @@ module States = {
   // see if an TextEditor has been loaded
   let isLoaded = editor => {
     dict
-    ->Js.Dict.get(editor.TextEditor.document->TextDocument.fileName)
+    ->Js.Dict.get(editor->TextEditor.document->TextDocument.fileName)
     ->Option.isSome;
   };
 
@@ -35,13 +35,14 @@ let getOrMakeState = context =>
   Window.activeTextEditor
   // initializing only GCL files
   ->Option.flatMap(editor =>
-      isGCL(editor.document->TextDocument.fileName) ? Some(editor) : None
+      isGCL(editor->TextEditor.document->TextDocument.fileName)
+        ? Some(editor) : None
     )
   ->Option.map(editor =>
       switch (States.get(editor)) {
       | None =>
         let state = State.make(context, editor);
-        States.set(editor.document->TextDocument.fileName, state);
+        States.set(editor->TextEditor.document->TextDocument.fileName, state);
         state;
       | Some(state) => state
       }

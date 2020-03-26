@@ -295,8 +295,133 @@ module TextDocument = {
   [@bs.send] external validateRange: (t, Range.t) => Range.t = "validateRange";
 };
 
+// https://code.visualstudio.com/api/references/vscode-api#TextEditorOptions
+module TextEditorOptions = {
+  type t;
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#Selection
+module Selection = {
+  type t;
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#TextEditorEdit
+module TextEditorEdit = {
+  type t;
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#SnippetString
+module SnippetString = {
+  type t;
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#TextEditorRevealType
+module TextEditorRevealType = {
+  type t;
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#TextEditorDecorationType
+module TextEditorDecorationType = {
+  type t;
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#DecorationOptions
+module DecorationOptions = {
+  type t;
+};
+
 module TextEditor = {
-  type t = {document: TextDocument.t};
+  type t;
+  // properties
+  [@bs.get] external document: t => TextDocument.t = "document";
+  [@bs.get] external options: t => TextEditorOptions.t = "options";
+  [@bs.get] external selection: t => Selection.t = "selection";
+  [@bs.get] external selections: t => array(Selection.t) = "selections";
+  [@bs.get] external viewColumn: t => option(ViewColumn.t) = "viewColumn";
+  [@bs.get] external visibleRanges: t => array(Range.t) = "visibleRanges";
+  // methods
+  [@bs.send]
+  external edit:
+    (
+      t,
+      TextEditorEdit.t => unit,
+      option({
+        .
+        "undoStopAfter": bool,
+        "undoStopBefore": bool,
+      })
+    ) =>
+    Promise.t(bool) =
+    "edit";
+  [@bs.send] external hide: (t, unit) => unit = "hide";
+  [@bs.send]
+  external insertSnippet:
+    (
+      t,
+      SnippetString.t,
+      Position.t,
+      option({
+        .
+        "undoStopAfter": bool,
+        "undoStopBefore": bool,
+      })
+    ) =>
+    Promise.t(bool) =
+    "insertSnippet";
+  [@bs.send]
+  external insertSnippetAtRange:
+    (
+      t,
+      SnippetString.t,
+      Range.t,
+      option({
+        .
+        "undoStopAfter": bool,
+        "undoStopBefore": bool,
+      })
+    ) =>
+    Promise.t(bool) =
+    "insertSnippet";
+  [@bs.send]
+  external insertSnippetAtPositions:
+    (
+      t,
+      SnippetString.t,
+      array(Position.t),
+      option({
+        .
+        "undoStopAfter": bool,
+        "undoStopBefore": bool,
+      })
+    ) =>
+    Promise.t(bool) =
+    "insertSnippet";
+  [@bs.send]
+  external insertSnippetAtRanges:
+    (
+      t,
+      SnippetString.t,
+      array(Range.t),
+      option({
+        .
+        "undoStopAfter": bool,
+        "undoStopBefore": bool,
+      })
+    ) =>
+    Promise.t(bool) =
+    "insertSnippet";
+  [@bs.send]
+  external revealRange: (t, Range.t, option(TextEditorRevealType.t)) => unit =
+    "revealRange";
+  [@bs.send]
+  external setDecorations:
+    (t, TextEditorDecorationType.t, array(Range.t)) => unit =
+    "setDecorations";
+  [@bs.send]
+  external setDecorationsWithOptions:
+    (t, TextEditorDecorationType.t, array(DecorationOptions.t)) => unit =
+    "setDecorations";
+  [@bs.send] external show: (t, option(ViewColumn.t)) => unit = "show";
 };
 
 module Terminal = {
@@ -364,10 +489,6 @@ module ExtensionTerminalOptions = {
 
 // https://code.visualstudio.com/api/references/vscode-api#DecorationRenderOptions
 module DecorationRenderOptions = {
-  type t;
-};
-// https://code.visualstudio.com/api/references/vscode-api#TextEditorDecorationType
-module TextEditorDecorationType = {
   type t;
 };
 

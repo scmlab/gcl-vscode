@@ -56,7 +56,7 @@ let html = (distPath, styleUri, scriptUri) => {
 let createPanel = (state: State.t) => {
   let fileName =
     Node.Path.basename_ext(
-      state.editor.document->TextDocument.fileName,
+      state.editor->TextEditor.document->TextDocument.fileName,
       ".gcl",
     );
 
