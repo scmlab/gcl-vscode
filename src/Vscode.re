@@ -250,7 +250,10 @@ module WebviewPanel = {
   };
   [@bs.get] external options: t => Options.t = "options";
   [@bs.get] external title: t => string = "title";
-  [@bs.get] external viewColumn: t => option(ViewColumn.t) = "viewColumn";
+  [@bs.get] external viewColumn_raw: t => option(int) = "viewColumn";
+  let viewColumn = (self: t): option(ViewColumn.t) =>
+    viewColumn_raw(self)->Belt.Option.map(ViewColumn.fromEnum);
+
   [@bs.get] external viewType: t => string = "viewType";
   [@bs.get] external visible: t => bool = "visible";
   [@bs.get] external webview: t => Webview.t = "webview";
