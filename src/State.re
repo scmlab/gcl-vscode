@@ -3,15 +3,15 @@ open Belt;
 
 module Impl = (Interface: Editor.Interface) => {
   type t = {
-    context: ExtensionContext.t,
     editor: Interface.editor,
+    editor2: Interface.t,
     mutable connection: option(AgdaMode.Process.t),
     mutable panel: option(WebviewPanel.t),
   };
 
   let make = (context, editor) => {
-    context,
     editor,
+    editor2: Interface.make(editor, context),
     connection: None,
     panel: None,
   };

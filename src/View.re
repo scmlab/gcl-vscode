@@ -61,7 +61,7 @@ let createPanel = (state: State.t) => {
     );
 
   let distPath =
-    Node.Path.join2(state.context->ExtensionContext.extensionPath, "dist");
+    Node.Path.join2(state.editor2->VscodeImpl.getExtensionPath, "dist");
 
   let panel =
     Window.createWebviewPanel(

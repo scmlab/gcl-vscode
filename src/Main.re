@@ -1,7 +1,7 @@
 open Belt;
 open Vscode;
 
-module States = {
+module Impl = (Interface: Editor.Interface) => {
   let dict: Js.Dict.t(State.t) = Js.Dict.empty();
 
   let getByFileName = fileName => {
@@ -45,6 +45,8 @@ module States = {
     dict->Js.Dict.entries->Array.map(((_, state)) => State.dispose(state));
   };
 };
+
+module States = Impl(VscodeImpl);
 
 let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
