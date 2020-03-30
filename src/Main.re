@@ -49,7 +49,7 @@ let getOrMakeState = context =>
   ->Option.map(editor =>
       switch (States.get(editor)) {
       | None =>
-        let state = State.make(context, editor);
+        let state = State.make(context, editor, editor);
         States.set(editor->TextEditor.document->TextDocument.fileName, state);
         state;
       | Some(state) => state

@@ -1,5 +1,3 @@
-open Belt;
-
 module Conn = Connection.Impl(VscodeImpl);
 
 let load = state => {
