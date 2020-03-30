@@ -4,30 +4,41 @@ open Vscode;
 module States = {
   let dict: Js.Dict.t(State.t) = Js.Dict.empty();
 
-  let get = editor => {
-    dict->Js.Dict.get(editor->TextEditor.document->TextDocument.fileName);
-  };
-
   let getByFileName = fileName => {
     dict->Js.Dict.get(fileName);
   };
-  let set = (fileName, state) => {
-    Js.log2("[ states ][ set ]", fileName);
-    // update the dict
-    dict->Js.Dict.set(fileName, state);
+
+  let get = editor => {
+    getByFileName(editor->TextEditor.document->TextDocument.fileName);
   };
 
-  // see if an TextEditor has been loaded
-  let isLoaded = editor => {
-    dict
-    ->Js.Dict.get(editor->TextEditor.document->TextDocument.fileName)
-    ->Option.isSome;
+  let set = (editor, state) => {
+    switch (get(editor)) {
+    | Some(_) => ()
+    | None =>
+      dict->Js.Dict.set(
+        editor->TextEditor.document->TextDocument.fileName,
+        state,
+      )
+    };
   };
 
   let disposeByFileName = fileName => {
-    Js.log2("[ states ][ delete ]", fileName);
+    let delete_: (Js.Dict.t('a), string) => unit = [%raw
+      "function (dict, key) {delete dict[key]}"
+    ];
     getByFileName(fileName)->Option.forEach(State.dispose);
-    [%raw "delete dict[fileName] "] |> ignore;
+    delete_(dict, fileName);
+  };
+
+  let dispose = editor => {
+    let delete_: (Js.Dict.t('a), string) => unit = [%raw
+      "function (dict, key) {delete dict[key]}"
+    ];
+    get(editor)->Option.forEach(State.dispose);
+
+    let fileName = editor->TextEditor.document->TextDocument.fileName;
+    delete_(dict, fileName);
   };
 
   let disposeAll = () => {
@@ -46,15 +57,15 @@ let getActiveGCLEditor = () =>
 
 let getOrMakeState = context =>
   getActiveGCLEditor()
-  ->Option.map(editor =>
+  ->Option.map(editor => {
       switch (States.get(editor)) {
       | None =>
-        let state = State.make(context, editor, editor);
-        States.set(editor->TextEditor.document->TextDocument.fileName, state);
+        let state = State.make(context, editor);
+        States.set(editor, state);
         state;
       | Some(state) => state
       }
-    );
+    });
 
 let get = () => getActiveGCLEditor()->Option.flatMap(States.get);
 
@@ -70,9 +81,9 @@ let activate = (context: ExtensionContext.t) => {
         files
         ->Array.keep(file => file##oldUri->Uri.path->isGCL)
         ->Array.keep(file => file##newUri->Uri.path->isGCL->(!))
-        ->Array.forEach(file => {
+        ->Array.forEach(file =>
             States.disposeByFileName(file##oldUri->Uri.path)
-          })
+          )
       })
   )
   ->addToSubscriptions(context);
