@@ -20,7 +20,7 @@ module Impl:
   let getExtensionPath = (self: t) =>
     self.context->ExtensionContext.extensionPath;
 
-  let getFileName' = editor =>
+  let editorFileName = editor =>
     editor->TextEditor.document->TextDocument.fileName;
 
   let addToSubscriptions = (disposable, context) =>
@@ -46,6 +46,22 @@ module Impl:
           )
         })
     );
+  let onDidActivateEditor = callback =>
+    Window.onDidChangeActiveTextEditor(editor => {
+      editor->Option.map(editorFileName)->Option.forEach(callback)
+    });
+  // NOOP
+  let onDidDeactivateEditor = _callback =>
+    Window.onDidChangeActiveTextEditor(_ => ());
+
+  let registerCommand = (name, callback) =>
+    Commands.registerCommand("extension." ++ name, callback);
+
+  let getActiveEditor = () => Window.activeTextEditor;
+  // Window.activeTextEditor
+  // ->Option.map(editor =>
+  //   editor->TextEditor.document->TextDocument.fileName
+  // );
 
   let setGCLPath = path =>
     Workspace.getConfiguration(Some("guacamole"), None)

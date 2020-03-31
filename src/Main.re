@@ -2,6 +2,8 @@ open Belt;
 open Vscode;
 
 module Impl = (Interface: Editor.Interface) => {
+  module State = State.Impl(Interface);
+
   module States = {
     // a dictionary of (FileName, State) entries
     let dict: Js.Dict.t(State.t) = Js.Dict.empty();
@@ -11,7 +13,7 @@ module Impl = (Interface: Editor.Interface) => {
     };
 
     let getByEditor = (editor: Interface.editor) => {
-      get(editor->Interface.getFileName');
+      get(editor->Interface.editorFileName);
     };
 
     // do nothing if the state already exists
@@ -19,7 +21,9 @@ module Impl = (Interface: Editor.Interface) => {
       // let fileName = editor->Interface.getFileName';
       switch (get(fileName)) {
       | Some(_) => ()
-      | None => dict->Js.Dict.set(fileName, state)
+      | None =>
+        Js.log("[ state ][ add ]");
+        dict->Js.Dict.set(fileName, state);
       };
     };
 
@@ -29,6 +33,7 @@ module Impl = (Interface: Editor.Interface) => {
       ];
       get(oldName)
       ->Option.forEach(state => {
+          Js.log3("[ state ][ rename ]", oldName, newName);
           delete_(dict, oldName);
           add(newName, state);
         });
@@ -38,8 +43,12 @@ module Impl = (Interface: Editor.Interface) => {
       let delete_: (Js.Dict.t('a), string) => unit = [%raw
         "function (dict, key) {delete dict[key]}"
       ];
-      get(fileName)->Option.forEach(State.destroy);
-      delete_(dict, fileName);
+      get(fileName)
+      ->Option.forEach(state => {
+          Js.log("[ state ][ destroy ]");
+          State.destroy(state);
+          delete_(dict, fileName);
+        });
     };
 
     let contains = fileName => get(fileName)->Option.isSome;
@@ -51,27 +60,11 @@ module Impl = (Interface: Editor.Interface) => {
     };
   };
   let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
-  // let getActiveGCLEditor = () =>
-  //   // initializing only GCL files
-  //   Window.activeTextEditor->Option.flatMap(editor =>
-  //     isGCL(editor->TextEditor.document->TextDocument.fileName)
-  //       ? Some(editor) : None
-  //   );
-  // let getOrMakeState = context =>
-  //   getActiveGCLEditor()
-  //   ->Option.map(editor => {
-  //       switch (States.getByEditor(editor)) {
-  //       | None =>
-  //         let state = State.make(context, editor);
-  //         States.add(editor, state);
-  //         state;
-  //       | Some(state) => state
-  //       }
-  //     });
-  // let get = () => getActiveGCLEditor()->Option.flatMap(States.getByEditor);
+
   let addToSubscriptions = (f, context) =>
     f->Js.Array.push(context->ExtensionContext.subscriptions)->ignore;
-  let activate = (context: Interface.context) => {
+
+  let activate = context => {
     // when a TextEditor gets closed, destroy the corresponding State
     Interface.onDidCloseEditor(States.destroy)
     ->Interface.addToSubscriptions(context);
@@ -86,42 +79,46 @@ module Impl = (Interface: Editor.Interface) => {
       }
     )
     ->Interface.addToSubscriptions(context);
+    // on editor activation, reveal the corresponding Panel (if any)
+    Interface.onDidActivateEditor(fileName => {
+      States.get(fileName)->Option.forEach(Js.log2("[activate]"))
+    })
+    ->Interface.addToSubscriptions(context);
+    // on editor deactivation, hide the corresponding Panel (if any)
+    Interface.onDidDeactivateEditor(fileName => {
+      States.get(fileName)->Option.forEach(Js.log2("[deactivate]"))
+    })
+    ->Interface.addToSubscriptions(context);
+
+    // on load
+    Interface.registerCommand("load", () => {
+      Interface.getActiveEditor()
+      // see if it's a GCL file
+      ->Option.flatMap(editor => {
+          let fileName = editor->Interface.editorFileName;
+          if (isGCL(fileName)) {
+            Some((editor, fileName));
+          } else {
+            None;
+          };
+        })
+      // see if it's already in the States
+      ->Option.forEach(((editor, fileName)) => {
+          switch (States.get(fileName)) {
+          | None =>
+            Js.log("[ main ][ first LOAD ]");
+            let state = State.make(context, editor);
+            States.add(fileName, state);
+          | Some(_state) => Js.log("[ main ][ LOAD ]")
+          }
+        })
+    })
+    ->Interface.addToSubscriptions(context);
   };
+
   let deactive = () => {
     States.destroyAll();
   };
 };
 
-// // when a GCL file becomes a non-GCL file
-// Workspace.onDidRenameFiles(event =>
-//   event
-//   ->Option.map(Vscode.FileRenameEvent.files)
-//   ->Option.forEach(files => {
-//       files
-//       ->Array.keep(file => file##oldUri->Uri.path->isGCL)
-//       ->Array.keep(file => file##newUri->Uri.path->isGCL->(!))
-//       ->Array.forEach(file => States.destroy(file##oldUri->Uri.path))
-//     })
-// )
-// ->addToSubscriptions(context);
-// // when a TextEditor gets activated, reveal the corresponding Panel (if any)
-// Window.onDidChangeActiveTextEditor(editor => {
-//   editor
-//   ->Option.flatMap(States.getByEditor)
-//   ->Option.forEach(View.activate)
-// })
-// ->addToSubscriptions(context);
-// // on load
-// Commands.registerCommand("extension.load", () =>
-//   getOrMakeState(context)->Option.forEach(Command.load)
-// )
-// ->addToSubscriptions(context);
-// // on save
-// Commands.registerCommand("workbench.action.files.save", () =>
-//   get()
-//   ->Option.forEach(state =>
-//       state.editor->TextEditor.document->TextDocument.fileName->Js.log
-//     )
-// )
-// ->addToSubscriptions(context);
 include Impl(VscodeImpl);
