@@ -1,11 +1,14 @@
 module Impl:
   Editor.Interface with
     type editor = Vscode.TextEditor.t and
-    type context = Vscode.ExtensionContext.t = {
+    type context = Vscode.ExtensionContext.t and
+    type disposable = Vscode.Disposable.t = {
   open Vscode;
+  open Belt;
 
   type editor = Vscode.TextEditor.t;
   type context = Vscode.ExtensionContext.t;
+  type disposable = Vscode.Disposable.t;
 
   type t = {
     editor,
@@ -17,8 +20,32 @@ module Impl:
   let getExtensionPath = (self: t) =>
     self.context->ExtensionContext.extensionPath;
 
-  let getFileName = self =>
-    self.editor->TextEditor.document->TextDocument.fileName;
+  let getFileName' = editor =>
+    editor->TextEditor.document->TextDocument.fileName;
+
+  let addToSubscriptions = (disposable, context) =>
+    disposable
+    ->Js.Array.push(context->ExtensionContext.subscriptions)
+    ->ignore;
+  // let onOpenEditor = callback => Workspace.onDidRenameFiles(event => ());
+  // when the editor got closed
+  let onDidCloseEditor = callback =>
+    Workspace.onDidCloseTextDocument(textDoc =>
+      textDoc->Option.forEach(textDoc =>
+        callback(textDoc->TextDocument.fileName)
+      )
+    );
+
+  let onDidChangeFileName = callback =>
+    Workspace.onDidRenameFiles(event =>
+      event
+      ->Option.map(Vscode.FileRenameEvent.files)
+      ->Option.forEach(files => {
+          files->Array.forEach(file =>
+            callback(file##oldUri->Uri.path, file##newUri->Uri.path)
+          )
+        })
+    );
 
   let setGCLPath = path =>
     Workspace.getConfiguration(Some("guacamole"), None)
