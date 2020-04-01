@@ -9,6 +9,7 @@ module Impl:
   type editor = Vscode.TextEditor.t;
   type context = Vscode.ExtensionContext.t;
   type disposable = Vscode.Disposable.t;
+  type fileName = string;
 
   type t = {
     editor,
@@ -42,26 +43,29 @@ module Impl:
       ->Option.map(Vscode.FileRenameEvent.files)
       ->Option.forEach(files => {
           files->Array.forEach(file =>
-            callback(file##oldUri->Uri.path, file##newUri->Uri.path)
+            callback(
+              Some(file##oldUri->Uri.path),
+              Some(file##newUri->Uri.path),
+            )
           )
         })
     );
-  let onDidActivateEditor = callback =>
-    Window.onDidChangeActiveTextEditor(editor => {
-      editor->Option.map(editorFileName)->Option.forEach(callback)
+  let onDidChangeActivation = callback => {
+    let previous = ref(Window.activeTextEditor->Option.map(editorFileName));
+
+    Window.onDidChangeActiveTextEditor(next => {
+      let next = next->Option.map(editorFileName);
+      if (next != previous^) {
+        callback(previous^, next);
+        previous := next;
+      };
     });
-  // NOOP
-  let onDidDeactivateEditor = _callback =>
-    Window.onDidChangeActiveTextEditor(_ => ());
+  };
 
   let registerCommand = (name, callback) =>
-    Commands.registerCommand("extension." ++ name, callback);
-
-  let getActiveEditor = () => Window.activeTextEditor;
-  // Window.activeTextEditor
-  // ->Option.map(editor =>
-  //   editor->TextEditor.document->TextDocument.fileName
-  // );
+    Commands.registerCommand("extension." ++ name, () => {
+      Window.activeTextEditor->Option.forEach(callback)
+    });
 
   let setGCLPath = path =>
     Workspace.getConfiguration(Some("guacamole"), None)

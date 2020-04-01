@@ -70,48 +70,40 @@ module Impl = (Interface: Editor.Interface) => {
     ->Interface.addToSubscriptions(context);
     // when a file got renamed, destroy the corresponding State if it becomes non-GCL
     Interface.onDidChangeFileName((oldName, newName) =>
-      if (States.contains(oldName)) {
-        if (isGCL(newName)) {
-          States.rename(oldName, newName);
-        } else {
-          States.destroy(oldName);
-        };
-      }
+      oldName->Option.forEach(oldName =>
+        newName->Option.forEach(newName =>
+          if (States.contains(oldName)) {
+            if (isGCL(newName)) {
+              States.rename(oldName, newName);
+            } else {
+              States.destroy(oldName);
+            };
+          }
+        )
+      )
     )
     ->Interface.addToSubscriptions(context);
     // on editor activation, reveal the corresponding Panel (if any)
-    Interface.onDidActivateEditor(fileName => {
-      States.get(fileName)->Option.forEach(Js.log2("[activate]"))
-    })
-    ->Interface.addToSubscriptions(context);
-    // on editor deactivation, hide the corresponding Panel (if any)
-    Interface.onDidDeactivateEditor(fileName => {
-      States.get(fileName)->Option.forEach(Js.log2("[deactivate]"))
+    Interface.onDidChangeActivation((_previous, next) => {
+      next
+      ->Option.flatMap(States.get)
+      ->Option.forEach(Js.log2("[activate]"))
     })
     ->Interface.addToSubscriptions(context);
 
     // on load
-    Interface.registerCommand("load", () => {
-      Interface.getActiveEditor()
-      // see if it's a GCL file
-      ->Option.flatMap(editor => {
-          let fileName = editor->Interface.editorFileName;
-          if (isGCL(fileName)) {
-            Some((editor, fileName));
-          } else {
-            None;
-          };
-        })
-      // see if it's already in the States
-      ->Option.forEach(((editor, fileName)) => {
-          switch (States.get(fileName)) {
-          | None =>
-            Js.log("[ main ][ first LOAD ]");
-            let state = State.make(context, editor);
-            States.add(fileName, state);
-          | Some(_state) => Js.log("[ main ][ LOAD ]")
-          }
-        })
+    Interface.registerCommand("load", editor => {
+      let fileName = editor->Interface.editorFileName;
+      if (isGCL(fileName)) {
+        // see if it's already in the States
+        switch (States.get(fileName)) {
+        | None =>
+          Js.log("[ main ][ first LOAD ]");
+          let state = State.make(context, editor);
+          States.add(fileName, state);
+        | Some(_state) => Js.log("[ main ][ LOAD ]")
+        };
+      };
     })
     ->Interface.addToSubscriptions(context);
   };

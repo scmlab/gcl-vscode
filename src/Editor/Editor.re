@@ -2,6 +2,7 @@ module type Interface = {
   type editor;
   type context;
   type disposable;
+  type fileName = string;
 
   type t = {
     editor,
@@ -10,23 +11,24 @@ module type Interface = {
 
   let make: (editor, context) => t;
 
-  let getExtensionPath: t => string;
+  let getExtensionPath: t => fileName;
 
-  let editorFileName: editor => string;
-  // let getActiveEditor: unit => option(editor);
+  let editorFileName: editor => fileName;
 
-  let onDidChangeFileName: ((string, string) => unit) => disposable;
-  let onDidCloseEditor: (string => unit) => disposable;
-  let onDidActivateEditor: (string => unit) => disposable;
-  let onDidDeactivateEditor: (string => unit) => disposable;
+  // if the file name changed, invoke the callback with the previous and next name (could be None)
+  let onDidChangeFileName:
+    ((option(fileName), option(fileName)) => unit) => disposable;
+  let onDidChangeActivation:
+    ((option(fileName), option(fileName)) => unit) => disposable;
+    
+  let onDidCloseEditor: (fileName => unit) => disposable;
 
   let addToSubscriptions: (disposable, context) => unit;
 
-  let registerCommand: (string, unit => unit) => disposable;
-  let getActiveEditor: unit => option(editor);
+  let registerCommand: (string, editor => unit) => disposable;
 
   //   let getConfiguration: string => option('a);
   //   let setConfiguration: (string, 'a) => Promise.t(unit);
-  let getGCLPath: unit => option(string);
-  let setGCLPath: string => Promise.t(unit);
+  let getGCLPath: unit => option(fileName);
+  let setGCLPath: fileName => Promise.t(unit);
 };
