@@ -1,5 +1,5 @@
 module Impl:
-  Editor.Interface with
+  Editor.Sig with
     type editor = Vscode.TextEditor.t and
     type context = Vscode.ExtensionContext.t and
     type disposable = Vscode.Disposable.t = {

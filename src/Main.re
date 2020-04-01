@@ -1,10 +1,9 @@
 open Belt;
 open Vscode;
 
-module Impl = (Interface: Editor.Interface) => {
-  module State = State.Impl(Interface);
-
-  module States = {
+module StateDict = {
+  module Impl = (Editor: Editor.Sig) => {
+    module State = State.Impl(Editor);
     // a dictionary of (FileName, State) entries
     let dict: Js.Dict.t(State.t) = Js.Dict.empty();
 
@@ -12,8 +11,8 @@ module Impl = (Interface: Editor.Interface) => {
       dict->Js.Dict.get(fileName);
     };
 
-    let getByEditor = (editor: Interface.editor) => {
-      get(editor->Interface.editorFileName);
+    let getByEditor = (editor: Editor.editor) => {
+      get(editor->Editor.editorFileName);
     };
 
     // do nothing if the state already exists
@@ -22,7 +21,7 @@ module Impl = (Interface: Editor.Interface) => {
       switch (get(fileName)) {
       | Some(_) => ()
       | None =>
-        Js.log("[ state ][ add ]");
+        Js.log("[ states ][ add ]");
         dict->Js.Dict.set(fileName, state);
       };
     };
@@ -33,7 +32,7 @@ module Impl = (Interface: Editor.Interface) => {
       ];
       get(oldName)
       ->Option.forEach(state => {
-          Js.log3("[ state ][ rename ]", oldName, newName);
+          Js.log3("[ states ][ rename ]", oldName, newName);
           delete_(dict, oldName);
           add(newName, state);
         });
@@ -45,7 +44,7 @@ module Impl = (Interface: Editor.Interface) => {
       ];
       get(fileName)
       ->Option.forEach(state => {
-          Js.log("[ state ][ destroy ]");
+          Js.log("[ states ][ destroy ]");
           State.destroy(state);
           delete_(dict, fileName);
         });
@@ -56,9 +55,16 @@ module Impl = (Interface: Editor.Interface) => {
     let destroyAll = () => {
       dict
       ->Js.Dict.entries
-      ->Array.map(((_, state)) => State.destroy(state));
+      ->Array.map(((_, state)) => State.destroy(state))
+      ->ignore;
     };
   };
+};
+
+module Impl = (Editor: Editor.Sig) => {
+  module State = State.Impl(Editor);
+  module States = StateDict.Impl(Editor);
+
   let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
   let addToSubscriptions = (f, context) =>
@@ -66,10 +72,10 @@ module Impl = (Interface: Editor.Interface) => {
 
   let activate = context => {
     // when a TextEditor gets closed, destroy the corresponding State
-    Interface.onDidCloseEditor(States.destroy)
-    ->Interface.addToSubscriptions(context);
+    Editor.onDidCloseEditor(States.destroy)
+    ->Editor.addToSubscriptions(context);
     // when a file got renamed, destroy the corresponding State if it becomes non-GCL
-    Interface.onDidChangeFileName((oldName, newName) =>
+    Editor.onDidChangeFileName((oldName, newName) =>
       oldName->Option.forEach(oldName =>
         newName->Option.forEach(newName =>
           if (States.contains(oldName)) {
@@ -82,18 +88,18 @@ module Impl = (Interface: Editor.Interface) => {
         )
       )
     )
-    ->Interface.addToSubscriptions(context);
+    ->Editor.addToSubscriptions(context);
     // on editor activation, reveal the corresponding Panel (if any)
-    Interface.onDidChangeActivation((_previous, next) => {
+    Editor.onDidChangeActivation((_previous, next) => {
       next
       ->Option.flatMap(States.get)
       ->Option.forEach(Js.log2("[activate]"))
     })
-    ->Interface.addToSubscriptions(context);
+    ->Editor.addToSubscriptions(context);
 
     // on load
-    Interface.registerCommand("load", editor => {
-      let fileName = editor->Interface.editorFileName;
+    Editor.registerCommand("load", editor => {
+      let fileName = editor->Editor.editorFileName;
       if (isGCL(fileName)) {
         // see if it's already in the States
         switch (States.get(fileName)) {
@@ -105,7 +111,7 @@ module Impl = (Interface: Editor.Interface) => {
         };
       };
     })
-    ->Interface.addToSubscriptions(context);
+    ->Editor.addToSubscriptions(context);
   };
 
   let deactive = () => {

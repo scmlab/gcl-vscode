@@ -1,4 +1,4 @@
-module type Interface = {
+module type Sig = {
   type editor;
   type context;
   type disposable;
@@ -20,7 +20,7 @@ module type Interface = {
     ((option(fileName), option(fileName)) => unit) => disposable;
   let onDidChangeActivation:
     ((option(fileName), option(fileName)) => unit) => disposable;
-    
+
   let onDidCloseEditor: (fileName => unit) => disposable;
 
   let addToSubscriptions: (disposable, context) => unit;

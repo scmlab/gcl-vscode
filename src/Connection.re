@@ -1,4 +1,4 @@
-module Impl = (Interface: Editor.Interface) => {
+module Impl = (Editor: Editor.Sig) => {
   open Belt;
 
   module Process = AgdaMode.Process;
@@ -49,7 +49,7 @@ module Impl = (Interface: Editor.Interface) => {
   };
   let getGCLPath = (): Promise.t(result(string, Error.t)) => {
     let storedPath =
-      Interface.getGCLPath()->Option.mapWithDefault("", Js.String.trim);
+      Editor.getGCLPath()->Option.mapWithDefault("", Js.String.trim);
     if (storedPath == "" || storedPath == ".") {
       Process.PathSearch.run("gcl")
       ->Promise.mapOk(Js.String.trim)
@@ -71,7 +71,7 @@ module Impl = (Interface: Editor.Interface) => {
     getGCLPath()
     ->Promise.flatMapOk(validateGCLPath)
     ->Promise.flatMapOk(path =>
-        Interface.setGCLPath(path)->Promise.map(() => Ok(path))
+        Editor.setGCLPath(path)->Promise.map(() => Ok(path))
       )
     // ->Promise.tapOk(path => Atom.Config.set("gcl-atom.path", path) |> ignore)
     ->Promise.mapOk(path => {

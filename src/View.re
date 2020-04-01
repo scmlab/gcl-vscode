@@ -53,48 +53,43 @@ let html = (distPath, styleUri, scriptUri) => {
 |j};
 };
 
+module State = State.Impl(VscodeImpl);
+
 let createPanel = (state: State.t) => {
-  let fileName =
-    Node.Path.basename_ext(
-      state.editor->TextEditor.document->TextDocument.fileName,
-      ".gcl",
-    );
-
-  let distPath =
-    Node.Path.join2(state.editor2->VscodeImpl.getExtensionPath, "dist");
-
-  let panel =
-    Window.createWebviewPanel(
-      "panel",
-      "GCL [" ++ fileName ++ "]",
-      {preserveFocus: true, viewColumn: 3},
-      // None,
-      Some(
-        WebviewAndWebviewPanelOptions.make(
-          ~enableScripts=true,
-          // And restric the webview to only loading content from our extension's `media` directory.
-          ~localResourceRoots=[|Uri.file(distPath)|],
-          (),
-        ),
-      ),
-    );
-
-  // panel.webview->Webview.postMessage(C(3)) |> ignore;
-  // // ->Js.Array.push(state.context.subscriptions)
-  // // ->ignore;
-
-  // panel.webview
-  // ->Webview.onDidReceiveMessage(message => {Js.log(message)})
-  // ->Js.Array.push(state.context.subscriptions)
-  // ->ignore;
-
-  panel
-  ->WebviewPanel.webview
-  ->Webview.setHtml(html(distPath, "style.css", "bundled-view.js"));
-
-  panel->WebviewPanel.onDidDispose(() => {state.panel = None}) |> ignore;
-
-  state.panel = Some(panel);
+  ()//   );
+    // let distPath =
+    //   Node.Path.join2(state.editor2->VscodeImpl.getExtensionPath, "dist");
+    // let panel =
+    //   Window.createWebviewPanel(
+    //     "panel",
+    //     "GCL [" ++ fileName ++ "]",
+    //     {preserveFocus: true, viewColumn: 3},
+    //     // None,
+    //     Some(
+    //       WebviewAndWebviewPanelOptions.make(
+    //         ~enableScripts=true,
+    //         // And restric the webview to only loading content from our extension's `media` directory.
+    //         ~localResourceRoots=[|Uri.file(distPath)|],
+    //         (),
+    //       ),
+    //     ),
+    //   );
+    // panel.webview->Webview.postMessage(C(3)) |> ignore;
+    // // ->Js.Array.push(state.context.subscriptions)
+    // // ->ignore;
+    // panel.webview
+    // ->Webview.onDidReceiveMessage(message => {Js.log(message)})
+    // ->Js.Array.push(state.context.subscriptions)
+    // ->ignore;
+    // panel
+    // ->WebviewPanel.webview
+    // ->Webview.setHtml(html(distPath, "style.css", "bundled-view.js"));
+    // panel->WebviewPanel.onDidDispose(() => {state.panel = None}) |> ignore;
+    // let fileName =
+    //   Node.Path.basename_ext(
+    ; //     ".gcl",
+ //     state.editor->TextEditor.document->TextDocument.fileName,
+    // state.panel = Some(panel);
 };
 
 let moveToBottom = () => {
@@ -113,14 +108,14 @@ let moveToBottom = () => {
     )
   );
 };
-let activate = state =>
-  switch (state.State.panel) {
-  | None =>
-    // intantiate the panel
-    createPanel(state);
-    moveToBottom() |> ignore;
-  | Some(panel) => panel->WebviewPanel.reveal(~preserveFocus=true, ())
-  };
+let activate = state => ();
+// switch (state.State.panel) {
+// | None =>
+//   // intantiate the panel
+//   createPanel(state);
+//   moveToBottom() |> ignore;
+// | Some(panel) => panel->WebviewPanel.reveal(~preserveFocus=true, ())
+// };
 
 let postMessage = (panel: WebviewPanel.t, message: message): unit => {
   panel->WebviewPanel.webview->Webview.postMessage(message) |> ignore;
