@@ -118,5 +118,3 @@ module Impl = (Editor: Editor.Sig) => {
     States.destroyAll();
   };
 };
-
-include Impl(VscodeImpl);

@@ -2,21 +2,23 @@ open Vscode;
 open Belt;
 
 // signature for the States module to construct/destruct State.t
-module type Sig = {
-  type editor;
-  type context;
-  type t;
-  let make: (context, editor) => t;
-  let destroy: t => unit;
-};
+module type Sig =
+  (Editor: Editor.Sig) =>
+   {
+    type editor = Editor.editor;
+    type context;
+    type t;
+    let make: (context, editor) => t;
+    let destroy: t => unit;
+  };
 
-module Impl =
-       (Editor: Editor.Sig)
+module Impl = (Editor: Editor.Sig) => {
+  //  (Editor: Editor.Sig)
 
-         : (
-           Sig with
-             type editor = Editor.editor and type context = Editor.context
-       ) => {
+  //    : (
+  //      Sig with
+  //        type editor = Editor.editor and type context = Editor.context
+
   type editor = Editor.editor;
   type context = Editor.context;
 
