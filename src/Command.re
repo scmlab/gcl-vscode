@@ -1,5 +1,3 @@
-module Conn = Connection.Impl(VscodeImpl);
-
 let load = state => {
   Js.log("load!");
   View.activate(state);

@@ -1,15 +1,34 @@
 open Vscode;
 open Belt;
 
+// module Error = {
+//   type t =
+//     | Connection(Connection.Error.t)
+//     | Decode(string, Js.Json.t);
+//   let toString =
+//     fun
+//     | Connection(e) => Connection.Error.toString(e)
+//     | Decode(msg, json) => (
+//         {js|JSON Decode Error|js},
+//         msg ++ "\n" ++ "JSON from GCL: \n" ++ Js.Json.stringify(json),
+//       );
+// };
+
 // signature for the States module to construct/destruct State.t
 module type Sig =
   (Editor: Editor.Sig) =>
    {
+    // types
     type editor = Editor.editor;
     type context = Editor.context;
     type t;
+
+    // construction/destruction
     let make: (context, editor) => t;
     let destroy: t => unit;
+    // connection with GCL
+    // let connect:
+    //   unit => Promise.t(result(Connection.Impl(Editor).t, Error.t));
   };
 
 module Impl: Sig =
@@ -34,18 +53,6 @@ module Impl: Sig =
     let destroy = state =>
       state.panel
       ->Option.forEach(panel => panel->WebviewPanel.dispose->ignore);
-    // module Error = {
-    //   type t =
-    //     | Connection(Connection.Error.t)
-    //     | Decode(string, Js.Json.t);
-    //   let toString =
-    //     fun
-    //     | Connection(e) => Connection.Error.toString(e)
-    //     | Decode(msg, json) => (
-    //         {js|JSON Decode Error|js},
-    //         msg ++ "\n" ++ "JSON from GCL: \n" ++ Js.Json.stringify(json),
-    //       );
-    // };
     // connect if not connected yet
     // let establishConnection =
     //     (state): Promise.t(result(Connection.t, Error.t)) => {

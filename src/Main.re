@@ -1,10 +1,10 @@
 open Belt;
 open Vscode;
 
+// a dictionary of FileName-State entries
 module StateDict = {
   module Impl = (Editor: Editor.Sig, State: State.Sig) => {
     module State = State(Editor);
-    // a dictionary of (FileName, State) entries
     let dict: Js.Dict.t(State.t) = Js.Dict.empty();
 
     let get = fileName => {
@@ -114,7 +114,7 @@ module Impl = (Editor: Editor.Sig, State: State.Sig) => {
     ->Editor.addToSubscriptions(context);
   };
 
-  let deactive = () => {
+  let deactivate = () => {
     States.destroyAll();
   };
 };
