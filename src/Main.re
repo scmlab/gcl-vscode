@@ -2,8 +2,8 @@ open Belt;
 open Vscode;
 
 module StateDict = {
-  module Impl = (Editor: Editor.Sig) => {
-    module State = State.Impl(Editor);
+  module Impl = (Editor: Editor.Sig, State: State.Sig) => {
+    module State = State(Editor);
     // a dictionary of (FileName, State) entries
     let dict: Js.Dict.t(State.t) = Js.Dict.empty();
 
@@ -61,9 +61,9 @@ module StateDict = {
   };
 };
 
-module Impl = (Editor: Editor.Sig) => {
-  module State = State.Impl(Editor);
-  module States = StateDict.Impl(Editor);
+module Impl = (Editor: Editor.Sig, State: State.Sig) => {
+  module States = StateDict.Impl(Editor, State);
+  module State = State(Editor);
 
   let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 

@@ -14,16 +14,10 @@ module type Sig =
 
 module Impl: Sig =
   (Editor: Editor.Sig) => {
-    //  (Editor: Editor.Sig)
-
-    //    : (
-    //      Sig with
-    //        type editor = Editor.editor and type context = Editor.context
-
     type editor = Editor.editor;
     type context = Editor.context;
 
-    module Connection = Connection.Impl(Editor);
+    // module Connection = Connection.Impl(Editor);
 
     type t = {
       editor: Editor.t,

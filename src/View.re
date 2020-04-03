@@ -55,10 +55,8 @@ let html = (distPath, styleUri, scriptUri) => {
 
 module State = State.Impl(VscodeImpl);
 
-let createPanel = (state: State.t) => {
-  ()//   );
-    // let distPath =
-    //   Node.Path.join2(state.editor2->VscodeImpl.getExtensionPath, "dist");
+let createPanel = (_state: State.t) => {
+  ()//   Node.Path.join2(state.editor2->VscodeImpl.getExtensionPath, "dist");
     // let panel =
     //   Window.createWebviewPanel(
     //     "panel",
@@ -87,8 +85,10 @@ let createPanel = (state: State.t) => {
     // panel->WebviewPanel.onDidDispose(() => {state.panel = None}) |> ignore;
     // let fileName =
     //   Node.Path.basename_ext(
-    ; //     ".gcl",
- //     state.editor->TextEditor.document->TextDocument.fileName,
+    //     state.editor->TextEditor.document->TextDocument.fileName,
+    //     ".gcl",
+    ; // let distPath =
+ //   );
     // state.panel = Some(panel);
 };
 
@@ -108,7 +108,7 @@ let moveToBottom = () => {
     )
   );
 };
-let activate = state => ();
+let activate = _state => ();
 // switch (state.State.panel) {
 // | None =>
 //   // intantiate the panel
