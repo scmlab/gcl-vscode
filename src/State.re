@@ -1,18 +1,18 @@
 open Vscode;
 open Belt;
 
-// module Error = {
-//   type t =
-//     | Connection(Connection.Error.t)
-//     | Decode(string, Js.Json.t);
-//   let toString =
-//     fun
-//     | Connection(e) => Connection.Error.toString(e)
-//     | Decode(msg, json) => (
-//         {js|JSON Decode Error|js},
-//         msg ++ "\n" ++ "JSON from GCL: \n" ++ Js.Json.stringify(json),
-//       );
-// };
+module Error = {
+  type t =
+    | Connection(Connection.Error.t)
+    | Decode(string, Js.Json.t);
+  let toString =
+    fun
+    | Connection(e) => Connection.Error.toString(e)
+    | Decode(msg, json) => (
+        {js|JSON Decode Error|js},
+        msg ++ "\n" ++ "JSON from GCL: \n" ++ Js.Json.stringify(json),
+      );
+};
 
 // signature for the States module to construct/destruct State.t
 module type Sig =
@@ -27,8 +27,8 @@ module type Sig =
     let make: (context, editor) => t;
     let destroy: t => unit;
     // connection with GCL
-    // let connect:
-    //   unit => Promise.t(result(Connection.Impl(Editor).t, Error.t));
+    let connect: t => Promise.t(result(Connection.t, Error.t));
+    let disconnect: t => Promise.t(unit);
   };
 
 module Impl: Sig =
@@ -40,13 +40,13 @@ module Impl: Sig =
 
     type t = {
       editor: Editor.t,
-      // mutable connection: option(Connection.t),
+      mutable connection: option(Connection.t),
       mutable panel: option(WebviewPanel.t),
     };
 
     let make = (context, editor) => {
       editor: Editor.make(editor, context),
-      // connection: None,
+      connection: None,
       panel: None,
     };
 
@@ -54,14 +54,17 @@ module Impl: Sig =
       state.panel
       ->Option.forEach(panel => panel->WebviewPanel.dispose->ignore);
     // connect if not connected yet
-    // let establishConnection =
-    //     (state): Promise.t(result(Connection.t, Error.t)) => {
-    //   switch (state.connection) {
-    //   | None =>
-    //     Connection.make()
-    //     ->Promise.mapError(e => Error.Connection(e))
-    //     ->Promise.tapOk(conn => state.connection = Some(conn))
-    //   | Some(connection) => Promise.resolved(Ok(connection))
-    //   };
-    // };
-  } /* include Impl(VscodeImpl)*/;
+    let connect = state =>
+      switch (state.connection) {
+      | None =>
+        Connection.make(Editor.getGCLPath, Editor.setGCLPath)
+        ->Promise.mapError(e => Error.Connection(e))
+        ->Promise.tapOk(conn => state.connection = Some(conn))
+      | Some(connection) => Promise.resolved(Ok(connection))
+      };
+    let disconnect = state =>
+      switch (state.connection) {
+      | None => Promise.resolved()
+      | Some(connection) => Connection.disconnect(connection)
+      };
+  };

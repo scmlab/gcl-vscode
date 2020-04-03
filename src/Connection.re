@@ -17,7 +17,6 @@ type t = {
   mutable process: Process.t,
   mutable emitter: Event.t(result(Js.Json.t, Error.t)),
 };
-// returns Boolean
 let isConnected = connection => connection.process.isConnected();
 let disconnect = connection => connection.process.disconnect();
 // Wires `process` and `emitter` up
