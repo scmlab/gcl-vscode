@@ -25,8 +25,9 @@ module type Sig =
 
     // construction/destruction
     let make: (context, editor) => t;
-    let destroy: t => unit;
-    // connection with GCL
+    let destroy: t => Promise.t(unit);
+
+    // connection/disconnection to GCL
     let connect: t => Promise.t(result(Connection.t, Error.t));
     let disconnect: t => Promise.t(unit);
   };
@@ -35,24 +36,16 @@ module Impl: Sig =
   (Editor: Editor.Sig) => {
     type editor = Editor.editor;
     type context = Editor.context;
-
-    // module Connection = Connection.Impl(Editor);
-
     type t = {
       editor: Editor.t,
       mutable connection: option(Connection.t),
       mutable panel: option(WebviewPanel.t),
     };
 
-    let make = (context, editor) => {
-      editor: Editor.make(editor, context),
-      connection: None,
-      panel: None,
-    };
+    //
+    // connection/disconnection to GCL
+    //
 
-    let destroy = state =>
-      state.panel
-      ->Option.forEach(panel => panel->WebviewPanel.dispose->ignore);
     // connect if not connected yet
     let connect = state =>
       switch (state.connection) {
@@ -67,4 +60,20 @@ module Impl: Sig =
       | None => Promise.resolved()
       | Some(connection) => Connection.disconnect(connection)
       };
+
+    //
+    // construction/destruction
+    //
+
+    let make = (context, editor) => {
+      editor: Editor.make(editor, context),
+      connection: None,
+      panel: None,
+    };
+
+    let destroy = state => {
+      state.panel
+      ->Option.forEach(panel => panel->WebviewPanel.dispose->ignore);
+      Promise.resolved();
+    };
   };
