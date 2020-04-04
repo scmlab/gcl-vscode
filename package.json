@@ -10,7 +10,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:extension.load"
+		"onCommand:extension.toggle"
 	],
 	"main": "./lib/js/src/Main2.bs.js",
 	"contributes": {
@@ -28,13 +28,13 @@
 		],
 		"commands": [
 			{
-				"command": "extension.load",
-				"title": "Load"
+				"command": "extension.toggle",
+				"title": "Toggle activate/deactivate"
 			}
 		],
 		"keybindings": [
 			{
-				"command": "extension.load",
+				"command": "extension.toggle",
 				"key": "ctrl+c ctrl+x",
 				"mac": "ctrl+c ctrl+x"
 			}

@@ -12,7 +12,7 @@ module StateDict = {
     };
 
     let getByEditor = (editor: Editor.editor) => {
-      get(editor->Editor.editorFileName);
+      get(editor->Editor.getFileName);
     };
 
     // do nothing if the state already exists
@@ -42,10 +42,11 @@ module StateDict = {
       let delete_: (Js.Dict.t('a), string) => unit = [%raw
         "function (dict, key) {delete dict[key]}"
       ];
+
       get(fileName)
       ->Option.forEach(state => {
           Js.log("[ states ][ destroy ]");
-          State.destroy(state);
+          State.destroy(state) |> ignore;
           delete_(dict, fileName);
         });
     };
@@ -97,17 +98,19 @@ module Impl = (Editor: Editor.Sig, State: State.Sig) => {
     })
     ->Editor.addToSubscriptions(context);
 
-    // on load
-    Editor.registerCommand("load", editor => {
-      let fileName = editor->Editor.editorFileName;
+    // on "toggle activate/deactivate"
+    Editor.registerCommand("toggle", editor => {
+      let fileName = editor->Editor.getFileName;
       if (isGCL(fileName)) {
         // see if it's already in the States
         switch (States.get(fileName)) {
         | None =>
-          Js.log("[ main ][ first LOAD ]");
+          Js.log("[ main ][ toggle activate ]");
           let state = State.make(context, editor);
           States.add(fileName, state);
-        | Some(_state) => Js.log("[ main ][ LOAD ]")
+        | Some(state) =>
+          Js.log("[ main ][ toggle deactivate ]");
+          state->State.getEditor->Editor.getFileName->States.destroy;
         };
       };
     })

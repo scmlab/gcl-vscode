@@ -11,17 +11,11 @@ module Impl:
   type disposable = Vscode.Disposable.t;
   type fileName = string;
 
-  type t = {
-    editor,
-    context,
-  };
+  // let make = (editor, context) => {editor, context};
 
-  let make = (editor, context) => {editor, context};
+  let getExtensionPath = context => context->ExtensionContext.extensionPath;
 
-  let getExtensionPath = (self: t) =>
-    self.context->ExtensionContext.extensionPath;
-
-  let editorFileName = editor =>
+  let getFileName = editor =>
     editor->TextEditor.document->TextDocument.fileName;
 
   let addToSubscriptions = (disposable, context) =>
@@ -51,10 +45,10 @@ module Impl:
         })
     );
   let onDidChangeActivation = callback => {
-    let previous = ref(Window.activeTextEditor->Option.map(editorFileName));
+    let previous = ref(Window.activeTextEditor->Option.map(getFileName));
 
     Window.onDidChangeActiveTextEditor(next => {
-      let next = next->Option.map(editorFileName);
+      let next = next->Option.map(getFileName);
       if (next != previous^) {
         callback(previous^, next);
         previous := next;

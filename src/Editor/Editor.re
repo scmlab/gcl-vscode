@@ -4,16 +4,10 @@ module type Sig = {
   type disposable;
   type fileName = string;
 
-  type t = {
-    editor,
-    context,
-  };
+  // let make: (editor, context) => t;
 
-  let make: (editor, context) => t;
-
-  let getExtensionPath: t => fileName;
-
-  let editorFileName: editor => fileName;
+  let getExtensionPath: context => fileName;
+  let getFileName: editor => fileName;
 
   // if the file name changed, invoke the callback with the previous and next name (could be None)
   let onDidChangeFileName:

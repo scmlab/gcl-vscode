@@ -23,6 +23,9 @@ module type Sig =
     type context = Editor.context;
     type t;
 
+    // getters
+    let getEditor: t => editor;
+
     // construction/destruction
     let make: (context, editor) => t;
     let destroy: t => Promise.t(unit);
@@ -37,10 +40,16 @@ module Impl: Sig =
     type editor = Editor.editor;
     type context = Editor.context;
     type t = {
-      editor: Editor.t,
+      editor,
+      context,
       mutable connection: option(Connection.t),
       mutable panel: option(WebviewPanel.t),
     };
+
+    //
+    // getters
+    //
+    let getEditor = (state: t) => state.editor;
 
     //
     // connection/disconnection to GCL
@@ -66,7 +75,8 @@ module Impl: Sig =
     //
 
     let make = (context, editor) => {
-      editor: Editor.make(editor, context),
+      editor,
+      context,
       connection: None,
       panel: None,
     };
