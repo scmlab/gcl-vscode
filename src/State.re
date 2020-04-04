@@ -1,6 +1,3 @@
-open Vscode;
-open Belt;
-
 module Error = {
   type t =
     | Connection(Connection.Error.t)
@@ -37,13 +34,15 @@ module type Sig =
 
 module Impl: Sig =
   (Editor: Editor.Sig) => {
+    module View = View.Impl(Editor);
+
     type editor = Editor.editor;
     type context = Editor.context;
     type t = {
       editor,
       context,
       mutable connection: option(Connection.t),
-      mutable panel: option(WebviewPanel.t),
+      mutable view: Editor.view,
     };
 
     //
@@ -52,7 +51,7 @@ module Impl: Sig =
     let getEditor = (state: t) => state.editor;
 
     //
-    // connection/disconnection to GCL
+    // GCL connection/disconnection
     //
 
     // connect if not connected yet
@@ -71,19 +70,32 @@ module Impl: Sig =
       };
 
     //
+    // View show/hide
+    //
+
+    //
     // construction/destruction
     //
 
     let make = (context, editor) => {
-      editor,
-      context,
-      connection: None,
-      panel: None,
+      // view initialization
+      let view = View.make(context, editor);
+      let state = {editor, context, connection: None, view};
+
+      // connection initialization
+      state
+      ->connect
+      ->Promise.get(
+          fun
+          | Error(e) => Js.log2("[ connection error ]", Error.toString(e))
+          | Ok(c) => Js.log2("[ connection success ]", c),
+        );
+
+      state;
     };
 
     let destroy = state => {
-      state.panel
-      ->Option.forEach(panel => panel->WebviewPanel.dispose->ignore);
-      Promise.resolved();
+      state.view->View.destroy;
+      state->disconnect;
     };
   };
