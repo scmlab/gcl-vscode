@@ -1,4 +1,4 @@
-module type Sig = {
+module type Editor = {
   type editor;
   type context;
   type disposable;
@@ -28,3 +28,11 @@ module type Sig = {
   let createView: (context, editor) => view;
   let destroyView: view => unit;
 };
+
+module type View =
+  (Editor: Editor) =>
+   {
+    // construction/destruction
+    let make: (Editor.context, Editor.editor) => Editor.view;
+    let destroy: Editor.view => unit;
+  };

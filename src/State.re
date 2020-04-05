@@ -13,7 +13,7 @@ module Error = {
 
 // signature for the States module to construct/destruct State.t
 module type Sig =
-  (Editor: Editor.Sig) =>
+  (Editor: Sig.Editor) =>
    {
     // types
     type editor = Editor.editor;
@@ -33,7 +33,7 @@ module type Sig =
   };
 
 module Impl: Sig =
-  (Editor: Editor.Sig) => {
+  (Editor: Sig.Editor) => {
     module View = View.Impl(Editor);
 
     type editor = Editor.editor;

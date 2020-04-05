@@ -3,7 +3,7 @@ open Vscode;
 
 // a dictionary of FileName-State entries
 module StateDict = {
-  module Impl = (Editor: Editor.Sig, State: State.Sig) => {
+  module Impl = (Editor: Sig.Editor, State: State.Sig) => {
     module State = State(Editor);
     let dict: Js.Dict.t(State.t) = Js.Dict.empty();
 
@@ -62,7 +62,7 @@ module StateDict = {
   };
 };
 
-module Impl = (Editor: Editor.Sig, State: State.Sig) => {
+module Impl = (Editor: Sig.Editor, State: State.Sig) => {
   module States = StateDict.Impl(Editor, State);
   module State = State(Editor);
 

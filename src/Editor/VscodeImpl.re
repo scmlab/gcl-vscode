@@ -1,5 +1,5 @@
 module Impl:
-  Editor.Sig with
+  Sig.Editor with
     type editor = Vscode.TextEditor.t and
     type context = Vscode.ExtensionContext.t and
     type view = Vscode.WebviewPanel.t and

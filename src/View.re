@@ -1,17 +1,8 @@
-// signature for the View
-module type Sig =
-  (Editor: Editor.Sig) =>
-   {
-    // construction/destruction
-    let make: (Editor.context, Editor.editor) => Editor.view;
-    let destroy: Editor.view => unit;
-  };
-
 type message =
   | Display(string, string);
 
-module Impl: Sig =
-  (Editor: Editor.Sig) => {
+module Impl: Sig.View =
+  (Editor: Sig.Editor) => {
     // open Belt;
     open Vscode;
 
