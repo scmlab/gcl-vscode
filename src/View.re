@@ -2,9 +2,11 @@ type message =
   | Display(string, string);
 
 module Impl: Sig.View =
-  (Editor: Sig.Editor) => {
+  (Type: Sig.Type, Editor: Sig.Editor) => {
     // open Belt;
     open Vscode;
+
+    module Editor = Editor(Type);
 
     let make = Editor.createView;
     let destroy = Editor.destroyView;

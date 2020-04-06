@@ -3,8 +3,9 @@ open Vscode;
 
 // a dictionary of FileName-State entries
 module StateDict = {
-  module Impl = (Editor: Sig.Editor, State: State.Sig) => {
-    module State = State(Editor);
+  module Impl = (Type: Sig.Type, Editor: Sig.Editor, State: State.Sig) => {
+    module State = State(Type, Editor);
+    module Editor = Editor(Type);
     let dict: Js.Dict.t(State.t) = Js.Dict.empty();
 
     let get = fileName => {
@@ -62,9 +63,10 @@ module StateDict = {
   };
 };
 
-module Impl = (Editor: Sig.Editor, State: State.Sig) => {
-  module States = StateDict.Impl(Editor, State);
-  module State = State(Editor);
+module Impl = (Type: Sig.Type, Editor: Sig.Editor, State: State.Sig) => {
+  module States = StateDict.Impl(Type, Editor, State);
+  module State = State(Type, Editor);
+  module Editor = Editor(Type);
 
   let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 

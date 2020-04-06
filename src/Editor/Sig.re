@@ -1,4 +1,6 @@
-module type Editor = {
+module type Type = {};
+
+module type Editor = (Type: Type) => {
   type editor;
   type context;
   type disposable;
@@ -30,9 +32,9 @@ module type Editor = {
 };
 
 module type View =
-  (Editor: Editor) =>
+  (Type: Type, Editor: Editor) =>
    {
     // construction/destruction
-    let make: (Editor.context, Editor.editor) => Editor.view;
-    let destroy: Editor.view => unit;
+    let make: (Editor(Type).context, Editor(Type).editor) => Editor(Type).view;
+    let destroy: Editor(Type).view => unit;
   };

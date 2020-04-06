@@ -1,9 +1,5 @@
 module Impl:
-  Sig.Editor with
-    type editor = Vscode.TextEditor.t and
-    type context = Vscode.ExtensionContext.t and
-    type view = Vscode.WebviewPanel.t and
-    type disposable = Vscode.Disposable.t = {
+  Sig.Editor = (Type: Sig.Type) => {
   open Vscode;
   open Belt;
 
@@ -199,5 +195,3 @@ module Impl:
     view->WebviewPanel.dispose;
   };
 };
-
-include Impl;
