@@ -13,11 +13,11 @@ module Error = {
 
 // signature for the States module to construct/destruct State.t
 module type Sig =
-  (Type: Sig.Type, Editor: Sig.Editor) =>
+  ( Editor: Sig.Editor) =>
    {
     // types
-    type editor = Editor(Type).editor;
-    type context = Editor(Type).context;
+    type editor = Editor.editor;
+    type context = Editor.context;
     type t;
 
     // getters
@@ -33,10 +33,7 @@ module type Sig =
   };
 
 module Impl: Sig =
-  (Type: Sig.Type, Editor: Sig.Editor) => {
-    // module View = Sig.Editor.View;
-    module Editor = Editor(Type);
-
+  (Editor: Sig.Editor) => {
     type editor = Editor.editor;
     type context = Editor.context;
     type t = {

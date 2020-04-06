@@ -1,1 +1,1 @@
-include Main.Impl(TypeImpl, VscodeImpl.Impl, State.Impl);
+include Main.Impl(VscodeImpl.Impl, State.Impl);
