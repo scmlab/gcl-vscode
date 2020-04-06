@@ -57,7 +57,6 @@ module View =
     };
 
     let createPanel = (context, editor) => {
-      // let distPath = Node.Path.join2("context->getExtensionPath", "dist");
       let distPath =
         Node.Path.join2(context->Editor.getExtensionPath, "dist");
       let fileName =

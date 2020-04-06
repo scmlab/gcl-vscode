@@ -91,10 +91,18 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
     )
     ->Editor.addToSubscriptions(context);
     // on editor activation, reveal the corresponding Panel (if any)
-    Editor.onDidChangeActivation((_previous, next) => {
+    Editor.onDidChangeActivation((previous, next) => {
+      previous
+      ->Option.flatMap(States.get)
+      ->Option.map(State.getEditor)
+      ->Option.map(Editor.getFileName)
+      ->Option.forEach(Js.log2("[deactivate]"));
+
       next
       ->Option.flatMap(States.get)
-      ->Option.forEach(Js.log2("[activate]"))
+      ->Option.map(State.getEditor)
+      ->Option.map(Editor.getFileName)
+      ->Option.forEach(Js.log2("[activate]"));
     })
     ->Editor.addToSubscriptions(context);
 
