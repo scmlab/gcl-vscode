@@ -3,6 +3,10 @@
 # editor
 .vscode
 
+# BuckleScript
+lib/ocaml/
+
+
 # OCaml
 .DS_Store
 .merlin

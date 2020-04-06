@@ -1,5 +1,14 @@
 module type Type = {};
 
+// module type View = {
+//   type context;
+//   type editor;
+//   type view;
+//   // construction/destruction
+//   let make: (context, editor) => view;
+//   let destroy: view => unit;
+// };
+
 module type Editor = (Type: Type) => {
   type editor;
   type context;
@@ -29,12 +38,22 @@ module type Editor = (Type: Type) => {
   // View
   let createView: (context, editor) => view;
   let destroyView: view => unit;
+
+  module View : {
+    // type context;
+    // type editor;
+    // type view;
+    // construction/destruction
+    let make: (context, editor) => view;
+    let destroy: view => unit;
+  };
+
 };
 
-module type View =
-  (Type: Type, Editor: Editor) =>
-   {
-    // construction/destruction
-    let make: (Editor(Type).context, Editor(Type).editor) => Editor(Type).view;
-    let destroy: Editor(Type).view => unit;
-  };
+// module type View =
+//   (Type: Type, Editor: Editor) =>
+//    {
+//     // construction/destruction
+//     let make: (Editor(Type).context, Editor(Type).editor) => Editor(Type).view;
+//     let destroy: Editor(Type).view => unit;
+//   };

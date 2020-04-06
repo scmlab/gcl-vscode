@@ -34,7 +34,7 @@ module type Sig =
 
 module Impl: Sig =
   (Type: Sig.Type, Editor: Sig.Editor) => {
-    module View = View.Impl(Type, Editor);
+    // module View = Sig.Editor.View;
     module Editor = Editor(Type);
 
     type editor = Editor.editor;
@@ -80,7 +80,7 @@ module Impl: Sig =
 
     let make = (context, editor) => {
       // view initialization
-      let view = View.make(context, editor);
+      let view = Editor.View.make(context, editor);
       let state = {editor, context, connection: None, view};
 
       // connection initialization
@@ -96,7 +96,7 @@ module Impl: Sig =
     };
 
     let destroy = state => {
-      state.view->View.destroy;
+      state.view->Editor.View.destroy;
       state->disconnect;
     };
   };
