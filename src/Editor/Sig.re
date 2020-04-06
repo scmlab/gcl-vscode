@@ -1,12 +1,3 @@
-// module type View = {
-//   type context;
-//   type editor;
-//   type view;
-//   // construction/destruction
-//   let make: (context, editor) => view;
-//   let destroy: view => unit;
-// };
-
 module type Editor = {
   type editor;
   type context;
@@ -29,16 +20,15 @@ module type Editor = {
   // Subscriptions
   let addToSubscriptions: (disposable, context) => unit;
 
-  module Config : {
+  module Config: {
     // Configurations
     let getGCLPath: unit => option(fileName);
     let setGCLPath: fileName => Promise.t(unit);
   };
 
-  module View : {
+  module View: {
     // construction/destruction
     let make: (context, editor) => view;
     let destroy: view => unit;
   };
-
 };
