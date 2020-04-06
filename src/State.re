@@ -56,7 +56,7 @@ module Impl: Sig =
     let connect = state =>
       switch (state.connection) {
       | None =>
-        Connection.make(Editor.getGCLPath, Editor.setGCLPath)
+        Connection.make(Editor.Config.getGCLPath, Editor.Config.setGCLPath)
         ->Promise.mapError(e => Error.Connection(e))
         ->Promise.tapOk(conn => state.connection = Some(conn))
       | Some(connection) => Promise.resolved(Ok(connection))

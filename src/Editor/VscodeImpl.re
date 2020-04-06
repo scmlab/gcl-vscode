@@ -58,12 +58,17 @@ module Impl: Sig.Editor = {
       Window.activeTextEditor->Option.forEach(callback)
     });
 
-  let setGCLPath = path =>
-    Workspace.getConfiguration(Some("guacamole"), None)
-    ->WorkspaceConfiguration.updateGlobalSettings("gclPath", path, None);
-  let getGCLPath = () =>
-    Workspace.getConfiguration(Some("guacamole"), None)
-    ->WorkspaceConfiguration.get("gclPath");
+  //
+  // Configuration
+  //
+  module Config = {
+    let setGCLPath = path =>
+      Workspace.getConfiguration(Some("guacamole"), None)
+      ->WorkspaceConfiguration.updateGlobalSettings("gclPath", path, None);
+    let getGCLPath = () =>
+      Workspace.getConfiguration(Some("guacamole"), None)
+      ->WorkspaceConfiguration.get("gclPath");
+  };
   //
   // View
   //

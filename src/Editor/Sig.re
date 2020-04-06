@@ -26,12 +26,14 @@ module type Editor = {
   let onDidCloseEditor: (fileName => unit) => disposable;
   let registerCommand: (string, editor => unit) => disposable;
 
-  // Configurations
-  let getGCLPath: unit => option(fileName);
-  let setGCLPath: fileName => Promise.t(unit);
-
   // Subscriptions
   let addToSubscriptions: (disposable, context) => unit;
+
+  module Config : {
+    // Configurations
+    let getGCLPath: unit => option(fileName);
+    let setGCLPath: fileName => Promise.t(unit);
+  };
 
   module View : {
     // construction/destruction
