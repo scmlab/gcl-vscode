@@ -129,6 +129,9 @@ module View =
   let destroy = view => {
     view->WebviewPanel.dispose;
   };
+  // show/hide
+  let show = view => view->WebviewPanel.reveal(~preserveFocus=true, ());
+  let hide = _view => ();
 };
 
 module rec Impl: Sig.Editor with type context = Vscode.ExtensionContext.t = {

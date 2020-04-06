@@ -94,15 +94,20 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
     Editor.onDidChangeActivation((previous, next) => {
       previous
       ->Option.flatMap(States.get)
-      ->Option.map(State.getEditor)
-      ->Option.map(Editor.getFileName)
-      ->Option.forEach(Js.log2("[deactivate]"));
+      ->Option.forEach(state => {
+          state->State.hide;
+          state
+          ->State.getEditor
+          ->Editor.getFileName
+          ->Js.log2("[ deactivate ]");
+        });
 
       next
       ->Option.flatMap(States.get)
-      ->Option.map(State.getEditor)
-      ->Option.map(Editor.getFileName)
-      ->Option.forEach(Js.log2("[activate]"));
+      ->Option.forEach(state => {
+          state->State.show;
+          state->State.getEditor->Editor.getFileName->Js.log2("[ activate ]");
+        });
     })
     ->Editor.addToSubscriptions(context);
 

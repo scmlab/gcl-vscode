@@ -13,7 +13,7 @@ module Error = {
 
 // signature for the States module to construct/destruct State.t
 module type Sig =
-  ( Editor: Sig.Editor) =>
+  (Editor: Sig.Editor) =>
    {
     // types
     type editor = Editor.editor;
@@ -30,6 +30,10 @@ module type Sig =
     // connection/disconnection to GCL
     let connect: t => Promise.t(result(Connection.t, Error.t));
     let disconnect: t => Promise.t(unit);
+
+    // view related
+    let show: t => unit;
+    let hide: t => unit;
   };
 
 module Impl: Sig =
@@ -39,8 +43,8 @@ module Impl: Sig =
     type t = {
       editor,
       context,
+      view: Editor.view,
       mutable connection: option(Connection.t),
-      mutable view: Editor.view,
     };
 
     //
@@ -96,4 +100,11 @@ module Impl: Sig =
       state.view->Editor.View.destroy;
       state->disconnect;
     };
+
+    //
+    // View-related
+    //
+
+    let show = state => state.view->Editor.View.show;
+    let hide = state => state.view->Editor.View.hide;
   };

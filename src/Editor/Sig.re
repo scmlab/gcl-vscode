@@ -30,5 +30,8 @@ module type Editor = {
     // construction/destruction
     let make: (context, editor) => view;
     let destroy: view => unit;
+    // show/hide
+    let show: view => unit;
+    let hide: view => unit;
   };
 };
