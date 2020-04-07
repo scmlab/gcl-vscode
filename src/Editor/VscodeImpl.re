@@ -1,6 +1,7 @@
 //
 // View
 //
+module View' = View;
 module View =
        (Editor: Sig.Editor with type context = Vscode.ExtensionContext.t) => {
   open Vscode;
@@ -132,16 +133,22 @@ module View =
   // show/hide
   let show = view => view->WebviewPanel.reveal(~preserveFocus=true, ());
   let hide = _view => ();
+  // messaging
+  let recv = (_view, _callback) => ();
 };
 
 module rec Impl: Sig.Editor with type context = Vscode.ExtensionContext.t = {
   open Vscode;
-  open Belt;
+  open! Belt;
 
   type editor = Vscode.TextEditor.t;
   type context = Vscode.ExtensionContext.t;
   type disposable = Vscode.Disposable.t;
   type view = Vscode.WebviewPanel.t;
+
+  type range = Vscode.Range.t;
+  type point = Vscode.Position.t;
+
   type fileName = string;
 
   // let make = (editor, context) => {editor, context};
@@ -150,6 +157,36 @@ module rec Impl: Sig.Editor with type context = Vscode.ExtensionContext.t = {
 
   let getFileName = editor =>
     editor->TextEditor.document->TextDocument.fileName;
+
+  let toPoint =
+    fun
+    | View'.Pos.Pos(_, line, column) => Position.make(line - 1, column - 1);
+
+  let fromPoint = (filepath, point) =>
+    View'.Pos.Pos(
+      filepath,
+      Position.line(point) + 1,
+      Position.character(point) + 1,
+    );
+
+  let toRange =
+    fun
+    | View'.Loc.NoLoc =>
+      Vscode.Range.make(Position.make(0, 0), Position.make(0, 0))
+    | View'.Loc.Loc(x, Pos(_, line, column)) =>
+      Vscode.Range.make(toPoint(x), Position.make(line - 1, column));
+  let fromRange = (filepath, range) => {
+    let start = Vscode.Range.start(range);
+    let end_ = Vscode.Range.end_(range);
+    View'.Loc.Loc(
+      Pos(
+        filepath,
+        Position.line(start) + 1,
+        Position.character(start) + 1,
+      ),
+      Pos(filepath, Position.line(end_) + 1, Position.character(end_)),
+    );
+  };
 
   let addToSubscriptions = (disposable, context) =>
     disposable

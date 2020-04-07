@@ -3,11 +3,19 @@ module type Editor = {
   type context;
   type disposable;
   type view;
+  type point;
+  type range;
   type fileName = string;
 
   // Helpers
   let getExtensionPath: context => fileName;
   let getFileName: editor => fileName;
+
+  let toPoint: View.Pos.t => point;
+  let fromPoint: (fileName, point) => View.Pos.t;
+
+  let toRange: View.Loc.t => range;
+  let fromRange: (fileName, range) => View.Loc.t;
 
   // Events
   let onDidChangeFileName:
@@ -33,5 +41,7 @@ module type Editor = {
     // show/hide
     let show: view => unit;
     let hide: view => unit;
+    // messagin
+    let recv: (view, View.Response.t => unit) => unit;
   };
 };
