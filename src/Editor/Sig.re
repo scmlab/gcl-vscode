@@ -9,7 +9,8 @@ module type Editor = {
 
   // Helpers
   let getExtensionPath: context => fileName;
-  let getFileName: editor => fileName;
+  let getFileName: editor => option(fileName);
+  let save: editor => Promise.t(bool);
 
   let toPoint: GCL.pos => point;
   let fromPoint: (fileName, point) => GCL.pos;

@@ -156,7 +156,9 @@ module rec Impl: Sig.Editor with type context = Vscode.ExtensionContext.t = {
   let getExtensionPath = context => context->ExtensionContext.extensionPath;
 
   let getFileName = editor =>
-    editor->TextEditor.document->TextDocument.fileName;
+    Some(editor->TextEditor.document->TextDocument.fileName);
+
+  let save = editor => editor->TextEditor.document->TextDocument.save;
 
   let toPoint =
     fun
@@ -215,10 +217,10 @@ module rec Impl: Sig.Editor with type context = Vscode.ExtensionContext.t = {
         })
     );
   let onDidChangeActivation = callback => {
-    let previous = ref(Window.activeTextEditor->Option.map(getFileName));
+    let previous = ref(Window.activeTextEditor->Option.flatMap(getFileName));
 
     Window.onDidChangeActiveTextEditor(next => {
-      let next = next->Option.map(getFileName);
+      let next = next->Option.flatMap(getFileName);
       if (next != previous^) {
         callback(previous^, next);
         previous := next;
@@ -229,11 +231,14 @@ module rec Impl: Sig.Editor with type context = Vscode.ExtensionContext.t = {
   let registerCommand = (name, callback) =>
     Commands.registerCommand("extension." ++ name, () => {
       Window.activeTextEditor->Option.forEach(editor => {
-        let fileName = editor->getFileName;
-        let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
-        if (isGCL(fileName)) {
-          callback(editor);
-        };
+        editor
+        ->getFileName
+        ->Option.forEach(fileName => {
+            let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
+            if (isGCL(fileName)) {
+              callback(editor);
+            };
+          })
       })
     });
 

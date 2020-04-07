@@ -7,13 +7,10 @@ module StateDict = {
     module State = State(Editor);
     let dict: Js.Dict.t(State.t) = Js.Dict.empty();
 
-    let get = fileName => {
-      dict->Js.Dict.get(fileName);
-    };
+    let get = fileName => dict->Js.Dict.get(fileName);
 
-    let getByEditor = (editor: Editor.editor) => {
-      get(editor->Editor.getFileName);
-    };
+    let getByEditor = (editor: Editor.editor) =>
+      editor->Editor.getFileName->Option.flatMap(get);
 
     // do nothing if the state already exists
     let add = (fileName, state) => {
@@ -90,46 +87,48 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
       )
     )
     ->Editor.addToSubscriptions(context);
-    // on editor activation, reveal the corresponding Panel (if any)
-    Editor.onDidChangeActivation((previous, next) => {
-      previous
-      ->Option.flatMap(States.get)
-      ->Option.forEach(state => {
-          state->State.hide;
-          state
-          ->State.getEditor
-          ->Editor.getFileName
-          ->Js.log2("[ deactivate ]");
-        });
 
-      next
-      ->Option.flatMap(States.get)
-      ->Option.forEach(state => {
-          state->State.show;
-          state->State.getEditor->Editor.getFileName->Js.log2("[ activate ]");
-        });
+    // on editor activation, reveal the corresponding Panel (if any)
+    Editor.onDidChangeActivation((prev, next) => {
+      prev->Option.flatMap(States.get)->Option.forEach(State.hide);
+      next->Option.flatMap(States.get)->Option.forEach(State.show);
     })
     ->Editor.addToSubscriptions(context);
 
     // on "toggle activate/deactivate"
     Editor.registerCommand("toggle", editor => {
-      let fileName = editor->Editor.getFileName;
-      // see if it's already in the States
-      switch (States.get(fileName)) {
-      | None =>
-        Js.log("[ main ][ toggle activate ]");
-        let state = State.make(context, editor);
-        States.add(fileName, state);
-      | Some(state) =>
-        Js.log("[ main ][ toggle deactivate ]");
-        state->State.getEditor->Editor.getFileName->States.destroy;
-      };
+      editor
+      ->Editor.getFileName
+      ->Option.forEach(fileName => {
+          // see if it's already in the States
+          switch (States.get(fileName)) {
+          | None =>
+            Js.log("[ main ][ toggle activate ]");
+            let state = State.make(context, editor);
+            States.add(fileName, state);
+          | Some(_state) =>
+            Js.log("[ main ][ toggle deactivate ]");
+            fileName->States.destroy;
+          }
+        })
     })
     ->Editor.addToSubscriptions(context);
 
     // on "reload"
-    Editor.registerCommand("reload", _editor => {
-      Js.log("[ main ][ reload ]")
+    Editor.registerCommand("reload", editor => {
+      editor
+      ->Editor.save
+      ->Promise.get(succeed => {
+          Js.log2(
+            "[ main ][ save ]",
+            succeed,
+            // editor->Editor.getFileName
+          )
+        });
+      // editor->TextEditor.document->TextDocument.save->Promise.flatMap(()=> {
+      // })
+      // editor -> TextEditor.
+      Js.log("[ main ][ reload ]");
     })
     ->Editor.addToSubscriptions(context);
   };
