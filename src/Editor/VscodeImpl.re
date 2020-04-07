@@ -1,7 +1,6 @@
 //
 // View
 //
-module View' = View;
 module View =
        (Editor: Sig.Editor with type context = Vscode.ExtensionContext.t) => {
   open Vscode;
@@ -134,6 +133,7 @@ module View =
   let show = view => view->WebviewPanel.reveal(~preserveFocus=true, ());
   let hide = _view => ();
   // messaging
+  let send = (_view, _req) => ();
   let recv = (_view, _callback) => ();
 };
 
@@ -160,10 +160,10 @@ module rec Impl: Sig.Editor with type context = Vscode.ExtensionContext.t = {
 
   let toPoint =
     fun
-    | View'.Pos.Pos(_, line, column) => Position.make(line - 1, column - 1);
+    | GCL.Pos.Pos(_, line, column) => Position.make(line - 1, column - 1);
 
   let fromPoint = (filepath, point) =>
-    View'.Pos.Pos(
+    GCL.Pos.Pos(
       filepath,
       Position.line(point) + 1,
       Position.character(point) + 1,
@@ -171,14 +171,14 @@ module rec Impl: Sig.Editor with type context = Vscode.ExtensionContext.t = {
 
   let toRange =
     fun
-    | View'.Loc.NoLoc =>
+    | GCL.Loc.NoLoc =>
       Vscode.Range.make(Position.make(0, 0), Position.make(0, 0))
-    | View'.Loc.Loc(x, Pos(_, line, column)) =>
+    | Loc(x, Pos(_, line, column)) =>
       Vscode.Range.make(toPoint(x), Position.make(line - 1, column));
   let fromRange = (filepath, range) => {
     let start = Vscode.Range.start(range);
     let end_ = Vscode.Range.end_(range);
-    View'.Loc.Loc(
+    GCL.Loc.Loc(
       Pos(
         filepath,
         Position.line(start) + 1,

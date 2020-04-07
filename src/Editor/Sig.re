@@ -11,11 +11,11 @@ module type Editor = {
   let getExtensionPath: context => fileName;
   let getFileName: editor => fileName;
 
-  let toPoint: View.Pos.t => point;
-  let fromPoint: (fileName, point) => View.Pos.t;
+  let toPoint: GCL.pos => point;
+  let fromPoint: (fileName, point) => GCL.pos;
 
-  let toRange: View.Loc.t => range;
-  let fromRange: (fileName, range) => View.Loc.t;
+  let toRange: GCL.loc => range;
+  let fromRange: (fileName, range) => GCL.loc;
 
   // Events
   let onDidChangeFileName:
@@ -41,7 +41,8 @@ module type Editor = {
     // show/hide
     let show: view => unit;
     let hide: view => unit;
-    // messagin
+    // messaging
+    let send: (view, View.Request.t) => unit;
     let recv: (view, View.Response.t => unit) => unit;
   };
 };
