@@ -30,6 +30,10 @@
 			{
 				"command": "extension.toggle",
 				"title": "Toggle activate/deactivate"
+			},
+			{
+				"command": "extension.reload",
+				"title": "Reload"
 			}
 		],
 		"keybindings": [
@@ -37,6 +41,11 @@
 				"command": "extension.toggle",
 				"key": "ctrl+c ctrl+x",
 				"mac": "ctrl+c ctrl+x"
+			},
+			{
+				"command": "extension.reload",
+				"key": "ctrl+s",
+				"mac": "cmd+s"
 			}
 		],
 		"configuration": {

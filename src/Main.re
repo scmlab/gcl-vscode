@@ -62,11 +62,11 @@ module StateDict = {
   };
 };
 
+let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
+
 module Impl = (Editor: Sig.Editor, State: State.Sig) => {
   module States = StateDict.Impl(Editor, State);
   module State = State(Editor);
-
-  let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
   let addToSubscriptions = (f, context) =>
     f->Js.Array.push(context->ExtensionContext.subscriptions)->ignore;
@@ -114,18 +114,22 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
     // on "toggle activate/deactivate"
     Editor.registerCommand("toggle", editor => {
       let fileName = editor->Editor.getFileName;
-      if (isGCL(fileName)) {
-        // see if it's already in the States
-        switch (States.get(fileName)) {
-        | None =>
-          Js.log("[ main ][ toggle activate ]");
-          let state = State.make(context, editor);
-          States.add(fileName, state);
-        | Some(state) =>
-          Js.log("[ main ][ toggle deactivate ]");
-          state->State.getEditor->Editor.getFileName->States.destroy;
-        };
+      // see if it's already in the States
+      switch (States.get(fileName)) {
+      | None =>
+        Js.log("[ main ][ toggle activate ]");
+        let state = State.make(context, editor);
+        States.add(fileName, state);
+      | Some(state) =>
+        Js.log("[ main ][ toggle deactivate ]");
+        state->State.getEditor->Editor.getFileName->States.destroy;
       };
+    })
+    ->Editor.addToSubscriptions(context);
+
+    // on "reload"
+    Editor.registerCommand("reload", _editor => {
+      Js.log("[ main ][ reload ]")
     })
     ->Editor.addToSubscriptions(context);
   };

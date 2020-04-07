@@ -228,7 +228,13 @@ module rec Impl: Sig.Editor with type context = Vscode.ExtensionContext.t = {
 
   let registerCommand = (name, callback) =>
     Commands.registerCommand("extension." ++ name, () => {
-      Window.activeTextEditor->Option.forEach(callback)
+      Window.activeTextEditor->Option.forEach(editor => {
+        let fileName = editor->getFileName;
+        let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
+        if (isGCL(fileName)) {
+          callback(editor);
+        };
+      })
     });
 
   //
