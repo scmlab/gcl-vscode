@@ -1,23 +1,20 @@
-// let load = state => {
- //   Js.log(
- //     "load!",
- //     // View.activate(state);
- //     // Conn.getGCLPath
- //     // Connection.getGCLPath
- //     // Connection.VSCODE.getConfiguration("gclPath")->Js.log;
- //     // looking for GCL
- //     // AgdaMode.Process.PathSearch.run("gcl")
- //     // ->Promise.get(
- //     //     fun
- //     //     | Error(e) => {
- //     //         let (header, body) = AgdaMode.Process.PathSearch.Error.toString(e);
- //     //         state.panel
- //     //         ->Option.forEach(View.postMessage(_, View.Display(header, body)));
- //     //       }
- //     //     | Ok(path) => {
- //     //         state.panel
- //     //         ->Option.forEach(View.postMessage(_, View.Display("Path", path)));
- //     //       },
- //     //   );
- //   );
- /* }*/
+type t =
+  | Reload
+  | Refine
+  | InsertAssertion
+  | Debug;
+
+let names = [|
+  (Reload, "reload"),
+  (Refine, "refine"),
+  (InsertAssertion, "insert-assertion"),
+  (Debug, "debug"),
+|];
+
+let parse =
+  fun
+  | "reload" => Reload
+  | "refine" => Refine
+  | "insert-assertion" => InsertAssertion
+  | "debug" => Debug
+  | _ => Reload;

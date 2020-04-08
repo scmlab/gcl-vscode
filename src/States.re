@@ -63,6 +63,8 @@ let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
 module Impl = (Editor: Sig.Editor, State: State.Sig) => {
   module States = StateDict.Impl(Editor, State);
+  module TaskCommand = Task__Command.Impl(Editor, State);
+  module TaskRunner = TaskRunner.Impl(Editor, State);
   module State = State(Editor);
 
   let addToSubscriptions = (f, context) =>
@@ -114,34 +116,43 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
     })
     ->Editor.addToSubscriptions(context);
 
-    // on "reload"
-    Editor.registerCommand("reload", editor => {
-      editor
-      ->Editor.getFileName
-      ->Option.forEach(fileName => {
-          editor
-          ->Editor.save
-          ->Promise.get(saveSucceed =>
-              if (saveSucceed && fileName != "") {
-                Js.log(
-                  "[ send request ]",
-                  // editor
-                  // ->States.getByEditor
-                  // ->Option.forEach(state => {
-                  //     state->State.sendRequest(Types.Request.Load(fileName));
-                  //     ();
-                  //   });
-                  // send request: LOAD
-                );
-              }
-            )
-        });
-      // editor->TextEditor.document->TextDocument.save->Promise.flatMap(()=> {
-      // })
-      // editor -> TextEditor.
-      Js.log("[ main ][ reload ]");
-    })
-    ->Editor.addToSubscriptions(context);
+    // on other commands
+    Command.names->Array.forEach(((command, name)) => {
+      Editor.registerCommand(name, editor => {
+        editor
+        ->States.getByEditor
+        ->Option.forEach(state =>
+            TaskCommand.dispatch(command) |> TaskRunner.run(state) |> ignore
+          )
+      })
+      ->Editor.addToSubscriptions(context)
+    });
+    // // on "reload"
+    // Editor.registerCommand("reload", editor => {
+    //   editor
+    //   ->Editor.getFileName
+    //   ->Option.forEach(fileName => {
+    //       editor
+    //       ->Editor.save
+    //       ->Promise.get(saveSucceed =>
+    //           if (saveSucceed && fileName != "") {
+    //             editor
+    //             ->States.getByEditor
+    //             ->Option.forEach(state => {
+    //                 state
+    //                 ->State.sendRequest(Types.Request.Load(fileName))
+    //                 ->Promise.get(Js.log);
+    //                 ();
+    //               });
+    //           }
+    //         )
+    //     });
+    //   // editor->TextEditor.document->TextDocument.save->Promise.flatMap(()=> {
+    //   // })
+    //   // editor -> TextEditor.
+    //   Js.log("[ main ][ reload ]");
+    // })
+    // ->Editor.addToSubscriptions(context);
   };
 
   let deactivate = () => {

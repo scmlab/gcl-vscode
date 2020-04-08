@@ -32,23 +32,3 @@ module Request = {
 
   let encode: t => string = x => x->Encode.request->Json.stringify;
 };
-
-module Command = {
-  type t =
-    | Toggle
-    | Save
-    | Refine
-    | InsertAssertion
-    | Debug;
-
-  let names = [|"toggle", "save", "refine", "insert-assertion", "debug"|];
-
-  let parse =
-    fun
-    | "toggle" => Toggle
-    | "save" => Save
-    | "refine" => Refine
-    | "insert-assertion" => InsertAssertion
-    | "debug" => Debug
-    | _ => Save;
-};
