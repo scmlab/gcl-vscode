@@ -11,6 +11,26 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
       | DispatchCommand(command) =>
         Js.log2("[ dispatch command ]", command);
         TaskCommand.dispatch(command) |> run(state);
+      | SendRequest(request) =>
+        Js.log("[ send request ]");
+        state
+        ->State.sendRequest(request)
+        ->Promise.flatMap(
+            fun
+            | Error(error) => {
+                let (_header, _body) = Sig.Error.toString(error);
+                Js.log3("[ send request error ]", _header, _body);
+                // state |> State.displayError(header, body);
+                Promise.resolved();
+              }
+            | Ok(x) => {
+                Js.log(x);
+                Promise.resolved();
+              },
+          );
+      | Display(header, body) =>
+        Js.log2(header, body);
+        Promise.resolved();
       };
 
     let rec runEach =

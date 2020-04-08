@@ -5,11 +5,12 @@ open Command;
 module Impl = (Editor: Sig.Editor, State: State.Sig) => {
   module Task__Types = Task__Types.Impl(Editor, State);
   module State = State(Editor);
+  open! Task__Types;
   // from Editor Command to Tasks
   let dispatch =
     fun
     | Reload => [
-        Task__Types.WithState(
+        WithState(
           state => {
             let editor = state->State.getEditor;
             editor
@@ -19,12 +20,14 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
                 ->Editor.save
                 ->Promise.map(saveSucceed =>
                     if (saveSucceed && fileName != "") {
-                      state
-                      ->State.sendRequest(Types.Request.Load(fileName))
-                      ->Promise.get(Js.log);
-                      [];
+                      [SendRequest(Types.Request.Load(fileName))];
                     } else {
-                      [];
+                      [
+                        Display(
+                          Error("Cannot read filepath"),
+                          Plain("Please save the file first"),
+                        ),
+                      ];
                     }
                   )
               });
