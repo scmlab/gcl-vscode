@@ -1,8 +1,5 @@
 .DS_Store
 
-# editor
-.vscode
-
 # BuckleScript
 lib/ocaml/
 

@@ -1,16 +1,3 @@
-module Error = {
-  type t =
-    | Connection(Connection.Error.t)
-    | Decode(string, Js.Json.t);
-  let toString =
-    fun
-    | Connection(e) => Connection.Error.toString(e)
-    | Decode(msg, json) => (
-        {js|JSON Decode Error|js},
-        msg ++ "\n" ++ "JSON from GCL: \n" ++ Js.Json.stringify(json),
-      );
-};
-
 // signature for the States module to construct/destruct State.t
 module type Sig =
   (Editor: Sig.Editor) =>
@@ -28,8 +15,10 @@ module type Sig =
     let destroy: t => Promise.t(unit);
 
     // connection/disconnection to GCL
-    let connect: t => Promise.t(result(Connection.t, Error.t));
+    let connect: t => Promise.t(result(Connection.t, Sig.Error.t));
     let disconnect: t => Promise.t(unit);
+    let sendRequest:
+      (t, Types.Request.t) => Promise.t(result(GCL.Response.t, Sig.Error.t));
 
     // view related
     let show: t => unit;
@@ -61,7 +50,7 @@ module Impl: Sig =
       switch (state.connection) {
       | None =>
         Connection.make(Editor.Config.getGCLPath, Editor.Config.setGCLPath)
-        ->Promise.mapError(e => Error.Connection(e))
+        ->Promise.mapError(e => Sig.Error.Connection(e))
         ->Promise.tapOk(conn => state.connection = Some(conn))
       | Some(connection) => Promise.resolved(Ok(connection))
       };
@@ -70,6 +59,24 @@ module Impl: Sig =
       | None => Promise.resolved()
       | Some(connection) => Connection.disconnect(connection)
       };
+    let sendRequest = (state, request) => {
+      let value = Types.Request.encode(request);
+      Js.log2("<<<", value);
+
+      let%Ok conn = state->connect;
+      let%Ok result =
+        Guacamole.Connection.send(value, conn)
+        ->Promise.mapError(e => Sig.Error.Connection(e));
+
+      Js.log2(">>>", result);
+
+      // catching exceptions occured when decoding JSON values
+      switch (Guacamole.GCL.Response.decode(result)) {
+      | value => Promise.resolved(Ok(value))
+      | exception (Json.Decode.DecodeError(msg)) =>
+        Promise.resolved(Error(Sig.Error.Decode(msg, result)))
+      };
+    };
 
     //
     // View show/hide
@@ -89,7 +96,8 @@ module Impl: Sig =
       ->connect
       ->Promise.get(
           fun
-          | Error(e) => Js.log2("[ connection error ]", Error.toString(e))
+          | Error(e) =>
+            Js.log2("[ connection error ]", Sig.Error.toString(e))
           | Ok(c) => Js.log2("[ connection success ]", c),
         );
 

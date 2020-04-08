@@ -1,6 +1,7 @@
 module Request = {
   type t =
     | Load(string)
+    | Load2(string)
     | Refine(int, string)
     | InsertAssertion(int)
     | Debug;
@@ -11,6 +12,11 @@ module Request = {
       fun
       | Load(filepath) =>
         object_([("tag", string("Load")), ("contents", string(filepath))])
+      | Load2(filepath) =>
+        object_([
+          ("tag", string("Load2")),
+          ("contents", string(filepath)),
+        ])
       | Refine(id, payload) =>
         object_([
           ("tag", string("Refine")),

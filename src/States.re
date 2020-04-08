@@ -117,13 +117,24 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
     // on "reload"
     Editor.registerCommand("reload", editor => {
       editor
-      ->Editor.save
-      ->Promise.get(succeed => {
-          Js.log2(
-            "[ main ][ save ]",
-            succeed,
-            // editor->Editor.getFileName
-          )
+      ->Editor.getFileName
+      ->Option.forEach(fileName => {
+          editor
+          ->Editor.save
+          ->Promise.get(saveSucceed =>
+              if (saveSucceed && fileName != "") {
+                Js.log(
+                  "[ send request ]",
+                  // editor
+                  // ->States.getByEditor
+                  // ->Option.forEach(state => {
+                  //     state->State.sendRequest(Types.Request.Load(fileName));
+                  //     ();
+                  //   });
+                  // send request: LOAD
+                );
+              }
+            )
         });
       // editor->TextEditor.document->TextDocument.save->Promise.flatMap(()=> {
       // })
