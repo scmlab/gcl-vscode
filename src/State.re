@@ -7,8 +7,9 @@ module type Sig =
     type context = Editor.context;
     type t;
 
-    // getters
+    // getters/setters
     let getEditor: t => editor;
+    let setSpecifications: (t, array(GCL.Response.Specification.t)) => unit;
 
     // construction/destruction
     let make: (context, editor) => t;
@@ -33,6 +34,8 @@ module Impl: Sig =
       editor,
       context,
       view: Editor.view,
+      mutable decorations: array(unit),
+      mutable specifications: array(GCL.Response.Specification.t),
       mutable connection: option(Connection.t),
     };
 
@@ -40,6 +43,8 @@ module Impl: Sig =
     // getters
     //
     let getEditor = (state: t) => state.editor;
+    let setSpecifications = (state, specifications) =>
+      state.specifications = specifications;
 
     //
     // GCL connection/disconnection
@@ -89,7 +94,14 @@ module Impl: Sig =
     let make = (context, editor) => {
       // view initialization
       let view = Editor.View.make(context, editor);
-      let state = {editor, context, connection: None, view};
+      let state = {
+        editor,
+        context,
+        view,
+        decorations: [||],
+        specifications: [||],
+        connection: None,
+      };
 
       // connection initialization
       state

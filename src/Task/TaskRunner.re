@@ -1,5 +1,6 @@
 module Impl = (Editor: Sig.Editor, State: State.Sig) => {
   module TaskCommand = Task.Command.Impl(Editor, State);
+  module TaskResponse = Task__Response.Impl(Editor, State);
   module Task = Task__Types.Impl(Editor, State);
   module State = State(Editor);
   // run the Tasks
@@ -8,7 +9,9 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
       switch (task) {
       | Task.WithState(callback) =>
         callback(state)->Promise.flatMap(run(state))
-      | SetSpecifications(_specs) => Promise.resolved()
+      | SetSpecifications(specifications) =>
+        state->State.setSpecifications(specifications);
+        Promise.resolved();
       | AddDecorations(_decorations) => Promise.resolved()
       | DispatchCommand(command) =>
         Js.log2("[ dispatch command ]", command);
@@ -20,15 +23,10 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
         ->Promise.flatMap(
             fun
             | Error(error) => {
-                let (_header, _body) = Sig.Error.toString(error);
-                Js.log3("[ send request error ]", _header, _body);
-                // state |> State.displayError(header, body);
-                Promise.resolved();
+                let (header, body) = Sig.Error.toString(error);
+                [Task.Display(Error(header), Plain(body))] |> run(state);
               }
-            | Ok(x) => {
-                Js.log(x);
-                Promise.resolved();
-              },
+            | Ok(x) => TaskResponse.handle(x) |> run(state),
           );
       | Display(header, body) =>
         Js.log2(header, body);
