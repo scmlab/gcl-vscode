@@ -1,5 +1,5 @@
 type t('a) = {
-  emitter: Nd.Events.t,
+  emitter: EventEmitter3.t,
   emit: 'a => unit,
   once: unit => Promise.t('a),
   on: ('a => unit, unit) => unit,
@@ -7,19 +7,20 @@ type t('a) = {
 };
 
 let make = () => {
-  let emitter = Nd.Events.make();
+  let emitter = EventEmitter3.make();
   {
     emitter,
-    emit: x => emitter |> Nd.Events.emit("data", x) |> ignore,
+    emit: x => emitter |> EventEmitter3.emit("data", x) |> ignore,
     once: () => {
       let (promise, resolve) = Promise.pending();
-      emitter |> Nd.Events.once("data", resolve) |> ignore;
+      emitter |> EventEmitter3.once("data", resolve) |> ignore;
       promise;
     },
     on: callback => {
-      emitter |> Nd.Events.on("data", callback) |> ignore;
-      () => emitter |> Nd.Events.removeListener("data", callback) |> ignore;
+      emitter |> EventEmitter3.on("data", callback) |> ignore;
+      () =>
+        emitter |> EventEmitter3.removeListener("data", callback) |> ignore;
     },
-    destroy: () => Nd.Events.removeAllListeners(emitter) |> ignore,
+    destroy: () => EventEmitter3.removeAllListeners(emitter) |> ignore,
   };
 };
