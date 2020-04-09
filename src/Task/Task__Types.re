@@ -12,6 +12,8 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
   module State = State(Editor);
   type t =
     | WithState(State.t => Promise.t(list(t)))
+    | SetSpecifications(array(GCL.Response.Specification.t))
+    | AddDecorations(array(GCL.Response.Specification.t))
     | DispatchCommand(Command.t)
     | SendRequest(Types.Request.t)
     | Display(View.Request.header, View.Request.body);

@@ -127,32 +127,6 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
       })
       ->Editor.addToSubscriptions(context)
     });
-    // // on "reload"
-    // Editor.registerCommand("reload", editor => {
-    //   editor
-    //   ->Editor.getFileName
-    //   ->Option.forEach(fileName => {
-    //       editor
-    //       ->Editor.save
-    //       ->Promise.get(saveSucceed =>
-    //           if (saveSucceed && fileName != "") {
-    //             editor
-    //             ->States.getByEditor
-    //             ->Option.forEach(state => {
-    //                 state
-    //                 ->State.sendRequest(Types.Request.Load(fileName))
-    //                 ->Promise.get(Js.log);
-    //                 ();
-    //               });
-    //           }
-    //         )
-    //     });
-    //   // editor->TextEditor.document->TextDocument.save->Promise.flatMap(()=> {
-    //   // })
-    //   // editor -> TextEditor.
-    //   Js.log("[ main ][ reload ]");
-    // })
-    // ->Editor.addToSubscriptions(context);
   };
 
   let deactivate = () => {

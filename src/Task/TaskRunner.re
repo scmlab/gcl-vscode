@@ -8,6 +8,8 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
       switch (task) {
       | Task.WithState(callback) =>
         callback(state)->Promise.flatMap(run(state))
+      | SetSpecifications(_specs) => Promise.resolved()
+      | AddDecorations(_decorations) => Promise.resolved()
       | DispatchCommand(command) =>
         Js.log2("[ dispatch command ]", command);
         TaskCommand.dispatch(command) |> run(state);
