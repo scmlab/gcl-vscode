@@ -2,28 +2,28 @@ let vscode = Vscode.Api.acquireVsCodeApi();
 
 [@react.component]
 let make = () => {
+  open View.Request;
   let (header, setHeader) = React.useState(() => "");
-  let (body, setBody) = React.useState(() => "");
+  let (body, setBody) = React.useState(() => Nothing);
 
   React.useEffect1(
     () => {
-      Js.log("init");
-      vscode->Vscode.Api.postMessage("from view");
-      Vscode.Api.onMessage((msg: View.message) => {
-        Js.log2(" >>> ", msg);
-        switch (msg) {
-        | View.Display(header, body) =>
-          setHeader(_ => header);
-          setBody(_ => body);
-        };
-      });
+      Vscode.Api.onMessage(Js.log);
+      // Vscode.Api.onMessage(
+      //   fun
+      //   | Display(_header, body) => {
+      //       // setHeader(_ => header);
+      //       setBody(_ => body);
+      //     }
+      //   | _ => (),
+      // );
       None;
     },
     [||],
   );
 
   <section className="gcl native-key-bindings" tabIndex=(-1)>
-    <div className="gcl-header"> {ReasonReact.string(header)} </div>
-    <div className="gcl-body"> {ReasonReact.string(body)} </div>
+    <div className="gcl-header"> {ReasonReact.string("header")} </div>
+    <div className="gcl-body"> {ReasonReact.string("body")} </div>
   </section>;
 };

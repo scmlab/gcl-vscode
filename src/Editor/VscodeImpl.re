@@ -133,7 +133,9 @@ module View =
   let show = view => view->WebviewPanel.reveal(~preserveFocus=true, ());
   let hide = _view => ();
   // messaging
-  let send = (_view, _req) => ();
+  let send = (view, req) =>
+    view->WebviewPanel.webview->Webview.postMessage(req);
+
   let recv = (_view, _callback) => ();
 };
 

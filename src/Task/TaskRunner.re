@@ -29,8 +29,7 @@ module Impl = (Editor: Sig.Editor, State: State.Sig) => {
             | Ok(x) => TaskResponse.handle(x) |> run(state),
           );
       | Display(header, body) =>
-        Js.log2(header, body);
-        Promise.resolved();
+        state->State.display(header, body)->Promise.map(_ => ())
       };
 
     let rec runEach =

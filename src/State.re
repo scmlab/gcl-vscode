@@ -24,6 +24,8 @@ module type Sig =
     // view related
     let show: t => unit;
     let hide: t => unit;
+    let display:
+      (t, View.Request.header, View.Request.body) => Promise.t(bool);
   };
 
 module Impl: Sig =
@@ -127,4 +129,6 @@ module Impl: Sig =
 
     let show = state => state.view->Editor.View.show;
     let hide = state => state.view->Editor.View.hide;
+    let display = (state, header, body) =>
+      state.view->Editor.View.send(View.Request.Display(header, body));
   };
