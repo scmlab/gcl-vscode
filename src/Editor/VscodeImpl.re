@@ -111,8 +111,8 @@ module View =
             groups:
               Layout.(
                 [|
-                  sized({groups: [|simple|], size: 0.8}),
-                  sized({groups: [|simple|], size: 0.2}),
+                  sized({groups: [|simple|], size: 0.5}),
+                  sized({groups: [|simple|], size: 0.5}),
                 |]
               ),
           }),

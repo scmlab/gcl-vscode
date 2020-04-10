@@ -27,7 +27,7 @@ let make = () => {
   );
 
   // <div className="gcl-body"> {ReasonReact.string("body")} </div>
-  <section className="gcl native-key-bindings" tabIndex=(-1)>
+  <section className="gcl-panel native-key-bindings" tabIndex=(-1)>
     <div className="gcl-header"> {ReasonReact.string("header")} </div>
     <Body body />
   </section>;
