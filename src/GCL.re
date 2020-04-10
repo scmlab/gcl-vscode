@@ -824,19 +824,8 @@ module Response = {
     let encode: encoder(t) =
       fun
       | ProofObligation(i, p, q, o) =>
-        object_([
-          ("tag", string("ProofObligation")),
-          (
-            "contents",
-            (i, p, q, o)
-            |> tuple4(
-                 int,
-                 Syntax.Pred.encode,
-                 Syntax.Pred.encode,
-                 Origin.encode,
-               ),
-          ),
-        ]);
+        (i, p, q, o)
+        |> tuple4(int, Syntax.Pred.encode, Syntax.Pred.encode, Origin.encode);
   };
 
   module Specification = {

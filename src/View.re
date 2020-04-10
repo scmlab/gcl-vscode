@@ -81,6 +81,7 @@ module Request = {
       fun
       | "Show" => Contents(_ => Show)
       | "Hide" => Contents(_ => Hide)
+      // | "Display" => Contents(_json => Display(Loading, Nothing))
       | "Display" =>
         Contents(
           pair(Header.decode, Body.decode)
@@ -94,6 +95,14 @@ module Request = {
     fun
     | Show => object_([("tag", string("Show"))])
     | Hide => object_([("tag", string("Hide"))])
+    // | Display(_header, _body) =>
+    //   object_([
+    //     ("tag", string("Display")),
+    //     (
+    //       "contents",
+    //       (Header.Loading, Body.Nothing) |> pair(Header.encode, Body.encode),
+    //     ),
+    //   ]);
     | Display(header, body) =>
       object_([
         ("tag", string("Display")),

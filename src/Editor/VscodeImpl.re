@@ -133,8 +133,12 @@ module View =
   let show = view => view->WebviewPanel.reveal(~preserveFocus=true, ());
   let hide = _view => ();
   // messaging
-  let send = (view, req) =>
-    view->WebviewPanel.webview->Webview.postMessage(req);
+  let send = (view, req) => {
+    let stringified = Js.Json.stringify(View.Request.encode(req));
+    Js.log2("[ENCODE]", Js.String.substring(~from=0, ~to_=200, stringified));
+    Js.log2("[LENGTH ]", Js.String.length(stringified));
+    view->WebviewPanel.webview->Webview.postMessage(stringified);
+  };
 
   let recv = (_view, _callback) => ();
 };

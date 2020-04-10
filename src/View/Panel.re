@@ -7,14 +7,22 @@ let make = () => {
 
   React.useEffect1(
     () => {
-      Vscode.Api.onMessage(
-        fun
-        | View.Request.Display(_header, body) => {
-            // setHeader(_ => header);
-            setBody(_ => body);
-          }
-        | _ => (),
-      );
+      Vscode.Api.onMessage(stringified => {
+        let json = Js.Json.parseExn(stringified);
+        let decoded =
+          Js.String.substring(~from=0, ~to_=100, Js.Json.stringify(json));
+        json
+        |> View.Request.decode
+        |> (
+          fun
+          | View.Request.Display(_header, body) => {
+              // setHeader(_ => header);
+              Js.log(body);
+              setBody(_ => body);
+            }
+          | _ => ()
+        );
+      });
       None;
     },
     [||],

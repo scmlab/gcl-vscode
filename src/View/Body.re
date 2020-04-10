@@ -28,7 +28,7 @@ module ProofObligation = {
 };
 
 [@react.component]
-let make = (~body: View.Request.body) => {
+let make = (~body: View.Request.Body.t) => {
   switch (body) {
   | Nothing => <> </>
   | ProofObligations([||]) => <> </>

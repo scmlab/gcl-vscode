@@ -75,7 +75,10 @@ module Impl: Sig =
         Guacamole.Connection.send(value, conn)
         ->Promise.mapError(e => Sig.Error.Connection(e));
 
-      Js.log2(">>>", result);
+      Js.log2(
+        ">>>",
+        Js.String.substring(~from=0, ~to_=200, Js.Json.stringify(result)),
+      );
 
       // catching exceptions occured when decoding JSON values
       switch (Guacamole.GCL.Response.decode(result)) {

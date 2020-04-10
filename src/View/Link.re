@@ -1,6 +1,6 @@
 // open Base;
 
-let emitter: Event.t(Guacamole.View.Response.linkEvent) = Event.make();
+let emitter: Event.t(View.Response.linkEvent) = Event.make();
 let eventContext = React.createContext(emitter);
 
 module Provider = {
