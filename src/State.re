@@ -25,7 +25,7 @@ module type Sig =
     let show: t => unit;
     let hide: t => unit;
     let display:
-      (t, View.Request.header, View.Request.body) => Promise.t(bool);
+      (t, View.Request.Header.t, View.Request.Body.t) => Promise.t(bool);
   };
 
 module Impl: Sig =

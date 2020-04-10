@@ -2,15 +2,14 @@ let vscode = Vscode.Api.acquireVsCodeApi();
 
 [@react.component]
 let make = () => {
-  open View.Request;
   let (header, setHeader) = React.useState(() => "");
-  let (body, setBody) = React.useState(() => Nothing);
+  let (body, setBody) = React.useState(() => View.Request.Body.Nothing);
 
   React.useEffect1(
     () => {
       Vscode.Api.onMessage(
         fun
-        | Display(_header, body) => {
+        | View.Request.Display(_header, body) => {
             // setHeader(_ => header);
             setBody(_ => body);
           }

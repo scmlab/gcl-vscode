@@ -27,6 +27,15 @@ module Pos = {
         field("line", int, json),
         field("column", int, json),
       );
+  open! Json.Encode;
+  let encode: encoder(t) =
+    fun
+    | Pos(path, line, column) =>
+      object_([
+        ("filepath", string(path)),
+        ("line", int(line)),
+        ("column", int(column)),
+      ]);
 };
 
 module Loc = {
@@ -73,8 +82,18 @@ module Loc = {
             ),
         )
       | "NoLoc" => TagOnly(_ => NoLoc)
-      | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
+      | tag => raise(DecodeError("[Loc] Unknown constructor: " ++ tag)),
     );
+
+  open! Json.Encode;
+  let encode: encoder(t) =
+    fun
+    | NoLoc => object_([("tag", string("NoLoc"))])
+    | Loc(x, y) =>
+      object_([
+        ("tag", string("Loc")),
+        ("contents", (x, y) |> pair(Pos.encode, Pos.encode)),
+      ]);
 };
 
 type pos = Pos.t;
@@ -118,8 +137,16 @@ module Syntax = {
              fun
              | "Num" => Contents(int |> map(x => Num(x)))
              | "Bol" => Contents(bool |> map(x => Bool(x)))
-             | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
+             | tag =>
+               raise(DecodeError("[Lit] Unknown constructor: " ++ tag)),
            );
+
+    open! Json.Encode;
+    let encode: encoder(t) =
+      fun
+      | Num(i) => object_([("tag", string("Num")), ("contents", i |> int)])
+      | Bool(x) =>
+        object_([("tag", string("Bol")), ("contents", x |> bool)]);
   };
 
   module Op = {
@@ -178,8 +205,27 @@ module Syntax = {
            | "Mul" => Mul
            | "Div" => Div
            | "Mod" => Mod
-           | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
+           | tag => raise(DecodeError("[Op] Unknown constructor: " ++ tag)),
          );
+
+    open! Json.Encode;
+    let encode: encoder(t) =
+      fun
+      | EQ => string("EQ")
+      | NEQ => string("NEQ")
+      | LTE => string("LTE")
+      | GTE => string("GTE")
+      | LT => string("LT")
+      | GT => string("GT")
+      | Implies => string("Implies")
+      | Disj => string("Disj")
+      | Conj => string("Conj")
+      | Neg => string("Neg")
+      | Add => string("Add")
+      | Sub => string("Sub")
+      | Mul => string("Mul")
+      | Div => string("Div")
+      | Mod => string("Mod");
   };
 
   module Upper = {
@@ -202,6 +248,11 @@ module Syntax = {
     open Json.Decode;
     let decode: decoder(t) =
       pair(string, Loc.decode) |> map(((x, r)) => Lower(x, r));
+
+    open! Json.Encode;
+    let encode: encoder(t) =
+      fun
+      | Lower(s, loc) => (s, loc) |> pair(string, Loc.encode);
   };
 
   module Expr = {
@@ -285,9 +336,60 @@ module Syntax = {
                  |> map(((op, vars, p, q, l)) => Quant(op, vars, p, q, l)),
                )
              | "Hole" => Contents(Loc.decode |> map(r => Hole(r)))
-             | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
+             | tag =>
+               raise(DecodeError("[Expr] Unknown constructor: " ++ tag)),
            )
     and decodeSubst: decoder(subst) = json => json |> dict(decode);
+
+    open! Json.Encode;
+    open! Util.Encode;
+    let rec encode: encoder(t) =
+      fun
+      | Var(s, loc) =>
+        object_([
+          ("tag", string("Var")),
+          ("contents", (s, loc) |> pair(string, Loc.encode)),
+        ])
+      | Const(s, loc) =>
+        object_([
+          ("tag", string("Const")),
+          ("contents", (s, loc) |> pair(string, Loc.encode)),
+        ])
+      | Lit(lit, loc) =>
+        object_([
+          ("tag", string("Lit")),
+          ("contents", (lit, loc) |> pair(Lit.encode, Loc.encode)),
+        ])
+      | Op(op, loc) =>
+        object_([
+          ("tag", string("Op")),
+          ("contents", (op, loc) |> pair(Op.encode, Loc.encode)),
+        ])
+      | App(e, f, loc) =>
+        object_([
+          ("tag", string("App")),
+          ("contents", (e, f, loc) |> tuple3(encode, encode, Loc.encode)),
+        ])
+      | Quant(e, lowers, f, g, loc) =>
+        object_([
+          ("tag", string("Quant")),
+          (
+            "contents",
+            (e, lowers, f, g, loc)
+            |> tuple5(
+                 encode,
+                 array(Lower.encode),
+                 encode,
+                 encode,
+                 Loc.encode,
+               ),
+          ),
+        ])
+      | Hole(loc) =>
+        object_([
+          ("tag", string("Hole")),
+          ("contents", loc |> Loc.encode),
+        ]);
 
     module Precedence = {
       open VarArg;
@@ -473,8 +575,58 @@ module Syntax = {
              | "Disjunct" =>
                Contents(array(decode) |> map(xs => Disjunct(xs)))
              | "Negate" => Contents(decode |> map(x => Negate(x)))
-             | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
+             | tag =>
+               raise(DecodeError("[Pred] Unknown constructor: " ++ tag)),
            );
+
+    open! Json.Encode;
+    let rec encode: encoder(t) =
+      fun
+      | Constant(e) =>
+        object_([
+          ("tag", string("Constant")),
+          ("contents", e |> Expr.encode),
+        ])
+      | Bound(e, l) =>
+        object_([
+          ("tag", string("Bound")),
+          ("contents", (e, l) |> pair(Expr.encode, Loc.encode)),
+        ])
+      | Assertion(e, l) =>
+        object_([
+          ("tag", string("Assertion")),
+          ("contents", (e, l) |> pair(Expr.encode, Loc.encode)),
+        ])
+      | LoopInvariant(e, f, l) =>
+        object_([
+          ("tag", string("LoopInvariant")),
+          (
+            "contents",
+            (e, f, l) |> tuple3(Expr.encode, Expr.encode, Loc.encode),
+          ),
+        ])
+      | GuardIf(e, l) =>
+        object_([
+          ("tag", string("GuardIf")),
+          ("contents", (e, l) |> pair(Expr.encode, Loc.encode)),
+        ])
+      | GuardLoop(e, l) =>
+        object_([
+          ("tag", string("GuardLoop")),
+          ("contents", (e, l) |> pair(Expr.encode, Loc.encode)),
+        ])
+      | Conjunct(ts) =>
+        object_([
+          ("tag", string("Conjunct")),
+          ("contents", ts |> array(encode)),
+        ])
+      | Disjunct(ts) =>
+        object_([
+          ("tag", string("Disjunct")),
+          ("contents", ts |> array(encode)),
+        ])
+      | Negate(t) =>
+        object_([("tag", string("Negate")), ("contents", t |> encode)]);
 
     let rec toExpr =
       fun
@@ -561,27 +713,6 @@ module Response = {
       | AtTermination(loc)
       | AtBoundDecrement(loc);
 
-    open Util.Decode;
-    open! Json.Decode;
-    let decode: decoder(t) =
-      sum(
-        fun
-        | "AtAbort" => Contents(Loc.decode |> map(x => AtAbort(x)))
-        | "AtSkip" => Contents(Loc.decode |> map(x => AtSkip(x)))
-        | "AtSpec" => Contents(Loc.decode |> map(x => AtSpec(x)))
-        | "AtAssignment" => Contents(Loc.decode |> map(x => AtAssignment(x)))
-        | "AtAssertion" => Contents(Loc.decode |> map(x => AtAssertion(x)))
-        | "AtLoopInvariant" =>
-          Contents(Loc.decode |> map(x => AtLoopInvariant(x)))
-        | "AtIf" => Contents(Loc.decode |> map(x => AtIf(x)))
-        | "AtLoop" => Contents(Loc.decode |> map(x => AtLoop(x)))
-        | "AtTermination" =>
-          Contents(Loc.decode |> map(x => AtTermination(x)))
-        | "AtBoundDecrement" =>
-          Contents(Loc.decode |> map(x => AtBoundDecrement(x)))
-        | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
-      );
-
     let toString =
       fun
       | AtAbort(_) => "Abort"
@@ -607,6 +738,77 @@ module Response = {
       | AtLoop(loc) => loc
       | AtTermination(loc) => loc
       | AtBoundDecrement(loc) => loc;
+
+    open Util.Decode;
+    open! Json.Decode;
+    let decode: decoder(t) =
+      sum(
+        fun
+        | "AtAbort" => Contents(Loc.decode |> map(x => AtAbort(x)))
+        | "AtSkip" => Contents(Loc.decode |> map(x => AtSkip(x)))
+        | "AtSpec" => Contents(Loc.decode |> map(x => AtSpec(x)))
+        | "AtAssignment" => Contents(Loc.decode |> map(x => AtAssignment(x)))
+        | "AtAssertion" => Contents(Loc.decode |> map(x => AtAssertion(x)))
+        | "AtLoopInvariant" =>
+          Contents(Loc.decode |> map(x => AtLoopInvariant(x)))
+        | "AtIf" => Contents(Loc.decode |> map(x => AtIf(x)))
+        | "AtLoop" => Contents(Loc.decode |> map(x => AtLoop(x)))
+        | "AtTermination" =>
+          Contents(Loc.decode |> map(x => AtTermination(x)))
+        | "AtBoundDecrement" =>
+          Contents(Loc.decode |> map(x => AtBoundDecrement(x)))
+        | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
+      );
+    open! Json.Encode;
+    let encode: encoder(t) =
+      fun
+      | AtAbort(loc) =>
+        object_([
+          ("tag", string("AtAbort")),
+          ("contents", loc |> Loc.encode),
+        ])
+      | AtSkip(loc) =>
+        object_([
+          ("tag", string("AtSkip")),
+          ("contents", loc |> Loc.encode),
+        ])
+      | AtSpec(loc) =>
+        object_([
+          ("tag", string("AtSpec")),
+          ("contents", loc |> Loc.encode),
+        ])
+      | AtAssignment(loc) =>
+        object_([
+          ("tag", string("AtAssignment")),
+          ("contents", loc |> Loc.encode),
+        ])
+      | AtAssertion(loc) =>
+        object_([
+          ("tag", string("AtAssertion")),
+          ("contents", loc |> Loc.encode),
+        ])
+      | AtLoopInvariant(loc) =>
+        object_([
+          ("tag", string("AtLoopInvariant")),
+          ("contents", loc |> Loc.encode),
+        ])
+      | AtIf(loc) =>
+        object_([("tag", string("AtIf")), ("contents", loc |> Loc.encode)])
+      | AtLoop(loc) =>
+        object_([
+          ("tag", string("AtLoop")),
+          ("contents", loc |> Loc.encode),
+        ])
+      | AtTermination(loc) =>
+        object_([
+          ("tag", string("AtTermination")),
+          ("contents", loc |> Loc.encode),
+        ])
+      | AtBoundDecrement(loc) =>
+        object_([
+          ("tag", string("AtBoundDecrement")),
+          ("contents", loc |> Loc.encode),
+        ]);
   };
 
   module ProofObligation = {
@@ -617,6 +819,24 @@ module Response = {
     let decode: decoder(t) =
       tuple4(int, Syntax.Pred.decode, Syntax.Pred.decode, Origin.decode)
       |> map(((i, p, q, o)) => ProofObligation(i, p, q, o));
+
+    open! Json.Encode;
+    let encode: encoder(t) =
+      fun
+      | ProofObligation(i, p, q, o) =>
+        object_([
+          ("tag", string("ProofObligation")),
+          (
+            "contents",
+            (i, p, q, o)
+            |> tuple4(
+                 int,
+                 Syntax.Pred.encode,
+                 Syntax.Pred.encode,
+                 Origin.encode,
+               ),
+          ),
+        ]);
   };
 
   module Specification = {

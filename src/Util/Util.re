@@ -52,6 +52,18 @@ module Decode = {
     };
 };
 
+module Encode = {
+  open Json.Encode;
+  let tuple5 = (encodeA, encodeB, encodeC, encodeD, encodeE, (a, b, c, d, e)) =>
+    jsonArray([|
+      encodeA(a),
+      encodeB(b),
+      encodeC(c),
+      encodeD(d),
+      encodeE(e),
+    |]);
+};
+
 module React = {
   open ReasonReact;
 
