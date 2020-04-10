@@ -135,7 +135,7 @@ module View =
   // messaging
   let send = (view, req) => {
     let stringified = Js.Json.stringify(View.Request.encode(req));
-    Js.log2("[ENCODE]", Js.String.substring(~from=0, ~to_=200, stringified));
+    Js.log2("[ENCODE]", stringified);
     Js.log2("[LENGTH ]", Js.String.length(stringified));
     view->WebviewPanel.webview->Webview.postMessage(stringified);
   };

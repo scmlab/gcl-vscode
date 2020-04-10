@@ -46,13 +46,11 @@ module Loc = {
   let toString =
     fun
     | NoLoc => "NoLoc"
-
     | Loc(x, y) => Pos.toString(x) ++ "-" ++ Pos.toString(y);
 
   let translate = by =>
     fun
     | NoLoc => by
-
     | Loc(x, y) =>
       switch (by) {
       | NoLoc => Loc(x, y)
@@ -92,7 +90,10 @@ module Loc = {
     | Loc(x, y) =>
       object_([
         ("tag", string("Loc")),
-        ("contents", (x, y) |> pair(Pos.encode, Pos.encode)),
+        (
+          "contents",
+          object_([("start", Pos.encode(x)), ("end", Pos.encode(y))]),
+        ),
       ]);
 };
 
@@ -237,6 +238,10 @@ module Syntax = {
     open Json.Decode;
     let decode: decoder(t) =
       pair(string, Loc.decode) |> map(((x, r)) => Upper(x, r));
+    open! Json.Encode;
+    let encode: encoder(t) =
+      fun
+      | Upper(s, loc) => (s, loc) |> pair(string, Loc.encode);
   };
 
   module Lower = {
@@ -257,8 +262,8 @@ module Syntax = {
 
   module Expr = {
     type t =
-      | Var(string, loc)
-      | Const(string, loc)
+      | Var(Lower.t, loc)
+      | Const(Upper.t, loc)
       | Lit(Lit.t, loc)
       | Op(Op.t, loc)
       | App(t, t, loc)
@@ -304,12 +309,12 @@ module Syntax = {
              | "Var" =>
                Contents(
                  pair(Lower.decode, Loc.decode)
-                 |> map(((x, r)) => Var(Lower.toString(x), r)),
+                 |> map(((x, r)) => Var(x, r)),
                )
              | "Const" =>
                Contents(
                  pair(Upper.decode, Loc.decode)
-                 |> map(((x, r)) => Const(Upper.toString(x), r)),
+                 |> map(((x, r)) => Const(x, r)),
                )
              | "Lit" =>
                Contents(
@@ -348,12 +353,12 @@ module Syntax = {
       | Var(s, loc) =>
         object_([
           ("tag", string("Var")),
-          ("contents", (s, loc) |> pair(string, Loc.encode)),
+          ("contents", (s, loc) |> pair(Lower.encode, Loc.encode)),
         ])
       | Const(s, loc) =>
         object_([
           ("tag", string("Const")),
-          ("contents", (s, loc) |> pair(string, Loc.encode)),
+          ("contents", (s, loc) |> pair(Upper.encode, Loc.encode)),
         ])
       | Lit(lit, loc) =>
         object_([
@@ -484,8 +489,8 @@ module Syntax = {
         }
       and handleExpr = n =>
         fun
-        | Var(s, _) => Complete(s)
-        | Const(s, _) => Complete(s)
+        | Var(s, _) => Complete(Lower.toString(s))
+        | Const(s, _) => Complete(Upper.toString(s))
         | Lit(lit, _) => Complete(Lit.toString(lit))
         | Op(op, _) => handleOperator(n, op)
         | App(p, q, _) =>

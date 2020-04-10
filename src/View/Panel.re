@@ -8,10 +8,8 @@ let make = () => {
   React.useEffect1(
     () => {
       Vscode.Api.onMessage(stringified => {
-        let json = Js.Json.parseExn(stringified);
-        let decoded =
-          Js.String.substring(~from=0, ~to_=100, Js.Json.stringify(json));
-        json
+        stringified
+        |> Js.Json.parseExn
         |> View.Request.decode
         |> (
           fun
@@ -21,7 +19,7 @@ let make = () => {
               setBody(_ => body);
             }
           | _ => ()
-        );
+        )
       });
       None;
     },
