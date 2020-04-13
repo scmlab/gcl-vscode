@@ -159,6 +159,8 @@ module rec Impl: Sig.Editor with type context = Vscode.ExtensionContext.t = {
 
   // let make = (editor, context) => {editor, context};
 
+  let editorType = () => Sig.VsCode;
+
   let getExtensionPath = context => context->ExtensionContext.extensionPath;
 
   let getFileName = editor =>

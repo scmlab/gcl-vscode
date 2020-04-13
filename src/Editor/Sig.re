@@ -1,3 +1,7 @@
+type editorType =
+  | Atom
+  | VsCode;
+
 module Error = {
   type t =
     | Connection(Connection.Error.t)
@@ -19,6 +23,8 @@ module type Editor = {
   type point;
   type range;
   type fileName = string;
+
+  let editorType: unit => editorType;
 
   // Helpers
   let getExtensionPath: context => fileName;
