@@ -1,4 +1,4 @@
-module Impl = (Editor: Sig.Editor, State: State.Sig) => {
+module Impl = (Editor: Sig.Editor, State: Sig.State) => {
   module TaskCommand = Task.Command.Impl(Editor, State);
   module TaskResponse = Task__Response.Impl(Editor, State);
   module Task = Task__Types.Impl(Editor, State);

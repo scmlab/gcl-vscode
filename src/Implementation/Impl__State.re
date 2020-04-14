@@ -1,34 +1,4 @@
-// signature for the States module to construct/destruct State.t
-module type Sig =
-  (Editor: Sig.Editor) =>
-   {
-    // types
-    type editor = Editor.editor;
-    type context = Editor.context;
-    type t;
-
-    // getters/setters
-    let getEditor: t => editor;
-    let setSpecifications: (t, array(GCL.Response.Specification.t)) => unit;
-
-    // construction/destruction
-    let make: (context, editor) => t;
-    let destroy: t => Promise.t(unit);
-
-    // connection/disconnection to GCL
-    let connect: t => Promise.t(result(Connection.t, Sig.Error.t));
-    let disconnect: t => Promise.t(unit);
-    let sendRequest:
-      (t, Types.Request.t) => Promise.t(result(GCL.Response.t, Sig.Error.t));
-
-    // view related
-    let show: t => unit;
-    let hide: t => unit;
-    let display:
-      (t, View.Request.Header.t, View.Request.Body.t) => Promise.t(bool);
-  };
-
-module Impl: Sig =
+module Impl: Sig.State =
   (Editor: Sig.Editor) => {
     type editor = Editor.editor;
     type context = Editor.context;

@@ -2,7 +2,7 @@ open Belt;
 
 open Command;
 
-module Impl = (Editor: Sig.Editor, State: State.Sig) => {
+module Impl = (Editor: Sig.Editor, State: Sig.State) => {
   module Task__Types = Task__Types.Impl(Editor, State);
   module State = State(Editor);
   open! Task__Types;
