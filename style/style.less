@@ -11,12 +11,12 @@
 @red    : var(--vscode-minimap-errorHighlight);
 @red2   : var(--vscode-minimapGutter-deletedBackground);
 
-@foreground  : var(--vscode-editor-foreground);
-@foreground2 : var(--vscode-menu-foreground);
-@foreground3 : var(--vscode-sideBarTitle-foreground);
-@foreground4 : var(--vscode-editorIndentGuide-activeBackground);
-@foreground5 : var(--vscode-editorIndentGuide-background);
-@foreground6 : var(--vscode-list-dropBackground);
+@foreground     : var(--vscode-editor-foreground);
+// @foreground2 : var(--vscode-menu-foreground);
+@foreground3    : var(--vscode-sideBarTitle-foreground);
+@foreground4    : var(--vscode-editorIndentGuide-activeBackground);
+@foreground5    : var(--vscode-editorIndentGuide-background);
+@foreground6    : var(--vscode-list-dropBackground);
 
 @background  : var(--vscode-editor-background);
 @background2 : var(--vscode-menu-background);
@@ -43,9 +43,7 @@
 
 
 .gcl {
-    // background   : var(--vscode-sideBar-background);
-    // background   : blue;
-    height          : 100%;
+    height: 100%;
 }
 
 // <Panel>
@@ -62,13 +60,29 @@
     .gcl-header {
         font-size: 100%;
         margin   : 0;
-        padding  : @component-padding * 2 @component-padding;
+        padding  : @component-padding * 2 @component-padding * 2;
 
         display        : flex;
         justify-content: space-between;
 
-        .gcl-mode {
+        .gcl-mode-atom {
             font-size: 50%;
+        }
+
+        .gcl-mode-vscode {
+            font-size : 100%;
+            border    : 0;
+            width     : 3em;
+            outline   : 0;
+            background: @background2;
+
+            text-align: left;
+            color     : @foreground3;
+
+            &:hover {
+                color : @foreground;
+                cursor: pointer;
+            }
         }
     }
 
@@ -209,8 +223,8 @@
         }
 
         .marker-text {
-            // display   : none;
-            text-align   : center;
+            display   : none;
+            text-align: center;
 
             font-size   : 75%;
             font-variant: small-caps;

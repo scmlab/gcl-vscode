@@ -1,10 +1,11 @@
 let vscode = Vscode.Api.acquireVsCodeApi();
 
 [@react.component]
-let make = () => {
+let make = (~editorType: Sig.editorType) => {
   let (header, setHeader) = React.useState(() => View.Request.Header.Loading);
   let (body, setBody) = React.useState(() => View.Request.Body.Nothing);
   let (mode, setMode) = React.useState(_ => View.Response.WP1);
+
   let onChangeMode = mode => setMode(_ => mode);
 
   React.useEffect1(
@@ -27,8 +28,16 @@ let make = () => {
     [||],
   );
 
-  // <div className="gcl-body"> {ReasonReact.string("body")} </div>
+  React.useEffect1(
+    () => {
+      vscode->Vscode.Api.postMessage(View.Response.SetMode(mode));
+      None;
+    },
+    [|mode|],
+  );
+
   <section className="gcl-panel native-key-bindings" tabIndex=(-1)>
-    // <div className="gcl-header"> {ReasonReact.string("header")} </div>
-     <Header header mode onChangeMode /> <Body body /> </section>;
+    <Header header editorType mode onChangeMode />
+    <Body body />
+  </section>;
 };

@@ -4,12 +4,11 @@ open React;
 let make =
     (
       ~header: View.Request.Header.t,
+      ~editorType: Sig.editorType,
       ~mode: View.Response.mode,
       ~onChangeMode: View.Response.mode => unit,
     ) => {
   open! View.Request.Header;
-  //   let (header, setHeader) = React.useState(_ => Loading);
-  //   let (activated, setActivation) = React.useState(_ => false);
 
   let onChange = _ => {
     open View.Response;
@@ -18,9 +17,39 @@ let make =
       | WP1 => WP2
       | WP2 => WP1
       };
-    // events.onSetMode.emit(newMode);
     onChangeMode(newMode);
   };
+
+  // display different type fo mode toggle base on the editor type
+  let modeToggle =
+    switch (editorType) {
+    | Sig.VsCode =>
+      <button className="gcl-mode-vscode" onClick=onChange>
+        {string(
+           switch (mode) {
+           | WP1 => "WP"
+           | WP2 => "WP2"
+           },
+         )}
+      </button>
+    | Atom =>
+      <div className="gcl-mode-atom">
+        <label className="input-label">
+          <input
+            className="input-toggle"
+            type_="checkbox"
+            checked={
+              switch (mode) {
+              | WP1 => false
+              | WP2 => true
+              }
+            }
+            onChange
+          />
+          {string("WP2")}
+        </label>
+      </div>
+    };
 
   <h2 className="gcl-header">
     {switch (header) {
@@ -28,21 +57,6 @@ let make =
      | Plain(s) => <div> {string(s)} </div>
      | Error(s) => <div className="text-error"> {string(s)} </div>
      }}
-    <div className="gcl-mode">
-      <label className="input-label">
-        <input
-          className="input-toggle"
-          type_="checkbox"
-          checked={
-            switch (mode) {
-            | WP1 => false
-            | WP2 => true
-            }
-          }
-          onChange
-        />
-        {string("WP2")}
-      </label>
-    </div>
+    modeToggle
   </h2>;
 };

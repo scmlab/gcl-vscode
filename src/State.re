@@ -36,6 +36,7 @@ module Impl: Sig =
       editor,
       context,
       view: Editor.view,
+      mutable mode: View.Response.mode,
       mutable decorations: array(unit),
       mutable specifications: array(GCL.Response.Specification.t),
       mutable connection: option(Connection.t),
@@ -99,14 +100,24 @@ module Impl: Sig =
     let make = (context, editor) => {
       // view initialization
       let view = Editor.View.make(context, editor);
+
       let state = {
         editor,
         context,
         view,
+        mode: View.Response.WP1,
         decorations: [||],
         specifications: [||],
         connection: None,
       };
+
+      // update the state on receiving message from the view
+      view->Editor.View.recv(
+        context,
+        fun
+        | View.Response.SetMode(mode) => state.mode = mode
+        | Link(_) => (),
+      );
 
       // connection initialization
       state

@@ -85,12 +85,12 @@ module View =
       // ->Js.Array.push(state.context.subscriptions)
       // ->ignore;
 
-      // on message
-      panel
-      ->WebviewPanel.webview
-      ->Webview.onDidReceiveMessage(message => {Js.log(message)})
-      ->Js.Array.push(context->ExtensionContext.subscriptions)
-      ->ignore;
+      // // on message
+      // panel
+      // ->WebviewPanel.webview
+      // ->Webview.onDidReceiveMessage(message => {Js.log(message)})
+      // ->Js.Array.push(context->ExtensionContext.subscriptions)
+      // ->ignore;
 
       // on destroy
       panel->WebviewPanel.onDidDispose(() => Js.log("[ view ][ destroyed ]"))
@@ -135,12 +135,17 @@ module View =
   // messaging
   let send = (view, req) => {
     let stringified = Js.Json.stringify(View.Request.encode(req));
-    Js.log2("[ENCODE]", stringified);
-    Js.log2("[LENGTH ]", Js.String.length(stringified));
     view->WebviewPanel.webview->Webview.postMessage(stringified);
   };
 
-  let recv = (_view, _callback) => ();
+  let recv = (view, context, callback) => {
+    // Handle messages from the webview
+    view
+    ->WebviewPanel.webview
+    ->Webview.onDidReceiveMessage(callback)
+    ->Js.Array.push(context->ExtensionContext.subscriptions)
+    ->ignore;
+  };
 };
 
 module rec Impl: Sig.Editor with type context = Vscode.ExtensionContext.t = {

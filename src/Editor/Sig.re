@@ -63,6 +63,6 @@ module type Editor = {
     let hide: view => unit;
     // messaging
     let send: (view, View.Request.t) => Promise.t(bool);
-    let recv: (view, View.Response.t => unit) => unit;
+    let recv: (view, context, View.Response.t => unit) => unit;
   };
 };
