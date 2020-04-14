@@ -112,12 +112,13 @@ module Impl: Sig =
       };
 
       // update the state on receiving message from the view
-      view->Editor.View.recv(
-        context,
-        fun
-        | View.Response.SetMode(mode) => state.mode = mode
-        | Link(_) => (),
-      );
+      view
+      ->Editor.View.recv(
+          fun
+          | View.Response.SetMode(mode) => state.mode = mode
+          | Link(_) => (),
+        )
+      ->Editor.addToSubscriptions(context);
 
       // connection initialization
       state
