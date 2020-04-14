@@ -1,32 +1,34 @@
 [@react.component]
 let make =
-    (~editorType: Sig.editorType, ~onResponse: Event.t(View.Response.t)) => {
+    (
+      ~editorType: Sig.editorType,
+      ~onRequest: Event.t(View.Request.t),
+      ~onResponse: Event.t(View.Response.t),
+    ) => {
   let (header, setHeader) = React.useState(() => View.Request.Header.Loading);
   let (body, setBody) = React.useState(() => View.Request.Body.Nothing);
   let (mode, setMode) = React.useState(_ => View.Response.WP1);
 
   let onChangeMode = mode => setMode(_ => mode);
 
+  // for receiving requests from the extension
   React.useEffect1(
     () => {
-      Vscode.Api.onMessage(stringified => {
-        stringified
-        |> Js.Json.parseExn
-        |> View.Request.decode
-        |> (
+      let destructor =
+        onRequest.on(
           fun
           | View.Request.Display(header, body) => {
               setHeader(_ => header);
               setBody(_ => body);
             }
-          | _ => ()
-        )
-      });
-      None;
+          | _ => (),
+        );
+      Some(destructor);
     },
     [||],
   );
 
+  // send "SetMode" back to the extension when the "mode" changed
   React.useEffect1(
     () => {
       onResponse.emit(SetMode(mode));
