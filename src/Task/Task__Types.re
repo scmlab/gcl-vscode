@@ -15,6 +15,6 @@ module Impl = (Editor: Sig.Editor, State: Sig.State) => {
     | SetSpecifications(array(GCL.Response.Specification.t))
     | AddDecorations(array(GCL.Response.Specification.t))
     | DispatchCommand(Command.t)
-    | SendRequest(Types.Request.t)
+    | SendRequest(Request.t)
     | Display(View.Request.Header.t, View.Request.Body.t);
 };

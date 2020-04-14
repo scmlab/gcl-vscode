@@ -88,7 +88,7 @@ module type State =
     let connect: t => Promise.t(result(Connection.t, Error.t));
     let disconnect: t => Promise.t(unit);
     let sendRequest:
-      (t, Types.Request.t) => Promise.t(result(GCL.Response.t, Error.t));
+      (t, Request.t) => Promise.t(result(GCL.Response.t, Error.t));
 
     // view related
     let show: t => unit;

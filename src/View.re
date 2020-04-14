@@ -110,9 +110,6 @@ module Request = {
       ]);
 };
 
-type message =
-  | Display(string, string);
-
 module Response = {
   type mode =
     | WP1

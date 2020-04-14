@@ -36,8 +36,21 @@ let make = (~editorType: Sig.editorType) => {
     [|mode|],
   );
 
-  <section className="gcl-panel native-key-bindings" tabIndex=(-1)>
-    <Header header editorType mode onChangeMode />
-    <Body body />
-  </section>;
+  let onClickLink = Event.make();
+  let _ =
+    View.Response.(
+      onClickLink.on(
+        fun
+        | MouseOver(_) => Js.log("MouseOver")
+        | MouseOut(_) => Js.log("MouseOut")
+        | MouseClick(_) => Js.log("MouseClick"),
+      )
+    );
+
+  <Link.Provider value=onClickLink>
+    <section className="gcl-panel native-key-bindings" tabIndex=(-1)>
+      <Header header editorType mode onChangeMode />
+      <Body body />
+    </section>
+  </Link.Provider>;
 };

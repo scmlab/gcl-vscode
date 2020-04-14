@@ -38,7 +38,7 @@ module Impl: Sig.State =
       | Some(connection) => Connection.disconnect(connection)
       };
     let sendRequest = (state, request) => {
-      let value = Types.Request.encode(request);
+      let value = Request.encode(request);
       Js.log2("<<<", value);
 
       let%Ok conn = state->connect;
