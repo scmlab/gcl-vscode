@@ -1,7 +1,6 @@
-let vscode = Vscode.Api.acquireVsCodeApi();
-
 [@react.component]
-let make = (~editorType: Sig.editorType) => {
+let make =
+    (~editorType: Sig.editorType, ~onResponse: Event.t(View.Response.t)) => {
   let (header, setHeader) = React.useState(() => View.Request.Header.Loading);
   let (body, setBody) = React.useState(() => View.Request.Body.Nothing);
   let (mode, setMode) = React.useState(_ => View.Response.WP1);
@@ -30,22 +29,15 @@ let make = (~editorType: Sig.editorType) => {
 
   React.useEffect1(
     () => {
-      vscode->Vscode.Api.postMessage(View.Response.SetMode(mode));
+      onResponse.emit(SetMode(mode));
       None;
     },
     [|mode|],
   );
 
+  // event relay
   let onClickLink = Event.make();
-  let _ =
-    View.Response.(
-      onClickLink.on(
-        fun
-        | MouseOver(_) => Js.log("MouseOver")
-        | MouseOut(_) => Js.log("MouseOut")
-        | MouseClick(_) => Js.log("MouseClick"),
-      )
-    );
+  let _ = onClickLink.on(ev => onResponse.emit(Link(ev)));
 
   <Link.Provider value=onClickLink>
     <section className="gcl-panel native-key-bindings" tabIndex=(-1)>
