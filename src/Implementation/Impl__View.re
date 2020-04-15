@@ -125,12 +125,12 @@ let destroy = view => {
 // show/hide
 let show = view => view->WebviewPanel.reveal(~preserveFocus=true, ());
 let hide = _view => ();
+
 // messaging
 let send = (view, req) => {
   let stringified = Js.Json.stringify(View.Request.encode(req));
   view->WebviewPanel.webview->Webview.postMessage(stringified);
 };
-
 let recv = (view, callback) => {
   // Handle messages from the webview
   view

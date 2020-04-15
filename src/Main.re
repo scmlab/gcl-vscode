@@ -1,1 +1,1 @@
-include States.Impl(Impl__Editor, Impl__State.Impl);
+include States.Impl(Impl__Editor);

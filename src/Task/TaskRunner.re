@@ -1,8 +1,8 @@
-module Impl = (Editor: Sig.Editor, State: Sig.State) => {
-  module TaskCommand = Task.Command.Impl(Editor, State);
-  module TaskResponse = Task__Response.Impl(Editor, State);
-  module Task = Task__Types.Impl(Editor, State);
-  module State = State(Editor);
+module Impl = (Editor: Sig.Editor) => {
+  module TaskCommand = Task.Command.Impl(Editor);
+  module TaskResponse = Task__Response.Impl(Editor);
+  module Task = Task__Types.Impl(Editor);
+  module State = Impl__State.Impl(Editor);
   // run the Tasks
   let rec run = (state: State.t, tasks: list(Task.t)): Promise.t(unit) => {
     let runTask = task =>

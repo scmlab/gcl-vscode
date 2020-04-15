@@ -8,8 +8,8 @@
 // | DispatchCommand(Types.Command.t)
 // | SendRequest(Types.Request.t)
 // | Display(Guacamole.View.Request.header, Guacamole.View.Request.body);
-module Impl = (Editor: Sig.Editor, State: Sig.State) => {
-  module State = State(Editor);
+module Impl = (Editor: Sig.Editor) => {
+  module State = Impl__State.Impl(Editor);
   type t =
     | WithState(State.t => Promise.t(list(t)))
     | SetSpecifications(array(GCL.Response.Specification.t))

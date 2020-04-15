@@ -2,8 +2,9 @@ open Guacamole.GCL.Syntax;
 
 open! GCL.Response.Error;
 
-module Impl = (Editor: Sig.Editor, State: Sig.State) => {
-  module Task__Types = Task__Types.Impl(Editor, State);
+module Impl = (Editor: Sig.Editor) => {
+  module State = Impl__State.Impl(Editor);
+  module Task__Types = Task__Types.Impl(Editor);
   module StructError = {
     open Guacamole.GCL.Response.Error.StructError;
     let handle = _site =>

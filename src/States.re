@@ -3,8 +3,8 @@ open Vscode;
 
 // a dictionary of FileName-State entries
 module StateDict = {
-  module Impl = (Editor: Sig.Editor, State: Sig.State) => {
-    module State = State(Editor);
+  module Impl = (Editor: Sig.Editor) => {
+    module State = Impl__State.Impl(Editor);
     let dict: Js.Dict.t(State.t) = Js.Dict.empty();
 
     let get = fileName => dict->Js.Dict.get(fileName);
@@ -61,11 +61,11 @@ module StateDict = {
 
 let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
-module Impl = (Editor: Sig.Editor, State: Sig.State) => {
-  module States = StateDict.Impl(Editor, State);
-  module TaskCommand = Task__Command.Impl(Editor, State);
-  module TaskRunner = TaskRunner.Impl(Editor, State);
-  module State = State(Editor);
+module Impl = (Editor: Sig.Editor) => {
+  module States = StateDict.Impl(Editor);
+  module TaskCommand = Task__Command.Impl(Editor);
+  module TaskRunner = TaskRunner.Impl(Editor);
+  module State = Impl__State.Impl(Editor);
 
   let addToSubscriptions = (f, context) =>
     f->Js.Array.push(context->ExtensionContext.subscriptions)->ignore;

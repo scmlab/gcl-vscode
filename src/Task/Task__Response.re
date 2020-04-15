@@ -2,10 +2,10 @@ open Belt;
 
 open! Guacamole.GCL.Response;
 
-module Impl = (Editor: Sig.Editor, State: Sig.State) => {
-  module Task__Types = Task__Types.Impl(Editor, State);
-  module Task__Error = Task__Error.Impl(Editor, State);
-  module State = State(Editor);
+module Impl = (Editor: Sig.Editor) => {
+  module State = Impl__State.Impl(Editor);
+  module Task__Types = Task__Types.Impl(Editor);
+  module Task__Error = Task__Error.Impl(Editor);
   // from GCL response to Task
   let handle = (response): list(Task__Types.t) => {
     switch (response) {
