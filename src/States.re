@@ -43,13 +43,12 @@ module StateDict = {
       delete_(dict, fileName);
     };
     let destroy = fileName => {
-      remove(fileName);
-
       get(fileName)
       ->Option.forEach(state => {
           Js.log("[ states ][ destroy ]");
           State.destroy(state) |> ignore;
         });
+      remove(fileName);
     };
 
     let contains = fileName => get(fileName)->Option.isSome;
