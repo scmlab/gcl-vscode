@@ -10,6 +10,7 @@ module Impl: Sig.State =
       mutable decorations: array(unit),
       mutable specifications: array(GCL.Response.Specification.t),
       mutable connection: option(Connection.t),
+      onDestroyEventEmitter: Event.t(unit),
     };
 
     //
@@ -22,10 +23,9 @@ module Impl: Sig.State =
     //
     // events
     //
-    // let eventEmitter = Event.make();
-    // let onDestroy = callback => {
-    //   eventEmitter.on(callback)->Editor.addToSubscriptions(context);
-    // };
+    let onDestroy = (state, callback) => {
+      state.onDestroyEventEmitter.on(callback)->Editor.Disposable.make;
+    };
 
     //
     // GCL connection/disconnection
@@ -68,15 +68,13 @@ module Impl: Sig.State =
     };
 
     //
-    // View show/hide
-    //
-
-    //
     // construction/destruction
     //
 
     let destroy = state => {
+      state.onDestroyEventEmitter.emit();
       state.view->Editor.View.destroy;
+      state.onDestroyEventEmitter.destroy();
       state->disconnect;
     };
 
@@ -92,6 +90,7 @@ module Impl: Sig.State =
         decorations: [||],
         specifications: [||],
         connection: None,
+        onDestroyEventEmitter: Event.make(),
       };
 
       // update the state on receiving message from the view

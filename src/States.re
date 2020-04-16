@@ -35,16 +35,20 @@ module StateDict = {
         });
     };
 
-    let destroy = fileName => {
+    // remove the entry (but without triggering .destroy() )
+    let remove = fileName => {
       let delete_: (Js.Dict.t('a), string) => unit = [%raw
         "function (dict, key) {delete dict[key]}"
       ];
+      delete_(dict, fileName);
+    };
+    let destroy = fileName => {
+      remove(fileName);
 
       get(fileName)
       ->Option.forEach(state => {
           Js.log("[ states ][ destroy ]");
           State.destroy(state) |> ignore;
-          delete_(dict, fileName);
         });
     };
 
@@ -107,6 +111,9 @@ module Impl = (Editor: Sig.Editor) => {
           | None =>
             Js.log("[ main ][ toggle activate ]");
             let state = State.make(context, editor);
+            state
+            ->State.onDestroy(() => {States.remove(fileName)})
+            ->Editor.addToSubscriptions(context);
             States.add(fileName, state);
           | Some(_state) =>
             Js.log("[ main ][ toggle deactivate ]");

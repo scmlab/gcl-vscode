@@ -15,8 +15,6 @@ type point = Vscode.Position.t;
 
 type fileName = string;
 
-// let make = (editor, context) => {editor, context};
-
 let editorType = Sig.VsCode;
 
 let getExtensionPath = context => context->ExtensionContext.extensionPath;
