@@ -1,5 +1,7 @@
 open Vscode;
 
+type t = {panel: WebviewPanel.t};
+
 let make = (getExtensionPath, context, editor) => {
   let html = (distPath, styleUri, scriptUri) => {
     let nonce = {
@@ -117,23 +119,26 @@ let make = (getExtensionPath, context, editor) => {
   let panel = createPanel(context, editor);
   moveToBottom() |> ignore;
 
-  panel;
+  let view = {panel: panel};
+
+  view;
 };
+
 let destroy = view => {
-  view->WebviewPanel.dispose;
+  view.panel->WebviewPanel.dispose;
 };
 // show/hide
-let show = view => view->WebviewPanel.reveal(~preserveFocus=true, ());
+let show = view => view.panel->WebviewPanel.reveal(~preserveFocus=true, ());
 let hide = _view => ();
 
 // messaging
 let send = (view, req) => {
   let stringified = Js.Json.stringify(View.Request.encode(req));
-  view->WebviewPanel.webview->Webview.postMessage(stringified);
+  view.panel->WebviewPanel.webview->Webview.postMessage(stringified);
 };
 let recv = (view, callback) => {
   // Handle messages from the webview
-  view
+  view.panel
   ->WebviewPanel.webview
   ->Webview.onDidReceiveMessage(callback);
 };

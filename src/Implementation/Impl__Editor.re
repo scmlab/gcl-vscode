@@ -4,7 +4,7 @@ open! Belt;
 type editor = Vscode.TextEditor.t;
 type context = Vscode.ExtensionContext.t;
 type disposable = Vscode.Disposable.t;
-type view = Vscode.WebviewPanel.t;
+type view = Impl__View.t;
 
 type range = Vscode.Range.t;
 type point = Vscode.Position.t;

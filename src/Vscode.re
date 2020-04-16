@@ -18,6 +18,12 @@ module Api = {
 
 module Disposable = {
   type t;
+  // static
+  [@bs.val] external from: array({. "dispose": unit => 'a}) => t = "from";
+  // constructor
+  [@bs.new] external make: (unit => unit) => t = "Disposable";
+  // methods
+  [@bs.send] external dispose: t => 'a = "dispose";
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#Memento
