@@ -20,7 +20,10 @@ module Impl = (Editor: Sig.Editor) => {
                 ->Editor.save
                 ->Promise.map(saveSucceed =>
                     if (saveSucceed && fileName != "") {
-                      [SendRequest(Request.Load(fileName))];
+                      switch (state.mode) {
+                      | WP1 => [SendRequest(Request.Load(fileName))]
+                      | WP2 => [SendRequest(Request.Load2(fileName))]
+                      };
                     } else {
                       [
                         Display(
