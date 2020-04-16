@@ -3,7 +3,11 @@ open! Belt;
 
 type editor = Vscode.TextEditor.t;
 type context = Vscode.ExtensionContext.t;
-type disposable = Vscode.Disposable.t;
+module Disposable = {
+  type t = Disposable.t;
+  let make = Disposable.make;
+  let dispose = Disposable.dispose;
+};
 type view = Impl__View.t;
 
 type range = Vscode.Range.t;

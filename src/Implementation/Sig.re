@@ -18,7 +18,11 @@ module Error = {
 module type Editor = {
   type editor;
   type context;
-  type disposable;
+  module Disposable: {
+    type t;
+    let make: (unit => unit) => t;
+    let dispose: t => unit;
+  };
   type view;
   type point;
   type range;
@@ -39,14 +43,14 @@ module type Editor = {
 
   // Events
   let onDidChangeFileName:
-    ((option(fileName), option(fileName)) => unit) => disposable;
+    ((option(fileName), option(fileName)) => unit) => Disposable.t;
   let onDidChangeActivation:
-    ((option(fileName), option(fileName)) => unit) => disposable;
-  let onDidCloseEditor: (fileName => unit) => disposable;
-  let registerCommand: (string, editor => unit) => disposable;
+    ((option(fileName), option(fileName)) => unit) => Disposable.t;
+  let onDidCloseEditor: (fileName => unit) => Disposable.t;
+  let registerCommand: (string, editor => unit) => Disposable.t;
 
   // Subscriptions
-  let addToSubscriptions: (disposable, context) => unit;
+  let addToSubscriptions: (Disposable.t, context) => unit;
 
   module Config: {
     // Configurations
@@ -63,7 +67,7 @@ module type Editor = {
     let hide: view => unit;
     // messaging
     let send: (view, View.Request.t) => Promise.t(bool);
-    let recv: (view, View.Response.t => unit) => disposable;
+    let recv: (view, View.Response.t => unit) => Disposable.t;
   };
 };
 
