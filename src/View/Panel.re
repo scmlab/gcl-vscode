@@ -8,20 +8,23 @@ let make =
   let (header, setHeader) = React.useState(() => View.Request.Header.Loading);
   let (body, setBody) = React.useState(() => View.Request.Body.Nothing);
   let (mode, setMode) = React.useState(_ => View.Response.WP1);
+  let (hidden, setHidden) = React.useState(_ => false);
 
   let onChangeMode = mode => setMode(_ => mode);
 
   // for receiving requests from the extension
   React.useEffect1(
     () => {
+      open View.Request;
       let destructor =
         onRequest.on(
           fun
-          | View.Request.Display(header, body) => {
+          | Display(header, body) => {
               setHeader(_ => header);
               setBody(_ => body);
             }
-          | _ => (),
+          | Hide => setHidden(_ => true)
+          | Show => setHidden(_ => false),
         );
       Some(destructor);
     },
@@ -41,8 +44,10 @@ let make =
   let onClickLink = Event.make();
   let _ = onClickLink.on(ev => onResponse.emit(Link(ev)));
 
+  let className = "gcl-panel native-key-bindings" ++ (hidden ? " hidden" : "");
+
   <Link.Provider value=onClickLink>
-    <section className="gcl-panel native-key-bindings" tabIndex=(-1)>
+    <section className tabIndex=(-1)>
       <Header header editorType mode onChangeMode />
       <Body body />
     </section>
