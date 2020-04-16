@@ -1,6 +1,9 @@
 open Vscode;
 
-type t = {panel: WebviewPanel.t};
+type t = {
+  panel: WebviewPanel.t,
+  onResponse: Event.t(View.Response.t),
+};
 
 let make = (getExtensionPath, context, editor) => {
   let html = (distPath, styleUri, scriptUri) => {
@@ -87,10 +90,6 @@ let make = (getExtensionPath, context, editor) => {
     // ->Js.Array.push(context->ExtensionContext.subscriptions)
     // ->ignore;
 
-    // on destroy
-    panel->WebviewPanel.onDidDispose(() => Js.log("[ view ][ destroyed ]"))
-    |> ignore;
-
     panel
     ->WebviewPanel.webview
     ->Webview.setHtml(html(distPath, "style.css", "bundled-view.js"));
@@ -119,14 +118,31 @@ let make = (getExtensionPath, context, editor) => {
   let panel = createPanel(context, editor);
   moveToBottom() |> ignore;
 
-  let view = {panel: panel};
+  // on message
+  // relay Webview.onDidReceiveMessage => onResponse
+  let onResponse = Event.make();
+  panel
+  ->WebviewPanel.webview
+  ->Webview.onDidReceiveMessage(onResponse.emit)
+  ->Js.Array.push(context->ExtensionContext.subscriptions)
+  ->ignore;
+
+  // on destroy
+  panel
+  ->WebviewPanel.onDidDispose(() => onResponse.emit(View.Response.Destroy))
+  ->Js.Array.push(context->ExtensionContext.subscriptions)
+  ->ignore;
+
+  let view = {panel, onResponse};
 
   view;
 };
 
 let destroy = view => {
   view.panel->WebviewPanel.dispose;
+  view.onResponse.destroy();
 };
+
 // show/hide
 let show = view => view.panel->WebviewPanel.reveal(~preserveFocus=true, ());
 let hide = _view => ();
@@ -138,7 +154,6 @@ let send = (view, req) => {
 };
 let recv = (view, callback) => {
   // Handle messages from the webview
-  view.panel
-  ->WebviewPanel.webview
-  ->Webview.onDidReceiveMessage(callback);
+  view.onResponse.on(callback)
+  ->Disposable.make;
 };

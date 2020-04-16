@@ -20,6 +20,14 @@ module Impl: Sig.State =
       state.specifications = specifications;
 
     //
+    // events
+    //
+    // let eventEmitter = Event.make();
+    // let onDestroy = callback => {
+    //   eventEmitter.on(callback)->Editor.addToSubscriptions(context);
+    // };
+
+    //
     // GCL connection/disconnection
     //
 
@@ -67,6 +75,11 @@ module Impl: Sig.State =
     // construction/destruction
     //
 
+    let destroy = state => {
+      state.view->Editor.View.destroy;
+      state->disconnect;
+    };
+
     let make = (context, editor) => {
       // view initialization
       let view = Editor.View.make(context, editor);
@@ -86,7 +99,11 @@ module Impl: Sig.State =
       ->Editor.View.recv(
           fun
           | View.Response.SetMode(mode) => state.mode = mode
-          | Link(_) => (),
+          | Link(_) => ()
+          | Destroy => {
+              Js.log("destroyed!!");
+              destroy(state)->ignore;
+            },
         )
       ->Editor.addToSubscriptions(context);
 
@@ -101,11 +118,6 @@ module Impl: Sig.State =
         );
 
       state;
-    };
-
-    let destroy = state => {
-      state.view->Editor.View.destroy;
-      state->disconnect;
     };
 
     //

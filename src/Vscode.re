@@ -21,7 +21,8 @@ module Disposable = {
   // static
   [@bs.val] external from: array({. "dispose": unit => 'a}) => t = "from";
   // constructor
-  [@bs.new] external make: (unit => unit) => t = "Disposable";
+  [@bs.module "vscode"] [@bs.new]
+  external make: (unit => unit) => t = "Disposable";
   // methods
   [@bs.send] external dispose: t => 'a = "dispose";
 };
@@ -285,7 +286,7 @@ module WebviewPanel = {
 module Position = {
   type t;
   // constructor
-  [@bs.new] external make: (int, int) => t = "Position";
+  [@bs.module "vscode"] [@bs.new] external make: (int, int) => t = "Position";
   // properties
   [@bs.get] external character: t => int = "character";
   [@bs.get] external line: t => int = "line";
@@ -304,8 +305,10 @@ module Position = {
 module Range = {
   type t;
   // constructor
-  [@bs.new] external make: (Position.t, Position.t) => t = "Range";
-  [@bs.new] external makeWithNumbers: (int, int, int, int) => t = "Range";
+  [@bs.module "vscode"] [@bs.new]
+  external make: (Position.t, Position.t) => t = "Range";
+  [@bs.module "vscode"] [@bs.new]
+  external makeWithNumbers: (int, int, int, int) => t = "Range";
   // properties
   [@bs.get] external end_: t => Position.t = "end";
   [@bs.get] external isEmpty: t => bool = "isEmpty";
@@ -475,8 +478,10 @@ module TextEditorOptions = {
 module Selection = {
   type t;
   // constructors
-  [@bs.new] external make: (Position.t, Position.t) => t = "Selection";
-  [@bs.new] external makeWithNumbers: (int, int, int, int) => t = "Selection";
+  [@bs.module "vscode"] [@bs.new]
+  external make: (Position.t, Position.t) => t = "Selection";
+  [@bs.module "vscode"] [@bs.new]
+  external makeWithNumbers: (int, int, int, int) => t = "Selection";
   // properties
   [@bs.get] external active: t => Position.t = "active";
   [@bs.get] external anchor: t => Position.t = "anchor";

@@ -80,6 +80,9 @@ module type State =
     let getEditor: t => editor;
     let setSpecifications: (t, array(GCL.Response.Specification.t)) => unit;
 
+    // // events
+    // let onDestroy: (unit => unit) => unit;
+
     // construction/destruction
     let make: (context, editor) => t;
     let destroy: t => Promise.t(unit);

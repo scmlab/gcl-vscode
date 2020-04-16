@@ -122,5 +122,6 @@ module Response = {
 
   type t =
     | SetMode(mode)
-    | Link(linkEvent);
+    | Link(linkEvent)
+    | Destroy;
 };
