@@ -935,11 +935,9 @@ module Response = {
 
     module StructError = {
       type t =
-        | MissingBound
         | MissingAssertion
-        | MissingLoopInvariant
+        | MissingBound
         | ExcessBound
-        | MissingPrecondition
         | MissingPostcondition
         | DigHole;
 
@@ -948,12 +946,39 @@ module Response = {
       let decode: decoder(t) =
         sum(
           fun
-          | "MissingBound" => Contents(_ => MissingBound)
           | "MissingAssertion" => Contents(_ => MissingAssertion)
-          | "MissingLoopInvariant" => Contents(_ => MissingLoopInvariant)
+          | "MissingBound" => Contents(_ => MissingBound)
+          // | "MissingLoopInvariant" => Contents(_ => MissingLoopInvariant)
           | "ExcessBound" => Contents(_ => ExcessBound)
+          // | "MissingPrecondition" => Contents(_ => MissingPrecondition)
+          | "MissingPostcondition" => Contents(_ => MissingPostcondition)
+          | "DigHole" => Contents(_ => DigHole)
+          | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
+        );
+    };
+
+    module StructError2 = {
+      type t =
+        | MissingLoopInvariant
+        // | MissingAssertion
+        | MissingBound
+        | MissingPrecondition
+        | MissingPostcondition
+        | PreconditionUnknown
+        | DigHole;
+
+      open Json.Decode;
+      open Util.Decode;
+      let decode: decoder(t) =
+        sum(
+          fun
+          // | "MissingAssertion" => Contents(_ => MissingAssertion)
+          // | "ExcessBound" => Contents(_ => ExcessBound)
+          | "MissingBound" => Contents(_ => MissingBound)
+          | "MissingLoopInvariant" => Contents(_ => MissingLoopInvariant)
           | "MissingPrecondition" => Contents(_ => MissingPrecondition)
           | "MissingPostcondition" => Contents(_ => MissingPostcondition)
+          | "PreconditionUnknown" => Contents(_ => PreconditionUnknown)
           | "DigHole" => Contents(_ => DigHole)
           | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
         );
@@ -963,6 +988,7 @@ module Response = {
       | LexicalError
       | SyntacticError(array(string))
       | StructError(StructError.t)
+      | StructError2(StructError2.t)
       | TypeError(TypeError.t)
       | CannotReadFile(string)
       | NotLoaded;
@@ -978,8 +1004,10 @@ module Response = {
             array(pair(Loc.decode, string))
             |> map(pairs => SyntacticError(pairs->Array.map(snd))),
           )
-        | "StructError2" =>
+        | "StructError" =>
           Contents(json => StructError(json |> StructError.decode))
+        | "StructError2" =>
+          Contents(json => StructError2(json |> StructError2.decode))
         | "TypeError" =>
           Contents(json => TypeError(json |> TypeError.decode))
         | "CannotReadFile" =>

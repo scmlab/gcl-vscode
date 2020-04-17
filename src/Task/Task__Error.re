@@ -26,14 +26,14 @@ module Impl = (Editor: Sig.Editor) => {
             Plain("Assertion before the DO construct is missing"),
           ),
         ]
-      | MissingLoopInvariant => [
-          AddDecorations([||]),
-          // AddDecorations(Decoration.markSite(site)),
-          Display(
-            Error("Loop Invariant Missing"),
-            Plain("Loop invariant before the DO construct is missing"),
-          ),
-        ]
+      // | MissingLoopInvariant => [
+      //     AddDecorations([||]),
+      //     // AddDecorations(Decoration.markSite(site)),
+      //     Display(
+      //       Error("Loop Invariant Missing"),
+      //       Plain("Loop invariant before the DO construct is missing"),
+      //     ),
+      //   ]
       | ExcessBound => [
           AddDecorations([||]),
           // AddDecorations(Decoration.markSite(site)),
@@ -42,14 +42,14 @@ module Impl = (Editor: Sig.Editor) => {
             Plain("Unnecessary bound annotation at this assertion"),
           ),
         ]
-      | MissingPrecondition => [
-          Display(
-            Error("Precondition Missing"),
-            Plain(
-              "The first statement of the program should be an assertion",
-            ),
-          ),
-        ]
+      // | MissingPrecondition => [
+      //     Display(
+      //       Error("Precondition Missing"),
+      //       Plain(
+      //         "The first statement of the program should be an assertion",
+      //       ),
+      //     ),
+      //   ]
       | MissingPostcondition => [
           Display(
             Error("Postcondition Missing"),
@@ -71,6 +71,74 @@ module Impl = (Editor: Sig.Editor) => {
     // ),
   };
 
+  module StructError2 = {
+    open Guacamole.GCL.Response.Error.StructError2;
+    let handle = _site =>
+      fun
+      | MissingBound => [
+          Task__Types.AddDecorations([||]),
+          Display(
+            Error("Bound Missing"),
+            Plain(
+              "Bound missing at the end of the assertion before the DO construct \" , bnd : ... }\"",
+            ),
+          ),
+        ]
+      // | MissingAssertion => [
+      //     AddDecorations([||]),
+      //     // AddDecorations(Decoration.markSite(site)),
+      //     Display(
+      //       Error("Assertion Missing"),
+      //       Plain("Assertion before the DO construct is missing"),
+      //     ),
+      //   ]
+      | MissingLoopInvariant => [
+          AddDecorations([||]),
+          // AddDecorations(Decoration.markSite(site)),
+          Display(
+            Error("Loop Invariant Missing"),
+            Plain("Loop invariant before the DO construct is missing"),
+          ),
+        ]
+      // | ExcessBound => [
+      //     AddDecorations([||]),
+      //     // AddDecorations(Decoration.markSite(site)),
+      //     Display(
+      //       Error("Excess Bound"),
+      //       Plain("Unnecessary bound annotation at this assertion"),
+      //     ),
+      //   ]
+      | MissingPrecondition => [
+          Display(
+            Error("Precondition Missing"),
+            Plain(
+              "The first statement of the program should be an assertion",
+            ),
+          ),
+        ]
+      | MissingPostcondition => [
+          Display(
+            Error("Postcondition Missing"),
+            Plain("The last statement of the program should be an assertion"),
+          ),
+        ]
+      | PreconditionUnknown => [
+          Display(Error("Precondition Unknown"), Plain("")),
+        ]
+      | DigHole => []; // WithState(
+    //   state => {
+    //     let%P _ = state |> Spec.digHole(site);
+    //     switch (state.history) {
+    //     | Some(Types.Request.Refine(_)) =>
+    //       Promise.resolved([
+    //         DispatchCommand(Save),
+    //         DispatchCommand(Refine),
+    //       ])
+    //     | _ => Promise.resolved([DispatchCommand(Save)])
+    //     };
+    //   },
+    // ),
+  };
   let handle = error => {
     let Error(site, kind) = error;
     switch (kind) {
@@ -91,6 +159,7 @@ module Impl = (Editor: Sig.Editor) => {
         ),
       ]
     | StructError(error) => StructError.handle(site, error)
+    | StructError2(error) => StructError2.handle(site, error)
     | TypeError(NotInScope(name)) => [
         AddDecorations([||]),
         // AddDecorations(Decoration.markSite(site)),
