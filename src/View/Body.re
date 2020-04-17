@@ -45,8 +45,7 @@ let make = (~body: View.Request.Body.t) => {
 
   | Plain(s) =>
     let paragraphs =
-      s
-      ->Js.String.split("\n")
+      Js.String.split("\n", s)
       ->Array.keep(x => x !== "")
       ->Array.mapWithIndex((i, s) =>
           <p key={string_of_int(i)}> {string(s)} </p>
