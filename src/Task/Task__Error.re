@@ -7,7 +7,7 @@ module Impl = (Editor: Sig.Editor) => {
   module Task__Types = Task__Types.Impl(Editor);
   module StructError = {
     open Guacamole.GCL.Response.Error.StructError;
-    let handle = _site =>
+    let handle = site =>
       fun
       | MissingBound => [
           Task__Types.AddDecorations([||]),
@@ -56,7 +56,23 @@ module Impl = (Editor: Sig.Editor) => {
             Plain("The last statement of the program should be an assertion"),
           ),
         ]
-      | DigHole => []; // WithState(
+      | DigHole => {
+          Js.log(site);
+
+          [
+            WithState(
+              state => {
+                let range =
+                  GCL.Response.Error.Site.toRange(
+                    site,
+                    state.specifications,
+                    Editor.toRange,
+                  );
+                state.editor->Editor.digHole(range)->Promise.map(_ => []);
+              },
+            ),
+          ];
+        }; // WithState(
     //   state => {
     //     let%P _ = state |> Spec.digHole(site);
     //     switch (state.history) {

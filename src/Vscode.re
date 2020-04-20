@@ -542,6 +542,7 @@ module TextEditor = {
   [@bs.get] external document: t => TextDocument.t = "document";
   [@bs.get] external options: t => TextEditorOptions.t = "options";
   [@bs.get] external selection: t => Selection.t = "selection";
+  [@bs.set] external setSelection: (t, Selection.t) => unit = "selection";
   [@bs.get] external selections: t => array(Selection.t) = "selections";
   [@bs.get] external viewColumn_raw: t => option(int) = "viewColumn";
   let viewColumn = (self: t): option(ViewColumn.t) =>

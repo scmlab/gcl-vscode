@@ -69,6 +69,8 @@ module type Editor = {
     let send: (view, View.Request.t) => Promise.t(bool);
     let recv: (view, View.Response.t => unit) => Disposable.t;
   };
+
+  let digHole: (editor, range) => Promise.t(unit);
 };
 
 // module type State =

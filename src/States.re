@@ -127,7 +127,7 @@ module Impl = (Editor: Sig.Editor) => {
                     )
                     ->ignore;
                   }
-                | Ok(c) => {
+                | Ok(_c) => {
                     TaskCommand.dispatch(Command.Reload)
                     |> TaskRunner.run(state)
                     |> ignore;
