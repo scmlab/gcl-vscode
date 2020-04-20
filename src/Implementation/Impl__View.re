@@ -94,7 +94,9 @@ let make = (getExtensionPath, context, editor) => {
         Some(
           WebviewAndWebviewPanelOptions.make(
             ~enableScripts=true,
-            // And restric the webview to only loading content from our extension's `media` directory.
+            // So that the view don't get wiped out when it's not in the foreground
+            ~retainContextWhenHidden=true,
+            // And restrict the webview to only loading content from our extension's `media` directory.
             ~localResourceRoots=[|Uri.file(distPath)|],
             (),
           ),
