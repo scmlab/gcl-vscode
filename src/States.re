@@ -119,10 +119,15 @@ module Impl = (Editor: Sig.Editor) => {
             ->State.connect
             ->Promise.get(
                 fun
-                | Error(e) =>
-                  Js.log2("[ connection error ]", Sig.Error.toString(e))
+                | Error(e) => {
+                    let (header, body) = Sig.Error.toString(e);
+                    TaskRunner.run(
+                      state,
+                      [Display(Error(header), Plain(body))],
+                    )
+                    ->ignore;
+                  }
                 | Ok(c) => {
-                    Js.log2("[ connection success ]", c);
                     TaskCommand.dispatch(Command.Reload)
                     |> TaskRunner.run(state)
                     |> ignore;
