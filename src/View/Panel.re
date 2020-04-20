@@ -10,6 +10,15 @@ let make =
   let (mode, setMode) = React.useState(_ => View.Response.WP1);
   let (hidden, setHidden) = React.useState(_ => false);
 
+  // response with Initialized on mount
+  React.useEffect1(
+    () => {
+      onResponse.emit(View.Response.Initialized);
+      None;
+    },
+    [||],
+  );
+
   let onChangeMode = mode => setMode(_ => mode);
 
   // for receiving requests from the extension

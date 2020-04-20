@@ -1,8 +1,30 @@
 open Vscode;
 
+type status =
+  | Initialized
+  | Uninitialized(array(View.Request.t));
+
 type t = {
   panel: WebviewPanel.t,
   onResponse: Event.t(View.Response.t),
+  mutable status,
+};
+
+// messaging
+let send = (view, req) =>
+  switch (view.status) {
+  | Uninitialized(queued) =>
+    Js.Array.push(req, queued)->ignore;
+    Promise.resolved(false);
+  | Initialized =>
+    let stringified = Js.Json.stringify(View.Request.encode(req));
+    view.panel->WebviewPanel.webview->Webview.postMessage(stringified);
+  };
+
+let recv = (view, callback) => {
+  // Handle messages from the webview
+  view.onResponse.on(callback)
+  ->Disposable.make;
 };
 
 let make = (getExtensionPath, context, editor) => {
@@ -79,17 +101,6 @@ let make = (getExtensionPath, context, editor) => {
         ),
       );
 
-    // panel->WebviewPanel.webview->Webview.postMessage(C(3)) |> ignore;
-    // ->Js.Array.push(state.context.subscriptions)
-    // ->ignore;
-
-    // // on message
-    // panel
-    // ->WebviewPanel.webview
-    // ->Webview.onDidReceiveMessage(message => {Js.log(message)})
-    // ->Js.Array.push(context->ExtensionContext.subscriptions)
-    // ->ignore;
-
     panel
     ->WebviewPanel.webview
     ->Webview.setHtml(html(distPath, "style.css", "bundled-view.js"));
@@ -129,11 +140,28 @@ let make = (getExtensionPath, context, editor) => {
 
   // on destroy
   panel
-  ->WebviewPanel.onDidDispose(() => onResponse.emit(View.Response.Destroy))
+  ->WebviewPanel.onDidDispose(() => onResponse.emit(View.Response.Destroyed))
   ->Js.Array.push(context->ExtensionContext.subscriptions)
   ->ignore;
 
-  let view = {panel, onResponse};
+  let view = {panel, onResponse, status: Uninitialized([||])};
+
+  // on initizlied
+  view.onResponse.on(
+    fun
+    | Initialized => {
+        switch (view.status) {
+        | Uninitialized(queued) =>
+          view.status = Initialized;
+          queued->Belt.Array.forEach(req => send(view, req)->ignore);
+        | Initialized => ()
+        };
+      }
+    | _ => (),
+  )
+  ->Disposable.make
+  ->Js.Array.push(context->ExtensionContext.subscriptions)
+  ->ignore;
 
   view;
 };
@@ -146,14 +174,3 @@ let destroy = view => {
 // show/hide
 let show = view => view.panel->WebviewPanel.reveal(~preserveFocus=true, ());
 let hide = _view => ();
-
-// messaging
-let send = (view, req) => {
-  let stringified = Js.Json.stringify(View.Request.encode(req));
-  view.panel->WebviewPanel.webview->Webview.postMessage(stringified);
-};
-let recv = (view, callback) => {
-  // Handle messages from the webview
-  view.onResponse.on(callback)
-  ->Disposable.make;
-};

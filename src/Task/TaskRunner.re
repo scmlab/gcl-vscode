@@ -26,7 +26,7 @@ module Impl = (Editor: Sig.Editor) => {
                 let (header, body) = Sig.Error.toString(error);
                 [Task.Display(Error(header), Plain(body))] |> run(state);
               }
-            | Ok(x) => TaskResponse.handle(x) |> run(state),
+            | Ok(response) => TaskResponse.handle(response) |> run(state),
           );
       | Display(header, body) =>
         state->State.display(header, body)->Promise.map(_ => ())

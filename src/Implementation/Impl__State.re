@@ -98,21 +98,13 @@ module Impl = (Editor: Sig.Editor) => {
         fun
         | View.Response.SetMode(mode) => state.mode = mode
         | Link(_) => ()
-        | Destroy => {
+        | Initialized => ()
+        | Destroyed => {
             Js.log("destroyed!!");
             destroy(state)->ignore;
           },
       )
     ->Editor.addToSubscriptions(context);
-
-    // connection initialization
-    state
-    ->connect
-    ->Promise.get(
-        fun
-        | Error(e) => Js.log2("[ connection error ]", Sig.Error.toString(e))
-        | Ok(c) => Js.log2("[ connection success ]", c),
-      );
 
     state;
   };
@@ -123,6 +115,7 @@ module Impl = (Editor: Sig.Editor) => {
 
   let show = state => state.view->Editor.View.show;
   let hide = state => state.view->Editor.View.hide;
-  let display = (state, header, body) =>
+  let display = (state, header, body) => {
     state.view->Editor.View.send(View.Request.Display(header, body));
+  };
 };

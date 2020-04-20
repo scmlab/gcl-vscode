@@ -105,18 +105,33 @@ module Impl = (Editor: Sig.Editor) => {
       editor
       ->Editor.getFileName
       ->Option.forEach(fileName => {
-          // see if it's already in the States
           switch (States.get(fileName)) {
           | None =>
-            Js.log("[ main ][ toggle activate ]");
+            // not in the States dict, instantiate one new
             let state = State.make(context, editor);
             state
+            // remove it from the States dict if it got destroyed
             ->State.onDestroy(() => {States.remove(fileName)})
             ->Editor.addToSubscriptions(context);
             States.add(fileName, state);
+            // initialize connection
+            state
+            ->State.connect
+            ->Promise.get(
+                fun
+                | Error(e) =>
+                  Js.log2("[ connection error ]", Sig.Error.toString(e))
+                | Ok(c) => {
+                    Js.log2("[ connection success ]", c);
+                    TaskCommand.dispatch(Command.Reload)
+                    |> TaskRunner.run(state)
+                    |> ignore;
+                  },
+              );
+
           | Some(_state) =>
-            Js.log("[ main ][ toggle deactivate ]");
-            fileName->States.destroy;
+            // already in the States dict, remove and destroy it
+            fileName->States.destroy
           }
         })
     })
