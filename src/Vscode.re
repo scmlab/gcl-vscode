@@ -529,11 +529,87 @@ module TextEditorRevealType = {
 // https://code.visualstudio.com/api/references/vscode-api#TextEditorDecorationType
 module TextEditorDecorationType = {
   type t;
+  // properties
+  [@bs.get] external key: t => string = "key";
+  // methods
+  [@bs.send] external dispose: t => unit = "dispose";
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#MarkedString;
+module MarkdownString = {
+  type t;
+  // constructors
+  [@bs.module "vscode"] [@bs.new]
+  external make: (string, bool) => t = "MarkdownString";
+  // properties
+  [@bs.get] external isTrusted: t => option(bool) = "isTrusted";
+  [@bs.get] external value: t => string = "value";
+  // methods
+  [@bs.send]
+  external appendCodeblock: (t, string, option(string)) => t =
+    "appendCodeblock";
+  [@bs.send] external appendMarkdown: (t, string) => t = "appendMarkdown";
+  [@bs.send] external appendText: (t, string) => t = "appendText";
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#ThemableDecorationAttachmentRenderOptions
+module ThemableDecorationAttachmentRenderOptions = {
+  type t;
+  // properties
+  [@bs.get] external backgroundColor: t => option(string) = "backgroundColor";
+  [@bs.get] external border: t => option(string) = "border";
+  [@bs.get] external borderColor: t => option(string) = "borderColor";
+  [@bs.get] external color: t => option(string) = "color";
+  [@bs.get] external contentIconPath: t => option(string) = "contentIconPath";
+  [@bs.get] external contentText: t => option(string) = "contentText";
+  [@bs.get] external fontStyle: t => option(string) = "fontStyle";
+  [@bs.get] external fontWeight: t => option(string) = "fontWeight";
+  [@bs.get] external height: t => option(string) = "height";
+  [@bs.get] external margin: t => option(string) = "margin";
+  [@bs.get] external textDecoration: t => option(string) = "textDecoration";
+  [@bs.get] external width: t => option(string) = "width";
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#ThemableDecorationInstanceRenderOptions
+module ThemableDecorationInstanceRenderOptions = {
+  type t;
+  // properties
+  [@bs.get]
+  external after: t => option(ThemableDecorationAttachmentRenderOptions.t) =
+    "after";
+  [@bs.get]
+  external before: t => option(ThemableDecorationAttachmentRenderOptions.t) =
+    "before";
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#DecorationInstanceRenderOptions;
+module DecorationInstanceRenderOptions = {
+  type t;
+  // properties
+  [@bs.get]
+  external after: t => option(ThemableDecorationAttachmentRenderOptions.t) =
+    "after";
+  [@bs.get]
+  external before: t => option(ThemableDecorationAttachmentRenderOptions.t) =
+    "before";
+  [@bs.get]
+  external dark: t => option(ThemableDecorationInstanceRenderOptions.t) =
+    "dark";
+  [@bs.get]
+  external light: t => option(ThemableDecorationInstanceRenderOptions.t) =
+    "light";
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#DecorationOptions
 module DecorationOptions = {
   type t;
+  // properties
+  [@bs.get]
+  external hoverMessage: t => option(MarkdownString.t) = "hoverMessage";
+  [@bs.get] external range: t => Range.t = "range";
+  [@bs.get]
+  external renderOptions: t => option(DecorationInstanceRenderOptions.t) =
+    "renderOptions";
 };
 
 module TextEditor = {
@@ -698,9 +774,61 @@ module ExtensionTerminalOptions = {
   type t;
 };
 
+// https://code.visualstudio.com/api/references/vscode-api#OverviewRulerLane;
+module OverviewRulerLane = {
+  type t;
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#DecorationRangeBehavior;
+module DecorationRangeBehavior = {
+  type t;
+};
+
 // https://code.visualstudio.com/api/references/vscode-api#DecorationRenderOptions
 module DecorationRenderOptions = {
   type t;
+  // properties
+  [@bs.get]
+  external after: t => option(ThemableDecorationAttachmentRenderOptions.t) =
+    "after";
+  [@bs.get] external backgroundColor: t => option(string) = "backgroundColor";
+  [@bs.get]
+  external before: t => option(ThemableDecorationAttachmentRenderOptions.t) =
+    "before";
+  [@bs.get] external border: t => option(string) = "border";
+  [@bs.get] external borderColor: t => option(string) = "borderColor";
+  [@bs.get] external borderRadius: t => option(string) = "borderRadius";
+  [@bs.get] external borderSpacing: t => option(string) = "borderSpacing";
+  [@bs.get] external borderStyle: t => option(string) = "borderStyle";
+  [@bs.get] external borderWidth: t => option(string) = "borderWidth";
+  [@bs.get] external color: t => option(string) = "color";
+  [@bs.get] external cursor: t => option(string) = "cursor";
+  [@bs.get]
+  external dark: t => option(ThemableDecorationInstanceRenderOptions.t) =
+    "dark";
+  [@bs.get] external fontStyle: t => option(string) = "fontStyle";
+  [@bs.get] external fontWeight: t => option(string) = "fontWeight";
+  [@bs.get] external gutterIconPath: t => option(string) = "gutterIconPath";
+  [@bs.get] external gutterIconSize: t => option(string) = "gutterIconSize";
+  [@bs.get] external isWholeLine: t => option(bool) = "isWholeLine";
+  [@bs.get] external letterSpacing: t => option(string) = "letterSpacing";
+  [@bs.get]
+  external light: t => option(ThemableDecorationInstanceRenderOptions.t) =
+    "light";
+  [@bs.get] external opacity: t => option(string) = "opacity";
+  [@bs.get] external outline: t => option(string) = "outline";
+  [@bs.get] external outlineColor: t => option(string) = "outlineColor";
+  [@bs.get] external outlineStyle: t => option(string) = "outlineStyle";
+  [@bs.get] external outlineWidth: t => option(string) = "outlineWidth";
+  [@bs.get]
+  external overviewRulerColor: t => option(string) = "overviewRulerColor";
+  [@bs.get]
+  external overviewRulerLane: t => option(OverviewRulerLane.t) =
+    "overviewRulerLane";
+  [@bs.get]
+  external rangeBehavior: t => option(DecorationRangeBehavior.t) =
+    "rangeBehavior";
+  [@bs.get] external textDecoration: t => option(string) = "textDecoration";
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#TreeViewOptions

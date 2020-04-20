@@ -140,3 +140,9 @@ let digHole = (editor: editor, range: Vscode.Range.t) => {
   editor->TextEditor.setSelection(selection);
   Promise.resolved();
 };
+
+let decorateBackground = (editor: editor) => {
+  ()// let decorationType = Window.createTextEditorDecorationType();
+    ;
+    // editor->TextEditor.setDecorations(decorationType, [||]);
+};

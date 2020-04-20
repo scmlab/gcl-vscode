@@ -71,39 +71,6 @@ module type Editor = {
   };
 
   let digHole: (editor, range) => Promise.t(unit);
+  let decorateBackground: editor => unit;
+  /* let decorateWithTex*/
 };
-
-// module type State =
-//   (Editor: Editor) =>
-//    {
-//     // signature for the States module to construct/destruct State.t
-//     // types
-//     type editor = Editor.editor;
-//     type context = Editor.context;
-//     type t;
-
-//     // getters/setters
-//     let getEditor: t => editor;
-//     let setSpecifications: (t, array(GCL.Response.Specification.t)) => unit;
-
-//     // events
-//     let onDestroy: (t, unit => unit) => Editor.Disposable.t;
-
-//     // construction/destruction
-//     let make: (context, editor) => t;
-//     let destroy: t => Promise.t(unit);
-
-//     // connection/disconnection to GCL
-//     let connect: t => Promise.t(result(Connection.t, Error.t));
-//     let disconnect: t => Promise.t(unit);
-//     let sendRequest:
-//       (t, Request.t) => Promise.t(result(GCL.Response.t, Error.t));
-
-//     // view related
-//     let show: t => unit;
-//     let hide: t => unit;
-//     let display:
-//       (t, View.Request.Header.t, View.Request.Body.t) => Promise.t(bool);
-//   };
-
-();
