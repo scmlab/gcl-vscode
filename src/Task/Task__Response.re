@@ -11,19 +11,25 @@ module Impl = (Editor: Sig.Editor) => {
     switch (response) {
     | Error(errors) =>
       errors->Array.map(Task__Error.handle)->List.fromArray->Js.List.flatten
-    | OK(obligations, specifications) => [
-        SetSpecifications(specifications),
-        // AddDecorations(
-        //   (specifications, editor) =>
-        //     specifications
-        //     ->Array.map(Decoration.markSpec(editor))
-        //     ->Array.map(List.fromArray)
-        //     ->List.fromArray
-        //     ->Js.List.flatten
-        //     ->List.toArray,
-        // ),
-        Display(Plain("Proof Obligations"), ProofObligations(obligations)),
-      ]
+    | OK(obligations, specifications) =>
+      List.concat(
+        specifications
+        ->List.fromArray
+        ->List.map(spec => Task__Types.MarkSpec(spec)),
+        [
+          // SetSpecifications(specifications),
+          WithState(
+            state => {
+              state.specifications = specifications;
+              Promise.resolved([]);
+            },
+          ),
+          Display(
+            Plain("Proof Obligations"),
+            ProofObligations(obligations),
+          ),
+        ],
+      )
     | Resolve(_i) =>
       // WithState(
       //   state => {

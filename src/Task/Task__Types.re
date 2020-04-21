@@ -12,8 +12,9 @@ module Impl = (Editor: Sig.Editor) => {
   module State = Impl__State.Impl(Editor);
   type t =
     | WithState(State.t => Promise.t(list(t)))
-    | SetSpecifications(array(GCL.Response.Specification.t))
+    // | SetSpecifications(array(GCL.Response.Specification.t))
     | MarkError(GCL.Response.Error.Site.t)
+    | MarkSpec(GCL.Response.Specification.t)
     | DigHole(GCL.Response.Error.Site.t)
     | RemoveDecorations
     | DispatchCommand(Command.t)

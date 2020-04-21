@@ -24,6 +24,7 @@ module type Editor = {
     let dispose: t => unit;
   };
   type view;
+
   type point;
   type range;
   type decoration;
@@ -72,8 +73,13 @@ module type Editor = {
   };
 
   module Decoration: {
+    type kind =
+      | Error
+      | Spec;
+
     let digHole: (editor, range) => unit;
-    let markBackground: (editor, range) => decoration;
+    let markBackground: (editor, kind, range) => array(decoration);
+    // let markSpec: (editor, GCL.Response.Specification.t) => array(decoration);
     let destroy: decoration => unit;
   };
   /* let decorateWithTex*/

@@ -10,9 +10,6 @@ module Impl = (Editor: Sig.Editor) => {
       switch (task) {
       | Task.WithState(callback) =>
         callback(state)->Promise.flatMap(run(state))
-      | SetSpecifications(specifications) =>
-        state->State.setSpecifications(specifications);
-        Promise.resolved();
       | MarkError(site) =>
         let range =
           GCL.Response.Error.Site.toRange(
@@ -20,11 +17,20 @@ module Impl = (Editor: Sig.Editor) => {
             state.specifications,
             Editor.toRange,
           );
-        state.editor
-        ->Editor.Decoration.markBackground(range)
-        ->Js.Array.push(state.decorations)
-        ->ignore;
+        let decorations =
+          state.editor
+          ->Editor.Decoration.markBackground(Editor.Decoration.Error, range);
+        state.decorations = Js.Array.concat(decorations, state.decorations);
         Promise.resolved();
+      | MarkSpec(spec) =>
+        // let decorations =
+        //   specs
+        //   ->Array.map(spec => {
+        //       state.editor->Editor.Decoration.markSpec(spec)
+        //     })
+        //   ->Array.concatMany;
+        // state.decorations = Js.Array.concat(decorations, state.decorations);
+        Promise.resolved()
       | DigHole(site) =>
         let range =
           GCL.Response.Error.Site.toRange(

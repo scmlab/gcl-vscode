@@ -126,6 +126,10 @@ module View = {
 //
 
 module Decoration = {
+  type kind =
+    | Error
+    | Spec;
+
   let digHole = (editor: editor, range: Vscode.Range.t) => {
     let start = Vscode.Range.start(range);
     // add indentation to the hole
@@ -145,7 +149,7 @@ module Decoration = {
     editor->TextEditor.setSelection(selection);
   };
 
-  let markBackground = (editor: editor, range: range) => {
+  let markBackground = (editor: editor, kind: kind, range: range) => {
     let options =
       DecorationRenderOptions.t(
         ~backgroundColor=
@@ -156,7 +160,7 @@ module Decoration = {
       );
     let handle = Window.createTextEditorDecorationType(options);
     editor->TextEditor.setDecorations(handle, [|range|]);
-    handle;
+    [|handle|];
   };
 
   let destroy = TextEditorDecorationType.dispose;
