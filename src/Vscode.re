@@ -1,3 +1,42 @@
+// https://code.visualstudio.com/api/references/vscode-api#ThemeColor
+module ThemeColor = {
+  type t;
+  // constructors
+  [@bs.module "vscode"] [@bs.new] external make: string => t = "ThemeColor";
+
+  module StringOrThemeColor: {
+    type themeColor = t;
+    type t;
+    type case =
+      | String(string)
+      | ThemeColor(themeColor);
+    let themeColor: themeColor => t;
+    let string: string => t;
+    let classify: t => case;
+  } = {
+    type themeColor = t;
+    [@unboxed]
+    type t =
+      | Any('a): t;
+    type case =
+      | String(string)
+      | ThemeColor(themeColor);
+    let themeColor = (v: themeColor) => Any(v);
+    let string = (v: string) => Any(v);
+    let classify = (Any(v): t): case =>
+      if (Js.typeof(v) == "string") {
+        String(Obj.magic(v): string);
+      } else {
+        ThemeColor(Obj.magic(v): themeColor);
+      };
+  };
+
+  let string = StringOrThemeColor.string;
+  let themeColor = StringOrThemeColor.themeColor;
+  let classify = StringOrThemeColor.classify;
+  type stringOrThemeColor = StringOrThemeColor.t;
+};
+
 [@unboxed]
 type any =
   | Any('a): any;
@@ -125,6 +164,38 @@ module Uri = {
     scheme,
   };
   [@bs.send] external with_: (t, change) => t = "with";
+
+  module StringOrUri: {
+    type uri = t;
+    type t;
+    type case =
+      | String(string)
+      | Uri(uri);
+    let uri: uri => t;
+    let string: string => t;
+    let classify: t => case;
+  } = {
+    type uri = t;
+    [@unboxed]
+    type t =
+      | Any('a): t;
+    type case =
+      | String(string)
+      | Uri(uri);
+    let uri = (v: uri) => Any(v);
+    let string = (v: string) => Any(v);
+    let classify = (Any(v): t): case =>
+      if (Js.typeof(v) == "string") {
+        String(Obj.magic(v): string);
+      } else {
+        Uri(Obj.magic(v): uri);
+      };
+  };
+
+  let string = StringOrUri.string;
+  let uri = StringOrUri.uri;
+  let classify = StringOrUri.classify;
+  type stringOrUri = StringOrUri.t;
 };
 
 module ViewColumn = {
@@ -791,13 +862,13 @@ module DecorationRenderOptions = {
     [@bs.optional]
     after: ThemableDecorationAttachmentRenderOptions.t,
     [@bs.optional]
-    backgroundColor: string,
+    backgroundColor: ThemeColor.stringOrThemeColor,
     [@bs.optional]
     before: ThemableDecorationAttachmentRenderOptions.t,
     [@bs.optional]
     border: string,
     [@bs.optional]
-    borderColor: string,
+    borderColor: ThemeColor.stringOrThemeColor,
     [@bs.optional]
     borderRadius: string,
     [@bs.optional]
@@ -807,7 +878,7 @@ module DecorationRenderOptions = {
     [@bs.optional]
     borderWidth: string,
     [@bs.optional]
-    color: string,
+    color: ThemeColor.stringOrThemeColor,
     [@bs.optional]
     cursor: string,
     [@bs.optional]
@@ -817,7 +888,7 @@ module DecorationRenderOptions = {
     [@bs.optional]
     fontWeight: string,
     [@bs.optional]
-    gutterIconPath: string,
+    gutterIconPath: Uri.stringOrUri,
     [@bs.optional]
     gutterIconSize: string,
     [@bs.optional]
@@ -831,13 +902,13 @@ module DecorationRenderOptions = {
     [@bs.optional]
     outline: string,
     [@bs.optional]
-    outlineColor: string,
+    outlineColor: ThemeColor.stringOrThemeColor,
     [@bs.optional]
     outlineStyle: string,
     [@bs.optional]
     outlineWidth: string,
     [@bs.optional]
-    overviewRulerColor: string,
+    overviewRulerColor: ThemeColor.stringOrThemeColor,
     [@bs.optional]
     overviewRulerLane: OverviewRulerLane.t,
     [@bs.optional]
@@ -845,48 +916,6 @@ module DecorationRenderOptions = {
     [@bs.optional]
     textDecoration: string,
   };
-  // properties
-  // [@bs.get]
-  // external after: t => option(ThemableDecorationAttachmentRenderOptions.t) =
-  //   "after";
-  // [@bs.get] external backgroundColor: t => option(string) = "backgroundColor";
-  // [@bs.get]
-  // external before: t => option(ThemableDecorationAttachmentRenderOptions.t) =
-  //   "before";
-  // [@bs.get] external border: t => option(string) = "border";
-  // [@bs.get] external borderColor: t => option(string) = "borderColor";
-  // [@bs.get] external borderRadius: t => option(string) = "borderRadius";
-  // [@bs.get] external borderSpacing: t => option(string) = "borderSpacing";
-  // [@bs.get] external borderStyle: t => option(string) = "borderStyle";
-  // [@bs.get] external borderWidth: t => option(string) = "borderWidth";
-  // [@bs.get] external color: t => option(string) = "color";
-  // [@bs.get] external cursor: t => option(string) = "cursor";
-  // [@bs.get]
-  // external dark: t => option(ThemableDecorationInstanceRenderOptions.t) =
-  //   "dark";
-  // [@bs.get] external fontStyle: t => option(string) = "fontStyle";
-  // [@bs.get] external fontWeight: t => option(string) = "fontWeight";
-  // [@bs.get] external gutterIconPath: t => option(string) = "gutterIconPath";
-  // [@bs.get] external gutterIconSize: t => option(string) = "gutterIconSize";
-  // [@bs.get] external isWholeLine: t => option(bool) = "isWholeLine";
-  // [@bs.get] external letterSpacing: t => option(string) = "letterSpacing";
-  // [@bs.get]
-  // external light: t => option(ThemableDecorationInstanceRenderOptions.t) =
-  //   "light";
-  // [@bs.get] external opacity: t => option(string) = "opacity";
-  // [@bs.get] external outline: t => option(string) = "outline";
-  // [@bs.get] external outlineColor: t => option(string) = "outlineColor";
-  // [@bs.get] external outlineStyle: t => option(string) = "outlineStyle";
-  // [@bs.get] external outlineWidth: t => option(string) = "outlineWidth";
-  // [@bs.get]
-  // external overviewRulerColor: t => option(string) = "overviewRulerColor";
-  // [@bs.get]
-  // external overviewRulerLane: t => option(OverviewRulerLane.t) =
-  //   "overviewRulerLane";
-  // [@bs.get]
-  // external rangeBehavior: t => option(DecorationRangeBehavior.t) =
-  //   "rangeBehavior";
-  // [@bs.get] external textDecoration: t => option(string) = "textDecoration";
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#TreeViewOptions

@@ -13,7 +13,6 @@ module Impl = (Editor: Sig.Editor) => {
       | SetSpecifications(specifications) =>
         state->State.setSpecifications(specifications);
         Promise.resolved();
-      | AddDecorations(_decorations) => Promise.resolved()
       | MarkError(site) =>
         let range =
           GCL.Response.Error.Site.toRange(

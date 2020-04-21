@@ -146,10 +146,15 @@ module Decoration = {
   };
 
   let markBackground = (editor: editor, range: range) => {
-    let handle =
-      Window.createTextEditorDecorationType(
-        DecorationRenderOptions.t(~backgroundColor="red", ()),
+    let options =
+      DecorationRenderOptions.t(
+        ~backgroundColor=
+          ThemeColor.themeColor(
+            ThemeColor.make("inputValidation.errorBackground"),
+          ),
+        (),
       );
+    let handle = Window.createTextEditorDecorationType(options);
     editor->TextEditor.setDecorations(handle, [|range|]);
     handle;
   };

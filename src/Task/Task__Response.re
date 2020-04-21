@@ -13,7 +13,6 @@ module Impl = (Editor: Sig.Editor) => {
       errors->Array.map(Task__Error.handle)->List.fromArray->Js.List.flatten
     | OK(obligations, specifications) => [
         SetSpecifications(specifications),
-        AddDecorations(specifications),
         // AddDecorations(
         //   (specifications, editor) =>
         //     specifications
