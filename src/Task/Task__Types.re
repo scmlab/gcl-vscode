@@ -14,6 +14,9 @@ module Impl = (Editor: Sig.Editor) => {
     | WithState(State.t => Promise.t(list(t)))
     | SetSpecifications(array(GCL.Response.Specification.t))
     | AddDecorations(array(GCL.Response.Specification.t))
+    | MarkError(GCL.Response.Error.Site.t)
+    | DigHole(GCL.Response.Error.Site.t)
+    | RemoveDecorations
     | DispatchCommand(Command.t)
     | SendRequest(Request.t)
     | Display(View.Request.Header.t, View.Request.Body.t);

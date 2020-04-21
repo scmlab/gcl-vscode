@@ -12,7 +12,7 @@ type view = Impl__View.t;
 
 type range = Vscode.Range.t;
 type point = Vscode.Position.t;
-
+type decoration = Vscode.TextEditorDecorationType.t;
 type fileName = string;
 
 let editorType = Sig.VsCode;
@@ -121,28 +121,38 @@ module View = {
   let make = Impl__View.make(getExtensionPath);
 };
 
-let digHole = (editor: editor, range: Vscode.Range.t) => {
-  let start = Vscode.Range.start(range);
-  // add indentation to the hole
-  let indent = Js.String.repeat(Vscode.Position.character(start), " ");
-  let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}";
-  let holeRange =
-    Vscode.Range.make(start, Vscode.Position.translate(start, 0, 1));
+//
+// Decoration
+//
 
-  let editCallback = edit => {
-    edit->TextEditorEdit.replaceAtRange(holeRange, holeText);
+module Decoration = {
+  let digHole = (editor: editor, range: Vscode.Range.t) => {
+    let start = Vscode.Range.start(range);
+    // add indentation to the hole
+    let indent = Js.String.repeat(Vscode.Position.character(start), " ");
+    let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}";
+    let holeRange =
+      Vscode.Range.make(start, Vscode.Position.translate(start, 0, 1));
+
+    let editCallback = edit => {
+      edit->TextEditorEdit.replaceAtRange(holeRange, holeText);
+    };
+    editor->TextEditor.edit(editCallback, None)->ignore;
+    // set the cursor inside the hole
+
+    let pos = Vscode.Position.translate(start, 1, 0);
+    let selection = Selection.make(pos, pos);
+    editor->TextEditor.setSelection(selection);
   };
-  editor->TextEditor.edit(editCallback, None)->ignore;
-  // set the cursor inside the hole
 
-  let pos = Vscode.Position.translate(start, 1, 0);
-  let selection = Selection.make(pos, pos);
-  editor->TextEditor.setSelection(selection);
-  Promise.resolved();
-};
+  let markBackground = (editor: editor, range: range) => {
+    let handle =
+      Window.createTextEditorDecorationType(
+        DecorationRenderOptions.t(~backgroundColor="red", ()),
+      );
+    editor->TextEditor.setDecorations(handle, [|range|]);
+    handle;
+  };
 
-let decorateBackground = (editor: editor) => {
-  ()// let decorationType = Window.createTextEditorDecorationType();
-    ;
-    // editor->TextEditor.setDecorations(decorationType, [||]);
+  let destroy = TextEditorDecorationType.dispose;
 };

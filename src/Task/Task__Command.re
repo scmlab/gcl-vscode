@@ -21,8 +21,14 @@ module Impl = (Editor: Sig.Editor) => {
                 ->Promise.map(saveSucceed =>
                     if (saveSucceed && fileName != "") {
                       switch (state.mode) {
-                      | WP1 => [SendRequest(Request.Load(fileName))]
-                      | WP2 => [SendRequest(Request.Load2(fileName))]
+                      | WP1 => [
+                          RemoveDecorations,
+                          SendRequest(Request.Load(fileName)),
+                        ]
+                      | WP2 => [
+                          RemoveDecorations,
+                          SendRequest(Request.Load2(fileName)),
+                        ]
                       };
                     } else {
                       [

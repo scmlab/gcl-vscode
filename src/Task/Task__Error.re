@@ -10,7 +10,7 @@ module Impl = (Editor: Sig.Editor) => {
     let handle = site =>
       fun
       | MissingBound => [
-          Task__Types.AddDecorations([||]),
+          Task__Types.MarkError(site),
           Display(
             Error("Bound Missing"),
             Plain(
@@ -19,80 +19,35 @@ module Impl = (Editor: Sig.Editor) => {
           ),
         ]
       | MissingAssertion => [
-          AddDecorations([||]),
-          // AddDecorations(Decoration.markSite(site)),
+          MarkError(site),
           Display(
             Error("Assertion Missing"),
             Plain("Assertion before the DO construct is missing"),
           ),
         ]
-      // | MissingLoopInvariant => [
-      //     AddDecorations([||]),
-      //     // AddDecorations(Decoration.markSite(site)),
-      //     Display(
-      //       Error("Loop Invariant Missing"),
-      //       Plain("Loop invariant before the DO construct is missing"),
-      //     ),
-      //   ]
       | ExcessBound => [
-          AddDecorations([||]),
-          // AddDecorations(Decoration.markSite(site)),
+          MarkError(site),
           Display(
             Error("Excess Bound"),
             Plain("Unnecessary bound annotation at this assertion"),
           ),
         ]
-      // | MissingPrecondition => [
-      //     Display(
-      //       Error("Precondition Missing"),
-      //       Plain(
-      //         "The first statement of the program should be an assertion",
-      //       ),
-      //     ),
-      //   ]
       | MissingPostcondition => [
+          MarkError(site),
           Display(
             Error("Postcondition Missing"),
             Plain("The last statement of the program should be an assertion"),
           ),
         ]
-      | DigHole => {
-          Js.log(site);
-
-          [
-            WithState(
-              state => {
-                let range =
-                  GCL.Response.Error.Site.toRange(
-                    site,
-                    state.specifications,
-                    Editor.toRange,
-                  );
-                state.editor->Editor.digHole(range)->Promise.map(_ => []);
-              },
-            ),
-          ];
-        }; // WithState(
-    //   state => {
-    //     let%P _ = state |> Spec.digHole(site);
-    //     switch (state.history) {
-    //     | Some(Types.Request.Refine(_)) =>
-    //       Promise.resolved([
-    //         DispatchCommand(Save),
-    //         DispatchCommand(Refine),
-    //       ])
-    //     | _ => Promise.resolved([DispatchCommand(Save)])
-    //     };
-    //   },
-    // ),
+      | DigHole => [DigHole(site)];
   };
 
   module StructError2 = {
     open Guacamole.GCL.Response.Error.StructError2;
-    let handle = _site =>
+    let handle = site =>
       fun
       | MissingBound => [
-          Task__Types.AddDecorations([||]),
+          Task__Types.MarkError(site),
           Display(
             Error("Bound Missing"),
             Plain(
@@ -100,31 +55,15 @@ module Impl = (Editor: Sig.Editor) => {
             ),
           ),
         ]
-      // | MissingAssertion => [
-      //     AddDecorations([||]),
-      //     // AddDecorations(Decoration.markSite(site)),
-      //     Display(
-      //       Error("Assertion Missing"),
-      //       Plain("Assertion before the DO construct is missing"),
-      //     ),
-      //   ]
       | MissingLoopInvariant => [
-          AddDecorations([||]),
-          // AddDecorations(Decoration.markSite(site)),
+          MarkError(site),
           Display(
             Error("Loop Invariant Missing"),
             Plain("Loop invariant before the DO construct is missing"),
           ),
         ]
-      // | ExcessBound => [
-      //     AddDecorations([||]),
-      //     // AddDecorations(Decoration.markSite(site)),
-      //     Display(
-      //       Error("Excess Bound"),
-      //       Plain("Unnecessary bound annotation at this assertion"),
-      //     ),
-      //   ]
       | MissingPrecondition => [
+          MarkError(site),
           Display(
             Error("Precondition Missing"),
             Plain(
@@ -133,42 +72,30 @@ module Impl = (Editor: Sig.Editor) => {
           ),
         ]
       | MissingPostcondition => [
+          MarkError(site),
           Display(
             Error("Postcondition Missing"),
             Plain("The last statement of the program should be an assertion"),
           ),
         ]
       | PreconditionUnknown => [
+          MarkError(site),
           Display(Error("Precondition Unknown"), Plain("")),
         ]
-      | DigHole => []; // WithState(
-    //   state => {
-    //     let%P _ = state |> Spec.digHole(site);
-    //     switch (state.history) {
-    //     | Some(Types.Request.Refine(_)) =>
-    //       Promise.resolved([
-    //         DispatchCommand(Save),
-    //         DispatchCommand(Refine),
-    //       ])
-    //     | _ => Promise.resolved([DispatchCommand(Save)])
-    //     };
-    //   },
-    // ),
+      | DigHole => [DigHole(site)];
   };
   let handle = error => {
     let Error(site, kind) = error;
     switch (kind) {
     | LexicalError => [
-        Task__Types.AddDecorations([||]),
-        // Task__Types.AddDecorations(Decoration.markSite(site)),
+        Task__Types.MarkError(site),
         Display(
           Error("Lexical Error"),
           Plain(Guacamole.GCL.Response.Error.Site.toString(site)),
         ),
       ]
     | SyntacticError(messages) => [
-        AddDecorations([||]),
-        // AddDecorations(Decoration.markSite(site)),
+        MarkError(site),
         Display(
           Error("Parse Error"),
           Plain(messages->Js.String.concatMany("\n")),
@@ -177,16 +104,14 @@ module Impl = (Editor: Sig.Editor) => {
     | StructError(error) => StructError.handle(site, error)
     | StructError2(error) => StructError2.handle(site, error)
     | TypeError(NotInScope(name)) => [
-        AddDecorations([||]),
-        // AddDecorations(Decoration.markSite(site)),
+        MarkError(site),
         Display(
           Error("Type Error"),
           Plain("The definition " ++ name ++ " is not in scope"),
         ),
       ]
     | TypeError(UnifyFailed(s, t)) => [
-        AddDecorations([||]),
-        // AddDecorations(Decoration.markSite(site)),
+        MarkError(site),
         Display(
           Error("Type Error"),
           Plain(
@@ -198,8 +123,7 @@ module Impl = (Editor: Sig.Editor) => {
         ),
       ]
     | TypeError(RecursiveType(var, t)) => [
-        AddDecorations([||]),
-        // AddDecorations(Decoration.markSite(site)),
+        MarkError(site),
         Display(
           Error("Type Error"),
           Plain(
@@ -212,8 +136,7 @@ module Impl = (Editor: Sig.Editor) => {
         ),
       ]
     | TypeError(NotFunction(t)) => [
-        AddDecorations([||]),
-        // AddDecorations(Decoration.markSite(site)),
+        MarkError(site),
         Display(
           Error("Type Error"),
           Plain(
@@ -222,16 +145,14 @@ module Impl = (Editor: Sig.Editor) => {
         ),
       ]
     | CannotReadFile(path) => [
-        AddDecorations([||]),
-        // AddDecorations(Decoration.markSite(site)),
+        MarkError(site),
         Display(
           Error("Cannot Read File"),
           Plain("Cannot read file of path: " ++ path),
         ),
       ]
     | NotLoaded => [
-        AddDecorations([||]),
-        // AddDecorations(Decoration.markSite(site)),
+        MarkError(site),
         Display(Error("Not Loaded"), Plain("Please load the file first")),
       ]
     };

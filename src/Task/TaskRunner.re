@@ -3,6 +3,7 @@ module Impl = (Editor: Sig.Editor) => {
   module TaskResponse = Task__Response.Impl(Editor);
   module Task = Task__Types.Impl(Editor);
   module State = Impl__State.Impl(Editor);
+  open Belt;
   // run the Tasks
   let rec run = (state: State.t, tasks: list(Task.t)): Promise.t(unit) => {
     let runTask = task =>
@@ -13,6 +14,31 @@ module Impl = (Editor: Sig.Editor) => {
         state->State.setSpecifications(specifications);
         Promise.resolved();
       | AddDecorations(_decorations) => Promise.resolved()
+      | MarkError(site) =>
+        let range =
+          GCL.Response.Error.Site.toRange(
+            site,
+            state.specifications,
+            Editor.toRange,
+          );
+        state.editor
+        ->Editor.Decoration.markBackground(range)
+        ->Js.Array.push(state.decorations)
+        ->ignore;
+        Promise.resolved();
+      | DigHole(site) =>
+        let range =
+          GCL.Response.Error.Site.toRange(
+            site,
+            state.specifications,
+            Editor.toRange,
+          );
+        state.editor->Editor.Decoration.digHole(range);
+        Promise.resolved();
+      | RemoveDecorations =>
+        state.decorations->Array.forEach(Editor.Decoration.destroy);
+        Promise.resolved();
+
       | DispatchCommand(command) =>
         Js.log2("[ dispatch command ]", command);
         TaskCommand.dispatch(command) |> run(state);

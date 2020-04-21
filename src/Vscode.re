@@ -786,49 +786,107 @@ module DecorationRangeBehavior = {
 
 // https://code.visualstudio.com/api/references/vscode-api#DecorationRenderOptions
 module DecorationRenderOptions = {
-  type t;
+  [@bs.deriving abstract]
+  type t = {
+    [@bs.optional]
+    after: ThemableDecorationAttachmentRenderOptions.t,
+    [@bs.optional]
+    backgroundColor: string,
+    [@bs.optional]
+    before: ThemableDecorationAttachmentRenderOptions.t,
+    [@bs.optional]
+    border: string,
+    [@bs.optional]
+    borderColor: string,
+    [@bs.optional]
+    borderRadius: string,
+    [@bs.optional]
+    borderSpacing: string,
+    [@bs.optional]
+    borderStyle: string,
+    [@bs.optional]
+    borderWidth: string,
+    [@bs.optional]
+    color: string,
+    [@bs.optional]
+    cursor: string,
+    [@bs.optional]
+    dark: ThemableDecorationInstanceRenderOptions.t,
+    [@bs.optional]
+    fontStyle: string,
+    [@bs.optional]
+    fontWeight: string,
+    [@bs.optional]
+    gutterIconPath: string,
+    [@bs.optional]
+    gutterIconSize: string,
+    [@bs.optional]
+    isWholeLine: bool,
+    [@bs.optional]
+    letterSpacing: string,
+    [@bs.optional]
+    light: ThemableDecorationInstanceRenderOptions.t,
+    [@bs.optional]
+    opacity: string,
+    [@bs.optional]
+    outline: string,
+    [@bs.optional]
+    outlineColor: string,
+    [@bs.optional]
+    outlineStyle: string,
+    [@bs.optional]
+    outlineWidth: string,
+    [@bs.optional]
+    overviewRulerColor: string,
+    [@bs.optional]
+    overviewRulerLane: OverviewRulerLane.t,
+    [@bs.optional]
+    rangeBehavior: DecorationRangeBehavior.t,
+    [@bs.optional]
+    textDecoration: string,
+  };
   // properties
-  [@bs.get]
-  external after: t => option(ThemableDecorationAttachmentRenderOptions.t) =
-    "after";
-  [@bs.get] external backgroundColor: t => option(string) = "backgroundColor";
-  [@bs.get]
-  external before: t => option(ThemableDecorationAttachmentRenderOptions.t) =
-    "before";
-  [@bs.get] external border: t => option(string) = "border";
-  [@bs.get] external borderColor: t => option(string) = "borderColor";
-  [@bs.get] external borderRadius: t => option(string) = "borderRadius";
-  [@bs.get] external borderSpacing: t => option(string) = "borderSpacing";
-  [@bs.get] external borderStyle: t => option(string) = "borderStyle";
-  [@bs.get] external borderWidth: t => option(string) = "borderWidth";
-  [@bs.get] external color: t => option(string) = "color";
-  [@bs.get] external cursor: t => option(string) = "cursor";
-  [@bs.get]
-  external dark: t => option(ThemableDecorationInstanceRenderOptions.t) =
-    "dark";
-  [@bs.get] external fontStyle: t => option(string) = "fontStyle";
-  [@bs.get] external fontWeight: t => option(string) = "fontWeight";
-  [@bs.get] external gutterIconPath: t => option(string) = "gutterIconPath";
-  [@bs.get] external gutterIconSize: t => option(string) = "gutterIconSize";
-  [@bs.get] external isWholeLine: t => option(bool) = "isWholeLine";
-  [@bs.get] external letterSpacing: t => option(string) = "letterSpacing";
-  [@bs.get]
-  external light: t => option(ThemableDecorationInstanceRenderOptions.t) =
-    "light";
-  [@bs.get] external opacity: t => option(string) = "opacity";
-  [@bs.get] external outline: t => option(string) = "outline";
-  [@bs.get] external outlineColor: t => option(string) = "outlineColor";
-  [@bs.get] external outlineStyle: t => option(string) = "outlineStyle";
-  [@bs.get] external outlineWidth: t => option(string) = "outlineWidth";
-  [@bs.get]
-  external overviewRulerColor: t => option(string) = "overviewRulerColor";
-  [@bs.get]
-  external overviewRulerLane: t => option(OverviewRulerLane.t) =
-    "overviewRulerLane";
-  [@bs.get]
-  external rangeBehavior: t => option(DecorationRangeBehavior.t) =
-    "rangeBehavior";
-  [@bs.get] external textDecoration: t => option(string) = "textDecoration";
+  // [@bs.get]
+  // external after: t => option(ThemableDecorationAttachmentRenderOptions.t) =
+  //   "after";
+  // [@bs.get] external backgroundColor: t => option(string) = "backgroundColor";
+  // [@bs.get]
+  // external before: t => option(ThemableDecorationAttachmentRenderOptions.t) =
+  //   "before";
+  // [@bs.get] external border: t => option(string) = "border";
+  // [@bs.get] external borderColor: t => option(string) = "borderColor";
+  // [@bs.get] external borderRadius: t => option(string) = "borderRadius";
+  // [@bs.get] external borderSpacing: t => option(string) = "borderSpacing";
+  // [@bs.get] external borderStyle: t => option(string) = "borderStyle";
+  // [@bs.get] external borderWidth: t => option(string) = "borderWidth";
+  // [@bs.get] external color: t => option(string) = "color";
+  // [@bs.get] external cursor: t => option(string) = "cursor";
+  // [@bs.get]
+  // external dark: t => option(ThemableDecorationInstanceRenderOptions.t) =
+  //   "dark";
+  // [@bs.get] external fontStyle: t => option(string) = "fontStyle";
+  // [@bs.get] external fontWeight: t => option(string) = "fontWeight";
+  // [@bs.get] external gutterIconPath: t => option(string) = "gutterIconPath";
+  // [@bs.get] external gutterIconSize: t => option(string) = "gutterIconSize";
+  // [@bs.get] external isWholeLine: t => option(bool) = "isWholeLine";
+  // [@bs.get] external letterSpacing: t => option(string) = "letterSpacing";
+  // [@bs.get]
+  // external light: t => option(ThemableDecorationInstanceRenderOptions.t) =
+  //   "light";
+  // [@bs.get] external opacity: t => option(string) = "opacity";
+  // [@bs.get] external outline: t => option(string) = "outline";
+  // [@bs.get] external outlineColor: t => option(string) = "outlineColor";
+  // [@bs.get] external outlineStyle: t => option(string) = "outlineStyle";
+  // [@bs.get] external outlineWidth: t => option(string) = "outlineWidth";
+  // [@bs.get]
+  // external overviewRulerColor: t => option(string) = "overviewRulerColor";
+  // [@bs.get]
+  // external overviewRulerLane: t => option(OverviewRulerLane.t) =
+  //   "overviewRulerLane";
+  // [@bs.get]
+  // external rangeBehavior: t => option(DecorationRangeBehavior.t) =
+  //   "rangeBehavior";
+  // [@bs.get] external textDecoration: t => option(string) = "textDecoration";
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#TreeViewOptions

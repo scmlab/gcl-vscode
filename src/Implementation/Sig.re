@@ -26,6 +26,7 @@ module type Editor = {
   type view;
   type point;
   type range;
+  type decoration;
   type fileName = string;
 
   let editorType: editorType;
@@ -70,7 +71,10 @@ module type Editor = {
     let recv: (view, View.Response.t => unit) => Disposable.t;
   };
 
-  let digHole: (editor, range) => Promise.t(unit);
-  let decorateBackground: editor => unit;
+  module Decoration: {
+    let digHole: (editor, range) => unit;
+    let markBackground: (editor, range) => decoration;
+    let destroy: decoration => unit;
+  };
   /* let decorateWithTex*/
 };

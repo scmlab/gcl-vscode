@@ -6,7 +6,7 @@ module Impl = (Editor: Sig.Editor) => {
     context,
     view: Editor.view,
     mutable mode: View.Response.mode,
-    mutable decorations: array(unit),
+    mutable decorations: array(Editor.decoration),
     mutable specifications: array(GCL.Response.Specification.t),
     mutable connection: option(Connection.t),
     onDestroyEventEmitter: Event.t(unit),
