@@ -625,50 +625,59 @@ module MarkdownString = {
 
 // https://code.visualstudio.com/api/references/vscode-api#ThemableDecorationAttachmentRenderOptions
 module ThemableDecorationAttachmentRenderOptions = {
-  type t;
-  // properties
-  [@bs.get] external backgroundColor: t => option(string) = "backgroundColor";
-  [@bs.get] external border: t => option(string) = "border";
-  [@bs.get] external borderColor: t => option(string) = "borderColor";
-  [@bs.get] external color: t => option(string) = "color";
-  [@bs.get] external contentIconPath: t => option(string) = "contentIconPath";
-  [@bs.get] external contentText: t => option(string) = "contentText";
-  [@bs.get] external fontStyle: t => option(string) = "fontStyle";
-  [@bs.get] external fontWeight: t => option(string) = "fontWeight";
-  [@bs.get] external height: t => option(string) = "height";
-  [@bs.get] external margin: t => option(string) = "margin";
-  [@bs.get] external textDecoration: t => option(string) = "textDecoration";
-  [@bs.get] external width: t => option(string) = "width";
+  [@bs.deriving abstract]
+  type t = {
+    [@bs.optional]
+    backgroundColor: ThemeColor.stringOrThemeColor,
+    [@bs.optional]
+    border: string,
+    [@bs.optional]
+    borderColor: ThemeColor.stringOrThemeColor,
+    [@bs.optional]
+    color: ThemeColor.stringOrThemeColor,
+    [@bs.optional]
+    contentIconPath: Uri.stringOrUri,
+    [@bs.optional]
+    contentText: string,
+    [@bs.optional]
+    fontStyle: string,
+    [@bs.optional]
+    fontWeight: string,
+    [@bs.optional]
+    height: string,
+    [@bs.optional]
+    margin: string,
+    [@bs.optional]
+    textDecoration: string,
+    [@bs.optional]
+    width: string,
+  };
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#ThemableDecorationInstanceRenderOptions
 module ThemableDecorationInstanceRenderOptions = {
-  type t;
-  // properties
-  [@bs.get]
-  external after: t => option(ThemableDecorationAttachmentRenderOptions.t) =
-    "after";
-  [@bs.get]
-  external before: t => option(ThemableDecorationAttachmentRenderOptions.t) =
-    "before";
+  [@bs.deriving abstract]
+  type t = {
+    [@bs.optional]
+    after: ThemableDecorationAttachmentRenderOptions.t,
+    [@bs.optional]
+    before: ThemableDecorationAttachmentRenderOptions.t,
+  };
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#DecorationInstanceRenderOptions;
 module DecorationInstanceRenderOptions = {
-  type t;
-  // properties
-  [@bs.get]
-  external after: t => option(ThemableDecorationAttachmentRenderOptions.t) =
-    "after";
-  [@bs.get]
-  external before: t => option(ThemableDecorationAttachmentRenderOptions.t) =
-    "before";
-  [@bs.get]
-  external dark: t => option(ThemableDecorationInstanceRenderOptions.t) =
-    "dark";
-  [@bs.get]
-  external light: t => option(ThemableDecorationInstanceRenderOptions.t) =
-    "light";
+  [@bs.deriving abstract]
+  type t = {
+    [@bs.optional]
+    after: ThemableDecorationAttachmentRenderOptions.t,
+    [@bs.optional]
+    before: ThemableDecorationAttachmentRenderOptions.t,
+    [@bs.optional]
+    dark: ThemableDecorationInstanceRenderOptions.t,
+    [@bs.optional]
+    light: ThemableDecorationInstanceRenderOptions.t,
+  };
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#DecorationOptions
