@@ -167,16 +167,35 @@ module Decoration = {
     editor->TextEditor.setSelection(selection);
   };
 
-  let markBackground = (editor: editor, kind: kind, range: Range.t) => {
+  let highlightBackground = (editor: editor, kind: kind, range: Range.t) => {
     let backgroundColor =
       ThemeColor.themeColor(
         switch (kind) {
         | Error => ThemeColor.make("inputValidation.errorBackground")
-        | Spec => ThemeColor.make("editor.findMatchBackground")
+        | Spec => ThemeColor.make("editor.wordHighlightStrongBackground")
         },
       );
-
     let options = DecorationRenderOptions.t(~backgroundColor, ());
+    let handle = Window.createTextEditorDecorationType(options);
+    editor->TextEditor.setDecorations(handle, [|range|]);
+    [|handle|];
+  };
+
+  let overlayText = (editor: editor, kind: kind, text: string, range: Range.t) => {
+    let after =
+      ThemableDecorationAttachmentRenderOptions.t(
+        ~contentText=text,
+        ~color=
+          ThemeColor.themeColor(
+            switch (kind) {
+            | Error => ThemeColor.make("errorForeground")
+            | Spec => ThemeColor.make("descriptionForeground")
+            },
+          ),
+        (),
+      );
+
+    let options = DecorationRenderOptions.t(~after, ());
     let handle = Window.createTextEditorDecorationType(options);
     editor->TextEditor.setDecorations(handle, [|range|]);
     [|handle|];

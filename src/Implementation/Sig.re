@@ -92,8 +92,8 @@ module type Editor = {
       | Spec;
 
     let digHole: (editor, Range.t) => unit;
-    let markBackground: (editor, kind, Range.t) => array(decoration);
-    // let markSpec: (editor, GCL.Response.Specification.t) => array(decoration);
+    let highlightBackground: (editor, kind, Range.t) => array(decoration);
+    let overlayText: (editor, kind, string, Range.t) => array(decoration);
     let destroy: decoration => unit;
   };
   /* let decorateWithTex*/

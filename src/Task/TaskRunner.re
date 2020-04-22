@@ -19,7 +19,10 @@ module Impl = (Editor: Sig.Editor) => {
           );
         let decorations =
           state.editor
-          ->Editor.Decoration.markBackground(Editor.Decoration.Error, range);
+          ->Editor.Decoration.highlightBackground(
+              Editor.Decoration.Error,
+              range,
+            );
         state.decorations = Js.Array.concat(decorations, state.decorations);
         Promise.resolved();
       | MarkSpec(spec) =>
@@ -37,10 +40,34 @@ module Impl = (Editor: Sig.Editor) => {
         let endRange =
           Range.make(Point.translate(endPoint, 0, -2), endPoint);
 
+        let trim = s =>
+          if (String.length(s) > 77) {
+            String.sub(s, 0, 73) ++ " ...";
+          } else {
+            s;
+          };
+
+        let preCondText = " " ++ trim(GCL.Syntax.Pred.toString(spec.pre));
+        let postCondText = " " ++ trim(GCL.Syntax.Pred.toString(spec.post));
+
+        // see if the Spec's precondition and the post-condition look the same (i.e. the Q_Q case)
+        let isQQ = preCondText == postCondText;
         let decorations =
           Array.concatMany([|
-            Decoration.markBackground(state.editor, Spec, startRange),
-            Decoration.markBackground(state.editor, Spec, endRange),
+            Decoration.overlayText(
+              state.editor,
+              Spec,
+              isQQ ? "" : preCondText,
+              startRange,
+            ),
+            Decoration.overlayText(
+              state.editor,
+              Spec,
+              isQQ ? "" : postCondText,
+              endRange,
+            ),
+            Decoration.highlightBackground(state.editor, Spec, startRange),
+            Decoration.highlightBackground(state.editor, Spec, endRange),
           |]);
 
         state.decorations = Js.Array.concat(decorations, state.decorations);
