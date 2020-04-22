@@ -136,7 +136,16 @@ let make = (getExtensionPath, context, editor) => {
   let onResponse = Event.make();
   panel
   ->WebviewPanel.webview
-  ->Webview.onDidReceiveMessage(onResponse.emit)
+  ->Webview.onDidReceiveMessage(json => {
+      switch (View.Response.decode(json)) {
+      | result => onResponse.emit(result)
+      | exception e =>
+        Js.log2(
+          "[ panic ][ Webview.onDidReceiveMessage JSON decode error ]",
+          e,
+        )
+      }
+    })
   ->Js.Array.push(context->ExtensionContext.subscriptions)
   ->ignore;
 
@@ -152,12 +161,19 @@ let make = (getExtensionPath, context, editor) => {
   view.onResponse.on(
     fun
     | Initialized => {
+        Js.log("Initialized");
         switch (view.status) {
         | Uninitialized(queued) =>
           view.status = Initialized;
           queued->Belt.Array.forEach(req => send(view, req)->ignore);
         | Initialized => ()
         };
+      }
+    | Destroyed => {
+        Js.log("Destroyed");
+      }
+    | Link(_) => {
+        Js.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       }
     | _ => (),
   )

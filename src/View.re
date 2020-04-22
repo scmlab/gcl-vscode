@@ -95,14 +95,6 @@ module Request = {
     fun
     | Show => object_([("tag", string("Show"))])
     | Hide => object_([("tag", string("Hide"))])
-    // | Display(_header, _body) =>
-    //   object_([
-    //     ("tag", string("Display")),
-    //     (
-    //       "contents",
-    //       (Header.Loading, Body.Nothing) |> pair(Header.encode, Body.encode),
-    //     ),
-    //   ]);
     | Display(header, body) =>
       object_([
         ("tag", string("Display")),
@@ -125,4 +117,80 @@ module Response = {
     | Link(linkEvent)
     | Initialized
     | Destroyed;
+
+  open Json.Decode;
+  open Util.Decode;
+
+  let decodeMode: decoder(mode) =
+    sum(
+      fun
+      | "WP1" => TagOnly(_ => WP1)
+      | "WP2" => TagOnly(_ => WP2)
+      | tag =>
+        raise(
+          DecodeError("[View.Response.mode] Unknown constructor: " ++ tag),
+        ),
+    );
+
+  let decodeLinkEvent: decoder(linkEvent) =
+    sum(
+      fun
+      | "MouseOver" => Contents(loc => MouseOver(GCL.Loc.decode(loc)))
+      | "MouseOut" => Contents(loc => MouseOut(GCL.Loc.decode(loc)))
+      | "MouseClick" => Contents(loc => MouseClick(GCL.Loc.decode(loc)))
+      | tag =>
+        raise(
+          DecodeError(
+            "[View.Response.linkEvent] Unknown constructor: " ++ tag,
+          ),
+        ),
+    );
+
+  let decode: decoder(t) =
+    sum(
+      fun
+      | "Initialized" => TagOnly(_ => Initialized)
+      | "Destroyed" => TagOnly(_ => Destroyed)
+      | "SetMode" => Contents(json => SetMode(decodeMode(json)))
+      | "Link" => Contents(json => Link(decodeLinkEvent(json)))
+      | tag =>
+        raise(DecodeError("[View.Response.t] Unknown constructor: " ++ tag)),
+    );
+
+  open! Json.Encode;
+
+  let encodeMode: encoder(mode) =
+    fun
+    | WP1 => object_([("tag", string("WP1"))])
+    | WP2 => object_([("tag", string("WP2"))]);
+
+  let encodeLinkEvent: encoder(linkEvent) =
+    fun
+    | MouseOver(loc) =>
+      object_([
+        ("tag", string("MouseOver")),
+        ("contents", GCL.Loc.encode(loc)),
+      ])
+    | MouseOut(loc) =>
+      object_([
+        ("tag", string("MouseOut")),
+        ("contents", GCL.Loc.encode(loc)),
+      ])
+    | MouseClick(loc) =>
+      object_([
+        ("tag", string("MouseClick")),
+        ("contents", GCL.Loc.encode(loc)),
+      ]);
+
+  let encode: encoder(t) =
+    fun
+    | Initialized => object_([("tag", string("Initialized"))])
+    | Destroyed => object_([("tag", string("Destroyed"))])
+    | Link(e) =>
+      object_([("tag", string("Link")), ("contents", encodeLinkEvent(e))])
+    | SetMode(mode) =>
+      object_([
+        ("tag", string("SetMode")),
+        ("contents", encodeMode(mode)),
+      ]);
 };

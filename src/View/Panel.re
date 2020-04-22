@@ -9,6 +9,7 @@ let make =
   let (body, setBody) = React.useState(() => View.Request.Body.Nothing);
   let (mode, setMode) = React.useState(_ => View.Response.WP1);
   let (hidden, setHidden) = React.useState(_ => false);
+  let onClickLink = React.useRef(Event.make());
 
   // response with Initialized on mount
   React.useEffect1(
@@ -49,13 +50,20 @@ let make =
     [|mode|],
   );
 
-  // event relay
-  let onClickLink = Event.make();
-  let _ = onClickLink.on(ev => onResponse.emit(Link(ev)));
+  // relay <Link> events to "onResponse"
+  React.useEffect1(
+    () =>
+      Some(
+        React.Ref.current(onClickLink).on(ev => {
+          onResponse.emit(Link(ev))
+        }),
+      ),
+    [||],
+  );
 
   let className = "gcl-panel native-key-bindings" ++ (hidden ? " hidden" : "");
 
-  <Link.Provider value=onClickLink>
+  <Link.Provider value={React.Ref.current(onClickLink)}>
     <section className tabIndex=(-1)>
       <Header header editorType mode onChangeMode />
       <Body body />

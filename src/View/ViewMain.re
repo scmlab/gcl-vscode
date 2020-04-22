@@ -13,7 +13,9 @@ Vscode.Api.onMessage(stringifiedJSON => {
 
 // relay onResponse => Vscode.Api.postMessage
 let onResponse = Event.make();
-onResponse.on(vscode->Vscode.Api.postMessage);
+onResponse.on(response => {
+  vscode->Vscode.Api.postMessage(View.Response.encode(response))
+});
 
 // mount the view at the "root" element
 Webapi.Dom.Document.getElementById("root", Webapi.Dom.document)

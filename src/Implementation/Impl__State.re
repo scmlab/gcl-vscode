@@ -98,12 +98,9 @@ module Impl = (Editor: Sig.Editor) => {
     ->Editor.View.recv(
         fun
         | View.Response.SetMode(mode) => state.mode = mode
-        | Link(_) => ()
+        | Link(_) => Js.log("LINK")
         | Initialized => ()
-        | Destroyed => {
-            Js.log("destroyed!!");
-            destroy(state)->ignore;
-          },
+        | Destroyed => destroy(state)->ignore,
       )
     ->Editor.addToSubscriptions(context);
 
