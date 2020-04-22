@@ -14,21 +14,41 @@ module Error = {
         msg ++ "\n" ++ "JSON from GCL: \n" ++ Js.Json.stringify(json),
       );
 };
+module type Disposable = {
+  type t;
+  let make: (unit => unit) => t;
+  let dispose: t => unit;
+};
 
 module type Editor = {
   type editor;
   type context;
-  module Disposable: {
-    type t;
-    let make: (unit => unit) => t;
-    let dispose: t => unit;
-  };
+  module Disposable: Disposable;
   type view;
-
-  type point;
-  type range;
-  type decoration;
   type fileName = string;
+
+  module Point: {
+    type t;
+    let line: t => int;
+    let column: t => int;
+    let make: (int, int) => t;
+    let translate: (t, int, int) => t;
+
+    let fromPos: GCL.pos => t;
+    let toPos: (fileName, t) => GCL.pos;
+  };
+
+  module Range: {
+    type t;
+    let make: (Point.t, Point.t) => t;
+    let start: t => Point.t;
+    let end_: t => Point.t;
+
+    let fromLoc: GCL.loc => t;
+    let toLoc: (fileName, t) => GCL.loc;
+  };
+
+  type decoration;
 
   let editorType: editorType;
 
@@ -36,12 +56,6 @@ module type Editor = {
   let getExtensionPath: context => fileName;
   let getFileName: editor => option(fileName);
   let save: editor => Promise.t(bool);
-
-  let toPoint: GCL.pos => point;
-  let fromPoint: (fileName, point) => GCL.pos;
-
-  let toRange: GCL.loc => range;
-  let fromRange: (fileName, range) => GCL.loc;
 
   // Events
   let onDidChangeFileName:
@@ -77,8 +91,8 @@ module type Editor = {
       | Error
       | Spec;
 
-    let digHole: (editor, range) => unit;
-    let markBackground: (editor, kind, range) => array(decoration);
+    let digHole: (editor, Range.t) => unit;
+    let markBackground: (editor, kind, Range.t) => array(decoration);
     // let markSpec: (editor, GCL.Response.Specification.t) => array(decoration);
     let destroy: decoration => unit;
   };

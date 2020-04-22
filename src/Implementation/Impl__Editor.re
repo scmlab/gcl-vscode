@@ -10,8 +10,52 @@ module Disposable = {
 };
 type view = Impl__View.t;
 
-type range = Vscode.Range.t;
-type point = Vscode.Position.t;
+module Point = {
+  type t = Position.t;
+  let make = Position.make;
+  let line = Position.line;
+  let column = Position.character;
+  let translate = Position.translate;
+
+  let fromPos =
+    fun
+    | GCL.Pos.Pos(_, line, column) => Position.make(line - 1, column - 1);
+
+  let toPos = (filepath, point) =>
+    GCL.Pos.Pos(
+      filepath,
+      Position.line(point) + 1,
+      Position.character(point) + 1,
+    );
+};
+
+module Range = {
+  type t = Vscode.Range.t;
+  let make = Vscode.Range.make;
+  let start = Vscode.Range.start;
+  let end_ = Vscode.Range.end_;
+  // let make =  Vscode.Range.make;
+
+  let fromLoc =
+    fun
+    | GCL.Loc.NoLoc =>
+      Vscode.Range.make(Position.make(0, 0), Position.make(0, 0))
+    | Loc(x, Pos(_, line, column)) =>
+      Vscode.Range.make(Point.fromPos(x), Position.make(line - 1, column));
+  let toLoc = (filepath, range) => {
+    let start = Vscode.Range.start(range);
+    let end_ = Vscode.Range.end_(range);
+    GCL.Loc.Loc(
+      Pos(
+        filepath,
+        Position.line(start) + 1,
+        Position.character(start) + 1,
+      ),
+      Pos(filepath, Position.line(end_) + 1, Position.character(end_)),
+    );
+  };
+};
+
 type decoration = Vscode.TextEditorDecorationType.t;
 type fileName = string;
 
@@ -23,32 +67,6 @@ let getFileName = editor =>
   Some(editor->TextEditor.document->TextDocument.fileName);
 
 let save = editor => editor->TextEditor.document->TextDocument.save;
-
-let toPoint =
-  fun
-  | GCL.Pos.Pos(_, line, column) => Position.make(line - 1, column - 1);
-
-let fromPoint = (filepath, point) =>
-  GCL.Pos.Pos(
-    filepath,
-    Position.line(point) + 1,
-    Position.character(point) + 1,
-  );
-
-let toRange =
-  fun
-  | GCL.Loc.NoLoc =>
-    Vscode.Range.make(Position.make(0, 0), Position.make(0, 0))
-  | Loc(x, Pos(_, line, column)) =>
-    Vscode.Range.make(toPoint(x), Position.make(line - 1, column));
-let fromRange = (filepath, range) => {
-  let start = Vscode.Range.start(range);
-  let end_ = Vscode.Range.end_(range);
-  GCL.Loc.Loc(
-    Pos(filepath, Position.line(start) + 1, Position.character(start) + 1),
-    Pos(filepath, Position.line(end_) + 1, Position.character(end_)),
-  );
-};
 
 let addToSubscriptions = (disposable, context) =>
   disposable->Js.Array.push(context->ExtensionContext.subscriptions)->ignore;
@@ -149,7 +167,7 @@ module Decoration = {
     editor->TextEditor.setSelection(selection);
   };
 
-  let markBackground = (editor: editor, kind: kind, range: range) => {
+  let markBackground = (editor: editor, kind: kind, range: Range.t) => {
     let options =
       DecorationRenderOptions.t(
         ~backgroundColor=

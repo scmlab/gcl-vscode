@@ -15,7 +15,7 @@ module Impl = (Editor: Sig.Editor) => {
           GCL.Response.Error.Site.toRange(
             site,
             state.specifications,
-            Editor.toRange,
+            Editor.Range.fromLoc,
           );
         let decorations =
           state.editor
@@ -36,7 +36,7 @@ module Impl = (Editor: Sig.Editor) => {
           GCL.Response.Error.Site.toRange(
             site,
             state.specifications,
-            Editor.toRange,
+            Editor.Range.fromLoc,
           );
         state.editor->Editor.Decoration.digHole(range);
         Promise.resolved();

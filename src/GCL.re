@@ -857,7 +857,7 @@ module Response = {
         | Global(loc)
         | Local(loc, int);
 
-      let toLoc = (site, specifications) => {
+      let toLoc = (site, specifications): loc => {
         Specification.(
           switch (site) {
           | Global(loc) => loc
