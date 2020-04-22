@@ -23,14 +23,28 @@ module Impl = (Editor: Sig.Editor) => {
         state.decorations = Js.Array.concat(decorations, state.decorations);
         Promise.resolved();
       | MarkSpec(spec) =>
-        // let decorations =
-        //   specs
-        //   ->Array.map(spec => {
-        //       state.editor->Editor.Decoration.markSpec(spec)
-        //     })
-        //   ->Array.concatMany;
-        // state.decorations = Js.Array.concat(decorations, state.decorations);
-        Promise.resolved()
+        open! Editor;
+
+        let range = Range.fromLoc(spec.loc);
+
+        let startPoint = Range.start(range);
+        let endPoint = Range.end_(range);
+
+        // range of {!
+        let startRange =
+          Range.make(startPoint, Point.translate(startPoint, 0, 2));
+        // range of !}
+        let endRange =
+          Range.make(Point.translate(endPoint, 0, -2), endPoint);
+
+        let decorations =
+          Array.concatMany([|
+            Decoration.markBackground(state.editor, Spec, startRange),
+            Decoration.markBackground(state.editor, Spec, endRange),
+          |]);
+
+        state.decorations = Js.Array.concat(decorations, state.decorations);
+        Promise.resolved();
       | DigHole(site) =>
         let range =
           GCL.Response.Error.Site.toRange(

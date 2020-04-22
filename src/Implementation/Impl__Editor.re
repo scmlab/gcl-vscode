@@ -168,14 +168,15 @@ module Decoration = {
   };
 
   let markBackground = (editor: editor, kind: kind, range: Range.t) => {
-    let options =
-      DecorationRenderOptions.t(
-        ~backgroundColor=
-          ThemeColor.themeColor(
-            ThemeColor.make("inputValidation.errorBackground"),
-          ),
-        (),
+    let backgroundColor =
+      ThemeColor.themeColor(
+        switch (kind) {
+        | Error => ThemeColor.make("inputValidation.errorBackground")
+        | Spec => ThemeColor.make("editor.findMatchBackground")
+        },
       );
+
+    let options = DecorationRenderOptions.t(~backgroundColor, ());
     let handle = Window.createTextEditorDecorationType(options);
     editor->TextEditor.setDecorations(handle, [|range|]);
     [|handle|];

@@ -17,7 +17,6 @@ module Impl = (Editor: Sig.Editor) => {
         ->List.fromArray
         ->List.map(spec => Task__Types.MarkSpec(spec)),
         [
-          // SetSpecifications(specifications),
           WithState(
             state => {
               state.specifications = specifications;
