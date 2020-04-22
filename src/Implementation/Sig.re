@@ -48,8 +48,6 @@ module type Editor = {
     let toLoc: (fileName, t) => GCL.loc;
   };
 
-  type decoration;
-
   let editorType: editorType;
 
   // Helpers
@@ -87,14 +85,17 @@ module type Editor = {
   };
 
   module Decoration: {
+    type t;
     type kind =
       | Error
+      | Highlight
       | Spec;
 
     let digHole: (editor, Range.t) => unit;
-    let highlightBackground: (editor, kind, Range.t) => array(decoration);
-    let overlayText: (editor, kind, string, Range.t) => array(decoration);
-    let destroy: decoration => unit;
+    let highlightBackground: (editor, kind, Range.t) => array(t);
+    let overlayText: (editor, kind, string, Range.t) => array(t);
+    let destroy: t => unit;
   };
-  /* let decorateWithTex*/
+
+  let select: (editor, Range.t) => unit;
 };

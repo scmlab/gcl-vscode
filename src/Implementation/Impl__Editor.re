@@ -56,7 +56,6 @@ module Range = {
   };
 };
 
-type decoration = Vscode.TextEditorDecorationType.t;
 type fileName = string;
 
 let editorType = Sig.VsCode;
@@ -144,8 +143,11 @@ module View = {
 //
 
 module Decoration = {
+  type t = Vscode.TextEditorDecorationType.t;
+
   type kind =
     | Error
+    | Highlight
     | Spec;
 
   let digHole = (editor: editor, range: Vscode.Range.t) => {
@@ -172,6 +174,7 @@ module Decoration = {
       ThemeColor.themeColor(
         switch (kind) {
         | Error => ThemeColor.make("inputValidation.errorBackground")
+        | Highlight => ThemeColor.make("editor.symbolHighlightBackground")
         | Spec => ThemeColor.make("editor.wordHighlightStrongBackground")
         },
       );
@@ -189,6 +192,7 @@ module Decoration = {
           ThemeColor.themeColor(
             switch (kind) {
             | Error => ThemeColor.make("errorForeground")
+            | Highlight => ThemeColor.make("descriptionForeground")
             | Spec => ThemeColor.make("descriptionForeground")
             },
           ),
@@ -202,4 +206,11 @@ module Decoration = {
   };
 
   let destroy = TextEditorDecorationType.dispose;
+};
+
+let select = (editor, range) => {
+  let start = Range.start(range);
+  let end_ = Range.end_(range);
+  let selection = Selection.make(start, end_);
+  editor->TextEditor.setSelection(selection);
 };

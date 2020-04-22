@@ -6,7 +6,7 @@ module Impl = (Editor: Sig.Editor) => {
     context,
     view: Editor.view,
     mutable mode: View.Response.mode,
-    mutable decorations: array(Editor.decoration),
+    mutable decorations: array(Editor.Decoration.t),
     mutable specifications: array(GCL.Response.Specification.t),
     mutable connection: option(Connection.t),
     onDestroyEventEmitter: Event.t(unit),
@@ -93,15 +93,39 @@ module Impl = (Editor: Sig.Editor) => {
       onDestroyEventEmitter: Event.make(),
     };
 
-    // update the state on receiving message from the view
+    // a dictionary of decorations for <Link>
+    let decorationDict: Js.Dict.t(array(Editor.Decoration.t)) =
+      Js.Dict.empty();
+    let delete_: string => unit = [%raw
+      "function (id) {delete decorationDict[id]}"
+    ];
+
+    let onRecvMessageFromView = x =>
+      switch (x) {
+      | View.Response.SetMode(mode) => state.mode = mode
+      | Link(MouseOver(loc)) =>
+        let key = GCL.Loc.toString(loc);
+        let range = Editor.Range.fromLoc(loc);
+        let decoration =
+          Editor.Decoration.highlightBackground(editor, Highlight, range);
+        Js.Dict.set(decorationDict, key, decoration);
+      | Link(MouseOut(loc)) =>
+        let key = Guacamole.GCL.Loc.toString(loc);
+        Js.Dict.get(decorationDict, key)
+        ->Belt.Option.forEach(decos =>
+            decos->Belt.Array.forEach(Editor.Decoration.destroy)
+          );
+        delete_(key);
+      | Link(MouseClick(loc)) =>
+        let range = Editor.Range.fromLoc(loc);
+        editor->Editor.select(range);
+      | Initialized => ()
+      | Destroyed => destroy(state)->ignore
+      };
+
+    // update the state on receiving messages from the view
     view
-    ->Editor.View.recv(
-        fun
-        | View.Response.SetMode(mode) => state.mode = mode
-        | Link(_) => Js.log("LINK")
-        | Initialized => ()
-        | Destroyed => destroy(state)->ignore,
-      )
+    ->Editor.View.recv(onRecvMessageFromView)
     ->Editor.addToSubscriptions(context);
 
     state;

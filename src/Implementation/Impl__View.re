@@ -161,19 +161,12 @@ let make = (getExtensionPath, context, editor) => {
   view.onResponse.on(
     fun
     | Initialized => {
-        Js.log("Initialized");
         switch (view.status) {
         | Uninitialized(queued) =>
           view.status = Initialized;
           queued->Belt.Array.forEach(req => send(view, req)->ignore);
         | Initialized => ()
         };
-      }
-    | Destroyed => {
-        Js.log("Destroyed");
-      }
-    | Link(_) => {
-        Js.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       }
     | _ => (),
   )
