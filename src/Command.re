@@ -10,11 +10,3 @@ let names = [|
   (InsertAssertion, "insert-assertion"),
   (Debug, "debug"),
 |];
-
-let parse =
-  fun
-  | "reload" => Reload
-  | "refine" => Refine
-  | "insert-assertion" => InsertAssertion
-  | "debug" => Debug
-  | _ => Reload;

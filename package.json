@@ -34,6 +34,10 @@
 			{
 				"command": "extension.reload",
 				"title": "Reload"
+			},
+			{
+				"command": "extension.refine",
+				"title": "Refine"
 			}
 		],
 		"keybindings": [
@@ -46,6 +50,11 @@
 				"command": "extension.reload",
 				"key": "ctrl+s",
 				"mac": "cmd+s"
+			},
+			{
+				"command": "extension.refine",
+				"key": "ctrl+c ctrl+r",
+				"mac": "ctrl+c ctrl+r"
 			}
 		],
 		"configuration": {

@@ -43,5 +43,21 @@ module Impl = (Editor: Sig.Editor) => {
           },
         ),
       ]
+    | Refine => [
+        DispatchCommand(Reload),
+        WithState(
+          state => {
+            state
+            ->State.Spec.fromCursorPosition
+            ->Option.mapWithDefault(
+                Promise.resolved([]),
+                spec => {
+                  let payload = State.Spec.getPayload(state.editor, spec);
+                  Promise.resolved([SendRequest(Refine(spec.id, payload))]);
+                },
+              )
+          },
+        ),
+      ]
     | _ => [];
 };

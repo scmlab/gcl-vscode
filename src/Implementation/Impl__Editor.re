@@ -54,6 +54,9 @@ module Range = {
       Pos(filepath, Position.line(end_) + 1, Position.character(end_)),
     );
   };
+
+  let contains = Vscode.Range.contains;
+  let containsRange = Vscode.Range.containsRange;
 };
 
 type fileName = string;
@@ -214,3 +217,10 @@ let select = (editor, range) => {
   let selection = Selection.make(start, end_);
   editor->TextEditor.setSelection(selection);
 };
+
+let getCursorPosition = editor => editor->TextEditor.selection->Selection.end_;
+
+let textForRange = (editor, range) =>
+  editor->TextEditor.document->TextDocument.getText(Some(range));
+let rangeForLine = (editor, line) =>
+  editor->TextEditor.document->TextDocument.lineAt(line)->TextLine.range;

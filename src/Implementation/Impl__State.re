@@ -1,4 +1,5 @@
 module Impl = (Editor: Sig.Editor) => {
+  open Belt;
   type editor = Editor.editor;
   type context = Editor.context;
   type t = {
@@ -74,7 +75,7 @@ module Impl = (Editor: Sig.Editor) => {
     state.view->Editor.View.destroy;
     state.onDestroyEventEmitter.destroy();
     state.onDestroyEventEmitter.emit();
-    state.decorations->Belt.Array.forEach(Editor.Decoration.destroy);
+    state.decorations->Array.forEach(Editor.Decoration.destroy);
     state->disconnect;
   };
 
@@ -112,8 +113,8 @@ module Impl = (Editor: Sig.Editor) => {
       | Link(MouseOut(loc)) =>
         let key = Guacamole.GCL.Loc.toString(loc);
         Js.Dict.get(decorationDict, key)
-        ->Belt.Option.forEach(decos =>
-            decos->Belt.Array.forEach(Editor.Decoration.destroy)
+        ->Option.forEach(decos =>
+            decos->Array.forEach(Editor.Decoration.destroy)
           );
         delete_(key);
       | Link(MouseClick(loc)) =>
@@ -139,5 +140,51 @@ module Impl = (Editor: Sig.Editor) => {
   let hide = state => state.view->Editor.View.hide;
   let display = (state, header, body) => {
     state.view->Editor.View.send(View.Request.Display(header, body));
+  };
+  //
+  // Spec-related
+  //
+
+  module Spec = {
+    // find the hole containing the cursor
+    let fromCursorPosition = state => {
+      let cursor = Editor.getCursorPosition(state.editor);
+      // find the smallest hole containing the cursor, as there might be many of them
+      let smallestHole = ref(None);
+      state.specifications
+      ->Array.keep(spec => {
+          let range = Editor.Range.fromLoc(spec.loc);
+          Editor.Range.contains(range, cursor);
+        })
+      ->Array.forEach(spec =>
+          switch (smallestHole^) {
+          | None => smallestHole := Some(spec)
+          | Some(spec') =>
+            if (Editor.Range.containsRange(
+                  Editor.Range.fromLoc(spec.loc),
+                  Editor.Range.fromLoc(spec'.loc),
+                )) {
+              smallestHole := Some(spec);
+            }
+          }
+        );
+      smallestHole^;
+    };
+
+    let getPayloadRange = (editor, spec: GCL.Response.Specification.t) => {
+      open! Editor;
+      let range = Editor.Range.fromLoc(spec.loc);
+      let startingLine = Point.line(Range.start(range)) + 1;
+      let endingLine = Point.line(Range.end_(range)) - 1;
+
+      let start = editor->Editor.rangeForLine(startingLine)->Range.start;
+      let end_ = editor->Editor.rangeForLine(endingLine)->Range.end_;
+      Range.make(start, end_);
+    };
+    let getPayload = (editor, spec) => {
+      // return the text in the targeted hole
+      let innerRange = getPayloadRange(editor, spec);
+      editor->Editor.textForRange(innerRange);
+    };
   };
 };

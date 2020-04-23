@@ -46,6 +46,9 @@ module type Editor = {
 
     let fromLoc: GCL.loc => t;
     let toLoc: (fileName, t) => GCL.loc;
+
+    let contains: (t, Point.t) => bool;
+    let containsRange: (t, t) => bool;
   };
 
   let editorType: editorType;
@@ -98,4 +101,7 @@ module type Editor = {
   };
 
   let select: (editor, Range.t) => unit;
+  let getCursorPosition: editor => Point.t;
+  let rangeForLine: (editor, int) => Range.t;
+  let textForRange: (editor, Range.t) => string;
 };
