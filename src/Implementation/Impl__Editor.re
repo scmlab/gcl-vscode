@@ -211,16 +211,30 @@ module Decoration = {
   let destroy = TextEditorDecorationType.dispose;
 };
 
-let select = (editor, range) => {
-  let start = Range.start(range);
-  let end_ = Range.end_(range);
-  let selection = Selection.make(start, end_);
-  editor->TextEditor.setSelection(selection);
-};
-
 let getCursorPosition = editor => editor->TextEditor.selection->Selection.end_;
 
 let textForRange = (editor, range) =>
   editor->TextEditor.document->TextDocument.getText(Some(range));
 let rangeForLine = (editor, line) =>
   editor->TextEditor.document->TextDocument.lineAt(line)->TextLine.range;
+
+let getText = (editor, range) =>
+  editor->TextEditor.document->TextDocument.getText(Some(range));
+let selectText = (editor, range) => {
+  let start = Range.start(range);
+  let end_ = Range.end_(range);
+  let selection = Selection.make(start, end_);
+  editor->TextEditor.setSelection(selection);
+};
+let insertText = (editor, point, text) => {
+  let editCallback = edit => {
+    edit->TextEditorEdit.insert(point, text);
+  };
+  editor->TextEditor.edit(editCallback, None);
+};
+let deleteText = (editor, range) => {
+  let editCallback = edit => {
+    edit->TextEditorEdit.delete(range);
+  };
+  editor->TextEditor.edit(editCallback, None);
+};

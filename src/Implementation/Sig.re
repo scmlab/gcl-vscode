@@ -100,8 +100,11 @@ module type Editor = {
     let destroy: t => unit;
   };
 
-  let select: (editor, Range.t) => unit;
   let getCursorPosition: editor => Point.t;
   let rangeForLine: (editor, int) => Range.t;
-  let textForRange: (editor, Range.t) => string;
+
+  let getText: (editor, Range.t) => string;
+  let selectText: (editor, Range.t) => unit;
+  let insertText: (editor, Point.t, string) => Promise.t(bool);
+  let deleteText: (editor, Range.t) => Promise.t(bool);
 };

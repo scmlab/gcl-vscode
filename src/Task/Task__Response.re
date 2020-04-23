@@ -29,14 +29,14 @@ module Impl = (Editor: Sig.Editor) => {
           ),
         ],
       )
-    | Resolve(_i) =>
-      // WithState(
-      //   state => {
-      //     let%P _ = Spec.resolve(i, state);
-      //     Promise.resolved([DispatchCommand(Save)]);
-      //   },
-      // ),
-      []
+    | Resolve(i) => [
+        WithState(
+          state => {
+            let%P _ = State.Spec.resolve(state, i);
+            Promise.resolved([Task__Types.DispatchCommand(Reload)]);
+          },
+        ),
+      ]
     | InsertAssertion(_i, _expr) =>
       // WithState(
       //   state => {

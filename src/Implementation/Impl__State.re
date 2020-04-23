@@ -119,7 +119,7 @@ module Impl = (Editor: Sig.Editor) => {
         delete_(key);
       | Link(MouseClick(loc)) =>
         let range = Editor.Range.fromLoc(loc);
-        editor->Editor.select(range);
+        editor->Editor.selectText(range);
       | Initialized => ()
       | Destroyed => destroy(state)->ignore
       };
@@ -184,7 +184,28 @@ module Impl = (Editor: Sig.Editor) => {
     let getPayload = (editor, spec) => {
       // return the text in the targeted hole
       let innerRange = getPayloadRange(editor, spec);
-      editor->Editor.textForRange(innerRange);
+      editor->Editor.getText(innerRange);
+    };
+
+    let resolve = (state, i) => {
+      let specs = state.specifications->Array.keep(spec => spec.id == i);
+      specs[0]
+      ->Option.forEach(spec => {
+          let payload = getPayload(state.editor, spec);
+          let range = Editor.Range.fromLoc(spec.loc);
+          let start = Editor.Range.start(range);
+          state.editor
+          ->Editor.deleteText(range)
+          ->Promise.flatMap(
+              fun
+              | false => Promise.resolved(false)
+              | true =>
+                state.editor
+                ->Editor.insertText(start, Js.String.trim(payload)),
+            )
+          ->Promise.get(_ => ());
+        });
+      Promise.resolved();
     };
   };
 };
