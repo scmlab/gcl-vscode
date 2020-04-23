@@ -39,7 +39,7 @@ module Impl = (Editor: Sig.Editor) => {
             Plain("The last statement of the program should be an assertion"),
           ),
         ]
-      | DigHole => [DigHole(site)];
+      | DigHole => [DigHole(site), DispatchCommand(Reload)];
   };
 
   module StructError2 = {
@@ -82,7 +82,7 @@ module Impl = (Editor: Sig.Editor) => {
           MarkError(site),
           Display(Error("Precondition Unknown"), Plain("")),
         ]
-      | DigHole => [DigHole(site)];
+      | DigHole => [DigHole(site), DispatchCommand(Reload)];
   };
   let handle = error => {
     let Error(site, kind) = error;
