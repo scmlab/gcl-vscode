@@ -21,7 +21,7 @@ module Point = {
     fun
     | GCL.Pos.Pos(_, line, column) => Position.make(line - 1, column - 1);
 
-  let toPos = (filepath, point) =>
+  let toPos = (point, filepath) =>
     GCL.Pos.Pos(
       filepath,
       Position.line(point) + 1,
@@ -42,7 +42,7 @@ module Range = {
       Vscode.Range.make(Position.make(0, 0), Position.make(0, 0))
     | Loc(x, Pos(_, line, column)) =>
       Vscode.Range.make(Point.fromPos(x), Position.make(line - 1, column));
-  let toLoc = (filepath, range) => {
+  let toLoc = (range, filepath) => {
     let start = Vscode.Range.start(range);
     let end_ = Vscode.Range.end_(range);
     GCL.Loc.Loc(

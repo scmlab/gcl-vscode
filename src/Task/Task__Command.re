@@ -59,5 +59,15 @@ module Impl = (Editor: Sig.Editor) => {
           },
         ),
       ]
-    | _ => [];
+    | InsertAssertion => [
+        DispatchCommand(Reload),
+        WithState(
+          state => {
+            let cursor = Editor.getCursorPosition(state.editor);
+            open GCL.Pos;
+            let Pos(_, line, _) = Editor.Point.toPos(cursor, "whatever");
+            Promise.resolved([SendRequest(InsertAssertion(line))]);
+          },
+        ),
+      ];
 };

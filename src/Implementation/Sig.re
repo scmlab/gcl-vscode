@@ -35,7 +35,7 @@ module type Editor = {
     let translate: (t, int, int) => t;
 
     let fromPos: GCL.pos => t;
-    let toPos: (fileName, t) => GCL.pos;
+    let toPos: (t, fileName) => GCL.pos;
   };
 
   module Range: {
@@ -45,7 +45,7 @@ module type Editor = {
     let end_: t => Point.t;
 
     let fromLoc: GCL.loc => t;
-    let toLoc: (fileName, t) => GCL.loc;
+    let toLoc: (t, fileName) => GCL.loc;
 
     let contains: (t, Point.t) => bool;
     let containsRange: (t, t) => bool;
@@ -101,6 +101,8 @@ module type Editor = {
   };
 
   let getCursorPosition: editor => Point.t;
+  // let setCursor: (editor, Point.t) => unit;
+
   let rangeForLine: (editor, int) => Range.t;
 
   let getText: (editor, Range.t) => string;

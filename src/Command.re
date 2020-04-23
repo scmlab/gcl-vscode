@@ -1,12 +1,10 @@
 type t =
   | Reload
   | Refine
-  | InsertAssertion
-  | Debug;
+  | InsertAssertion;
 
 let names = [|
   (Reload, "reload"),
   (Refine, "refine"),
   (InsertAssertion, "insert-assertion"),
-  (Debug, "debug"),
 |];

@@ -38,6 +38,10 @@
 			{
 				"command": "extension.refine",
 				"title": "Refine"
+			},
+			{
+				"command": "extension:insert-assertion",
+				"title": "Insert assertion"
 			}
 		],
 		"keybindings": [
@@ -55,6 +59,11 @@
 				"command": "extension.refine",
 				"key": "ctrl+c ctrl+r",
 				"mac": "ctrl+c ctrl+r"
+			},
+			{
+				"command": "extension.insert-assertion",
+				"key": "ctrl+c ctrl+a",
+				"mac": "ctrl+c ctrl+a"
 			}
 		],
 		"configuration": {

@@ -33,18 +33,17 @@ module Impl = (Editor: Sig.Editor) => {
         WithState(
           state => {
             let%P _ = State.Spec.resolve(state, i);
-            Promise.resolved([Task__Types.DispatchCommand(Reload)]);
+            Promise.resolved([]);
           },
         ),
+        DispatchCommand(Reload),
       ]
-    | InsertAssertion(_i, _expr) =>
-      // WithState(
-      //   state => {
-      //     Spec.insert(i, expr, state);
-      //     Promise.resolved([DispatchCommand(Save)]);
-      //   },
-      // ),
-      []
+    | InsertAssertion(i, expr) => [
+        WithState(
+          state => {State.Spec.insert(state, i, expr)->Promise.map(_ => [])},
+        ),
+        DispatchCommand(Reload),
+      ]
     | UnknownResponse(json) => [
         Display(
           Error("Panic: unknown response from GCL"),

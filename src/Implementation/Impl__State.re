@@ -207,5 +207,12 @@ module Impl = (Editor: Sig.Editor) => {
         });
       Promise.resolved();
     };
+
+    let insert = (state, lineNo, expr) => {
+      let assertion = "{ " ++ GCL.Syntax.Expr.toString(expr) ++ " }\n";
+      let point = Editor.Point.make(lineNo - 1, 0);
+      // insert the assertion
+      Editor.insertText(state.editor, point, assertion);
+    };
   };
 };
