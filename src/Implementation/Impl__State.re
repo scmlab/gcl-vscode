@@ -8,7 +8,7 @@ module Impl = (Editor: Sig.Editor) => {
     view: Editor.view,
     mutable mode: View.Response.mode,
     mutable decorations: array(Editor.Decoration.t),
-    mutable specifications: array(GCL.Response.Specification.t),
+    mutable specifications: array(Response.Specification.t),
     mutable connection: option(Connection.t),
     onDestroyEventEmitter: Event.t(unit),
   };
@@ -51,7 +51,7 @@ module Impl = (Editor: Sig.Editor) => {
 
     let%Ok conn = state->connect;
     let%Ok result =
-      Guacamole.Connection.send(value, conn)
+      Connection.send(value, conn)
       ->Promise.mapError(e => Sig.Error.Connection(e));
 
     Js.log2(
@@ -60,7 +60,7 @@ module Impl = (Editor: Sig.Editor) => {
     );
 
     // catching exceptions occured when decoding JSON values
-    switch (Guacamole.GCL.Response.decode(result)) {
+    switch (Response.decode(result)) {
     | value => Promise.resolved(Ok(value))
     | exception (Json.Decode.DecodeError(msg)) =>
       Promise.resolved(Error(Sig.Error.Decode(msg, result)))
@@ -111,7 +111,7 @@ module Impl = (Editor: Sig.Editor) => {
           Editor.Decoration.highlightBackground(editor, Highlight, range);
         Js.Dict.set(decorationDict, key, decoration);
       | Link(MouseOut(loc)) =>
-        let key = Guacamole.GCL.Loc.toString(loc);
+        let key = GCL.Loc.toString(loc);
         Js.Dict.get(decorationDict, key)
         ->Option.forEach(decos =>
             decos->Array.forEach(Editor.Decoration.destroy)
@@ -171,7 +171,7 @@ module Impl = (Editor: Sig.Editor) => {
       smallestHole^;
     };
 
-    let getPayloadRange = (editor, spec: GCL.Response.Specification.t) => {
+    let getPayloadRange = (editor, spec: Response.Specification.t) => {
       open! Editor;
       let range = Editor.Range.fromLoc(spec.loc);
       let startingLine = Point.line(Range.start(range)) + 1;

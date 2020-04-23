@@ -2,7 +2,7 @@
 open Belt;
 open React;
 
-open GCL.Response;
+open Response;
 
 module ProofObligation = {
   [@react.component]

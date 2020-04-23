@@ -213,8 +213,6 @@ module Decoration = {
 
 let getCursorPosition = editor => editor->TextEditor.selection->Selection.end_;
 
-let textForRange = (editor, range) =>
-  editor->TextEditor.document->TextDocument.getText(Some(range));
 let rangeForLine = (editor, line) =>
   editor->TextEditor.document->TextDocument.lineAt(line)->TextLine.range;
 

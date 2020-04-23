@@ -12,7 +12,7 @@ module Impl = (Editor: Sig.Editor) => {
         callback(state)->Promise.flatMap(run(state))
       | MarkError(site) =>
         let range =
-          GCL.Response.Error.Site.toRange(
+          Response.Error.Site.toRange(
             site,
             state.specifications,
             Editor.Range.fromLoc,
@@ -74,7 +74,7 @@ module Impl = (Editor: Sig.Editor) => {
         Promise.resolved();
       | DigHole(site) =>
         let range =
-          GCL.Response.Error.Site.toRange(
+          Response.Error.Site.toRange(
             site,
             state.specifications,
             Editor.Range.fromLoc,

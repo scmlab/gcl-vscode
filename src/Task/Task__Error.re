@@ -1,12 +1,12 @@
-open Guacamole.GCL.Syntax;
+open GCL.Syntax;
 
-open! GCL.Response.Error;
+open! Response.Error;
 
 module Impl = (Editor: Sig.Editor) => {
   module State = Impl__State.Impl(Editor);
   module Task__Types = Task__Types.Impl(Editor);
   module StructError = {
-    open Guacamole.GCL.Response.Error.StructError;
+    open Response.Error.StructError;
     let handle = site =>
       fun
       | MissingBound => [
@@ -43,7 +43,7 @@ module Impl = (Editor: Sig.Editor) => {
   };
 
   module StructError2 = {
-    open Guacamole.GCL.Response.Error.StructError2;
+    open Response.Error.StructError2;
     let handle = site =>
       fun
       | MissingBound => [
@@ -91,7 +91,7 @@ module Impl = (Editor: Sig.Editor) => {
         Task__Types.MarkError(site),
         Display(
           Error("Lexical Error"),
-          Plain(Guacamole.GCL.Response.Error.Site.toString(site)),
+          Plain(Response.Error.Site.toString(site)),
         ),
       ]
     | SyntacticError(messages) => [

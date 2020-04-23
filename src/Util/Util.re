@@ -1,7 +1,5 @@
 open Belt;
 
-[@bs.val] external _stringify: Js.Json.t => string = "JSON.stringify";
-
 module Decode = {
   open Json.Decode;
 
@@ -48,7 +46,7 @@ module Decode = {
         );
       };
     } else {
-      raise(DecodeError("Expected array, got " ++ _stringify(json)));
+      raise(DecodeError("Expected array, got " ++ Js.Json.stringify(json)));
     };
 };
 
@@ -95,25 +93,4 @@ module React = {
     fun
     | true => ""
     | false => " hidden";
-};
-
-module JsError = {
-  let toString = (_e: Js.Exn.t) => {
-    %raw
-    "_e.toString()";
-  };
-};
-
-module Result = {
-  type t('a, 'e) = result('a, 'e);
-  let every = (xs: array(t('a, 'e))): t(array('a), 'e) =>
-    Array.reduce(xs, Ok([||]), (acc, x) =>
-      switch (acc, x) {
-      | (Ok(xs), Ok(v)) =>
-        Js.Array.push(v, xs) |> ignore;
-        Ok(xs);
-      | (_, Error(e)) => Error(e)
-      | (Error(e), _) => Error(e)
-      }
-    );
 };

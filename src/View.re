@@ -32,7 +32,7 @@ module Request = {
   module Body = {
     type t =
       | Nothing
-      | ProofObligations(array(GCL.Response.ProofObligation.t))
+      | ProofObligations(array(Response.ProofObligation.t))
       | Plain(string);
 
     open Json.Decode;
@@ -46,7 +46,7 @@ module Request = {
           Contents(
             json =>
               ProofObligations(
-                json |> array(GCL.Response.ProofObligation.decode),
+                json |> array(Response.ProofObligation.decode),
               ),
           )
         | "Plain" => Contents(json => Plain(string(json)))
@@ -63,7 +63,7 @@ module Request = {
       | ProofObligations(x) =>
         object_([
           ("tag", string("ProofObligations")),
-          ("contents", x |> array(GCL.Response.ProofObligation.encode)),
+          ("contents", x |> array(Response.ProofObligation.encode)),
         ])
       | Plain(x) =>
         object_([("tag", string("Plain")), ("contents", string(x))]);

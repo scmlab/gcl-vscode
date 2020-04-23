@@ -1,6 +1,6 @@
 open Belt;
 
-open! Guacamole.GCL.Response;
+open! Response;
 
 module Impl = (Editor: Sig.Editor) => {
   module State = Impl__State.Impl(Editor);
