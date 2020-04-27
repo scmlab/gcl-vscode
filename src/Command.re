@@ -1,4 +1,6 @@
 type t =
+  | Load
+  | Quit
   | Reload
   | Refine
   | InsertAssertion;

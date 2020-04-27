@@ -114,29 +114,14 @@ module Impl = (Editor: Sig.Editor) => {
             ->State.onDestroy(() => {States.remove(fileName)})
             ->Editor.addToSubscriptions(context);
             States.add(fileName, state);
-            // initialize connection
-            state
-            ->State.connect
-            ->Promise.get(
-                fun
-                | Error(e) => {
-                    let (header, body) = Sig.Error.toString(e);
-                    TaskRunner.run(
-                      state,
-                      [Display(Error(header), Plain(body))],
-                    )
-                    ->ignore;
-                  }
-                | Ok(_c) => {
-                    TaskCommand.dispatch(Command.Reload)
-                    |> TaskRunner.run(state)
-                    |> ignore;
-                  },
-              );
-
-          | Some(_state) =>
-            // already in the States dict, remove and destroy it
-            fileName->States.destroy
+            // dispatch "Load"
+            TaskCommand.dispatch(Load)->TaskRunner.run(state)->ignore;
+          | Some(state) =>
+            // already in the States dict, dispatch "Quit"
+            // and remove and destroy it from the dict
+            TaskCommand.dispatch(Quit)
+            ->TaskRunner.run(state)
+            ->Promise.get(() => {fileName->States.destroy})
           }
         })
     })
@@ -148,7 +133,7 @@ module Impl = (Editor: Sig.Editor) => {
         editor
         ->States.getByEditor
         ->Option.forEach(state =>
-            TaskCommand.dispatch(command) |> TaskRunner.run(state) |> ignore
+            TaskCommand.dispatch(command)->TaskRunner.run(state)->ignore
           )
       })
       ->Editor.addToSubscriptions(context)

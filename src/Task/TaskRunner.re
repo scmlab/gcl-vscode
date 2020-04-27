@@ -5,11 +5,24 @@ module Impl = (Editor: Sig.Editor) => {
   module State = Impl__State.Impl(Editor);
   open Belt;
   // run the Tasks
-  let rec run = (state: State.t, tasks: list(Task.t)): Promise.t(unit) => {
+  let rec run = (tasks: list(Task.t), state: State.t): Promise.t(unit) => {
     let runTask = task =>
       switch (task) {
       | Task.WithState(callback) =>
-        callback(state)->Promise.flatMap(run(state))
+        callback(state)->Promise.flatMap(tasks => run(tasks, state))
+      | Connect =>
+        state
+        ->State.connect
+        ->Promise.flatMap(
+            fun
+            | Error(e) => {
+                let (header, body) = Sig.Error.toString(e);
+                [Display(Error(header), Plain(body))]->run(state);
+              }
+            | Ok(_c) => {
+                TaskCommand.dispatch(Command.Reload)->run(state);
+              },
+          )
       | MarkError(site) =>
         let range =
           Response.Error.Site.toRange(
@@ -87,7 +100,7 @@ module Impl = (Editor: Sig.Editor) => {
 
       | DispatchCommand(command) =>
         Js.log2("[ dispatch command ]", command);
-        TaskCommand.dispatch(command) |> run(state);
+        TaskCommand.dispatch(command)->run(state);
       | SendRequest(request) =>
         Js.log("[ send request ]");
         state
@@ -96,9 +109,9 @@ module Impl = (Editor: Sig.Editor) => {
             fun
             | Error(error) => {
                 let (header, body) = Sig.Error.toString(error);
-                [Task.Display(Error(header), Plain(body))] |> run(state);
+                [Task.Display(Error(header), Plain(body))]->run(state);
               }
-            | Ok(response) => TaskResponse.handle(response) |> run(state),
+            | Ok(response) => TaskResponse.handle(response)->run(state),
           );
       | Display(header, body) =>
         state->State.display(header, body)->Promise.map(_ => ())
