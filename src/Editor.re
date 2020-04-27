@@ -8,7 +8,7 @@ module Disposable = {
   let make = Disposable.make;
   let dispose = Disposable.dispose;
 };
-type view = View__Controller.t;
+type view = ViewController.t;
 
 module Point = {
   type t = Position.t;
@@ -136,9 +136,9 @@ module Config = {
 // View
 //
 module View = {
-  include View__Controller;
+  include ViewController;
   // override View.make to inject editor-dependent arguments
-  let make = View__Controller.make(getExtensionPath);
+  let make = ViewController.make(getExtensionPath);
 };
 
 //

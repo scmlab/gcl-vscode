@@ -5,22 +5,22 @@ module Impl = (Editor: Sig.Editor) => {
   module State = State.Impl(Editor);
   open Belt;
   // run the Tasks
-  let rec run = (tasks: list(Task.t), state: State.t): Promise.t(unit) => {
-    let runTask = task =>
+  let run = (tasks: list(Task.t), state: State.t): Promise.t(unit) => {
+    let runTask = (task: Task.t): Promise.t(list(Task.t)) =>
       switch (task) {
-      | Task.WithState(callback) =>
-        callback(state)->Promise.flatMap(tasks => run(tasks, state))
+      | Task.WithState(callback) => callback(state)
+      // ->Promise.flatMap(tasks => run(tasks, state))
       | Connect =>
         state
         ->State.connect
-        ->Promise.flatMap(
+        ->Promise.map(
             fun
             | Error(e) => {
                 let (header, body) = Sig.Error.toString(e);
-                [Display(Error(header), Plain(body))]->run(state);
+                [Task.Display(Error(header), Plain(body))];
               }
             | Ok(_c) => {
-                TaskCommand.dispatch(Command.Reload)->run(state);
+                TaskCommand.dispatch(Command.Reload);
               },
           )
       | MarkError(site) =>
@@ -37,7 +37,7 @@ module Impl = (Editor: Sig.Editor) => {
               range,
             );
         state.decorations = Js.Array.concat(decorations, state.decorations);
-        Promise.resolved();
+        Promise.resolved([]);
       | MarkSpec(spec) =>
         open! Editor;
 
@@ -84,7 +84,7 @@ module Impl = (Editor: Sig.Editor) => {
           |]);
 
         state.decorations = Js.Array.concat(decorations, state.decorations);
-        Promise.resolved();
+        Promise.resolved([]);
       | DigHole(site) =>
         let range =
           Response.Error.Site.toRange(
@@ -93,37 +93,35 @@ module Impl = (Editor: Sig.Editor) => {
             Editor.Range.fromLoc,
           );
         state.editor->Editor.Decoration.digHole(range);
-        Promise.resolved();
+        Promise.resolved([]);
       | RemoveDecorations =>
         state.decorations->Array.forEach(Editor.Decoration.destroy);
-        Promise.resolved();
+        Promise.resolved([]);
 
       | DispatchCommand(command) =>
         Js.log2("[ dispatch command ]", command);
-        TaskCommand.dispatch(command)->run(state);
+        TaskCommand.dispatch(command)->Promise.resolved;
       | SendRequest(request) =>
         Js.log("[ send request ]");
         state
         ->State.sendRequest(request)
-        ->Promise.flatMap(
+        ->Promise.map(
             fun
             | Error(error) => {
                 let (header, body) = Sig.Error.toString(error);
-                [Task.Display(Error(header), Plain(body))]->run(state);
+                [Task.Display(Error(header), Plain(body))];
               }
-            | Ok(response) => TaskResponse.handle(response)->run(state),
+            | Ok(response) => TaskResponse.handle(response),
           );
       | Display(header, body) =>
-        state->State.display(header, body)->Promise.map(_ => ())
+        state->State.display(header, body)->Promise.map(_ => [])
       };
 
     let rec runEach =
       fun
       | [] => Promise.resolved()
       | [x, ...xs] => {
-          let%P () = runTask(x);
-          let%P () = runEach(xs);
-          Promise.resolved();
+          runTask(x)->Promise.flatMap(xs' => runEach(List.concat(xs', xs)));
         };
     runEach(tasks);
   };
