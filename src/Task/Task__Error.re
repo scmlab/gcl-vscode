@@ -3,14 +3,14 @@ open GCL.Syntax;
 open! Response.Error;
 
 module Impl = (Editor: Sig.Editor) => {
-  module State = Impl__State.Impl(Editor);
-  module Task__Types = Task__Types.Impl(Editor);
+  module State = State.Impl(Editor);
+  module Task = Task.Impl(Editor);
   module StructError = {
     open Response.Error.StructError;
     let handle = site =>
       fun
       | MissingBound => [
-          Task__Types.MarkError(site),
+          Task.MarkError(site),
           Display(
             Error("Bound Missing"),
             Plain(
@@ -47,7 +47,7 @@ module Impl = (Editor: Sig.Editor) => {
     let handle = site =>
       fun
       | MissingBound => [
-          Task__Types.MarkError(site),
+          Task.MarkError(site),
           Display(
             Error("Bound Missing"),
             Plain(
@@ -88,7 +88,7 @@ module Impl = (Editor: Sig.Editor) => {
     let Error(site, kind) = error;
     switch (kind) {
     | LexicalError => [
-        Task__Types.MarkError(site),
+        Task.MarkError(site),
         Display(
           Error("Lexical Error"),
           Plain(Response.Error.Site.toString(site)),

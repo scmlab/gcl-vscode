@@ -1,3 +1,13 @@
-// module Error = Task__Error;
-// module Response = Task__Response;
-module Command = Task__Command;
+module Impl = (Editor: Sig.Editor) => {
+  module State = State.Impl(Editor);
+  type t =
+    | WithState(State.t => Promise.t(list(t)))
+    | Connect
+    | MarkError(Response.Error.Site.t)
+    | MarkSpec(Response.Specification.t)
+    | DigHole(Response.Error.Site.t)
+    | RemoveDecorations
+    | DispatchCommand(Command.t)
+    | SendRequest(Request.t)
+    | Display(View.Request.Header.t, View.Request.Body.t);
+};

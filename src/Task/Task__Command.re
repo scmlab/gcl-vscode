@@ -3,8 +3,8 @@ open Belt;
 open Command;
 
 module Impl = (Editor: Sig.Editor) => {
-  module Task__Types = Task__Types.Impl(Editor);
-  module State = Impl__State.Impl(Editor);
+  module Task__Types = Task.Impl(Editor);
+  module State = State.Impl(Editor);
   open! Task__Types;
   // from Editor Command to Tasks
   let dispatch =

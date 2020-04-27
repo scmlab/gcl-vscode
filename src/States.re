@@ -4,7 +4,7 @@ open Vscode;
 // a dictionary of FileName-State entries
 module StateDict = {
   module Impl = (Editor: Sig.Editor) => {
-    module State = Impl__State.Impl(Editor);
+    module State = State.Impl(Editor);
     let dict: Js.Dict.t(State.t) = Js.Dict.empty();
 
     let get = fileName => dict->Js.Dict.get(fileName);
@@ -68,7 +68,7 @@ module Impl = (Editor: Sig.Editor) => {
   module States = StateDict.Impl(Editor);
   module TaskCommand = Task__Command.Impl(Editor);
   module TaskRunner = TaskRunner.Impl(Editor);
-  module State = Impl__State.Impl(Editor);
+  module State = State.Impl(Editor);
 
   let addToSubscriptions = (f, context) =>
     f->Js.Array.push(context->ExtensionContext.subscriptions)->ignore;

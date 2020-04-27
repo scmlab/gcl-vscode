@@ -3,19 +3,17 @@ open Belt;
 open! Response;
 
 module Impl = (Editor: Sig.Editor) => {
-  module State = Impl__State.Impl(Editor);
-  module Task__Types = Task__Types.Impl(Editor);
+  module State = State.Impl(Editor);
+  module Task = Task.Impl(Editor);
   module Task__Error = Task__Error.Impl(Editor);
   // from GCL response to Task
-  let handle = (response): list(Task__Types.t) => {
+  let handle = (response): list(Task.t) => {
     switch (response) {
     | Error(errors) =>
       errors->Array.map(Task__Error.handle)->List.fromArray->Js.List.flatten
     | OK(obligations, specifications) =>
       List.concat(
-        specifications
-        ->List.fromArray
-        ->List.map(spec => Task__Types.MarkSpec(spec)),
+        specifications->List.fromArray->List.map(spec => Task.MarkSpec(spec)),
         [
           WithState(
             state => {

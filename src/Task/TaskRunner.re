@@ -1,8 +1,8 @@
 module Impl = (Editor: Sig.Editor) => {
-  module TaskCommand = Task.Command.Impl(Editor);
+  module TaskCommand = Task__Command.Impl(Editor);
   module TaskResponse = Task__Response.Impl(Editor);
-  module Task = Task__Types.Impl(Editor);
-  module State = Impl__State.Impl(Editor);
+  module Task = Task.Impl(Editor);
+  module State = State.Impl(Editor);
   open Belt;
   // run the Tasks
   let rec run = (tasks: list(Task.t), state: State.t): Promise.t(unit) => {
