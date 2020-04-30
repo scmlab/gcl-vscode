@@ -11,7 +11,7 @@ module Impl = (Editor: Sig.Editor) => {
     switch (response) {
     | Error(errors) =>
       errors->Array.map(Task__Error.handle)->List.fromArray->Js.List.flatten
-    | OK(obligations, specifications) =>
+    | OK(obligations, specifications, _) =>
       List.concat(
         specifications->List.fromArray->List.map(spec => Task.MarkSpec(spec)),
         [

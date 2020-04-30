@@ -137,6 +137,14 @@ module Specification = {
     };
 };
 
+module GlobalProp = {
+  type t = Syntax.Expr.t;
+
+  open Json.Decode;
+  let decode: decoder(t) =  Syntax.Expr.decode;
+};
+
+
 module Error = {
   module Site = {
     type t =
@@ -308,7 +316,7 @@ module Error = {
 
 type t =
   | Error(array(Error.t))
-  | OK(array(ProofObligation.t), array(Specification.t))
+  | OK(array(ProofObligation.t), array(Specification.t), array(GlobalProp.t))
   | Resolve(int)
   | InsertAssertion(int, Syntax.Expr.t)
   | UnknownResponse(Js.Json.t);
@@ -322,8 +330,8 @@ let decode: decoder(t) =
       Contents(array(Error.decode) |> map(errors => Error(errors)))
     | "OK" =>
       Contents(
-        pair(array(ProofObligation.decode), array(Specification.decode))
-        |> map(((obs, specs)) => OK(obs, specs)),
+        tuple3(array(ProofObligation.decode), array(Specification.decode), array(GlobalProp.decode))
+        |> map(((obs, specs, globalProps)) => OK(obs, specs, globalProps)),
       )
     | "Insert" =>
       Contents(
