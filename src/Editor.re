@@ -107,18 +107,22 @@ let onDidChangeActivation = callback => {
 };
 
 let registerCommand = (name, callback) =>
-  Commands.registerCommand("extension." ++ name, () => {
-    Window.activeTextEditor->Option.forEach(editor => {
-      editor
-      ->getFileName
-      ->Option.forEach(fileName => {
-          let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
-          if (isGCL(fileName)) {
-            callback(editor);
-          };
-        })
-    })
-  });
+  Commands.registerCommand(
+    "guacamole." ++ name,
+    () => {
+      Js.log("guacamole." ++ name);
+      Window.activeTextEditor->Option.forEach(editor => {
+        editor
+        ->getFileName
+        ->Option.forEach(fileName => {
+            let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
+            if (isGCL(fileName)) {
+              callback(editor);
+            };
+          })
+      });
+    },
+  );
 
 //
 // Configuration

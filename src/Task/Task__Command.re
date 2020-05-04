@@ -71,5 +71,9 @@ module Impl = (Editor: Sig.Editor) => {
             Promise.resolved([SendRequest(InsertAssertion(line))]);
           },
         ),
-      ];
+      ]
+    | Debug => {
+        Js.log("DEBUG");
+        [DispatchCommand(Debug)];
+      };
 };

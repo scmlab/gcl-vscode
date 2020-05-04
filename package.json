@@ -10,7 +10,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:extension.toggle"
+		"onCommand:guacamole.toggle"
 	],
 	"main": "./lib/js/src/Main.bs.js",
 	"contributes": {
@@ -28,42 +28,51 @@
 		],
 		"commands": [
 			{
-				"command": "extension.toggle",
+				"command": "guacamole.toggle",
 				"title": "Toggle activate/deactivate"
 			},
 			{
-				"command": "extension.reload",
+				"command": "guacamole.reload",
 				"title": "Reload"
 			},
 			{
-				"command": "extension.refine",
+				"command": "guacamole.refine",
 				"title": "Refine"
 			},
 			{
-				"command": "extension:insert-assertion",
+				"command": "guacamole:insert-assertion",
 				"title": "Insert assertion"
+			},
+			{
+				"command": "guacamole:debug-gcl",
+				"title": "Debug"
 			}
 		],
 		"keybindings": [
 			{
-				"command": "extension.toggle",
+				"command": "guacamole.toggle",
 				"key": "ctrl+c ctrl+x",
 				"mac": "ctrl+c ctrl+x"
 			},
 			{
-				"command": "extension.reload",
+				"command": "guacamole.reload",
 				"key": "ctrl+s",
 				"mac": "cmd+s"
 			},
 			{
-				"command": "extension.refine",
+				"command": "guacamole.refine",
 				"key": "ctrl+c ctrl+r",
 				"mac": "ctrl+c ctrl+r"
 			},
 			{
-				"command": "extension.insert-assertion",
+				"command": "guacamole.insert-assertion",
 				"key": "ctrl+c ctrl+a",
 				"mac": "ctrl+c ctrl+a"
+			},
+			{
+				"command": "guacamole.debug-gcl",
+				"key": "ctrl+c ctrl+[",
+				"mac": "ctrl+c ctrl+["
 			}
 		],
 		"configuration": {
