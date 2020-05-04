@@ -42,8 +42,8 @@ module Space = {
 
 module Low = {
   [@react.component]
-  let make = (~value: GCL.Syntax.Lower.t) =>
-    <div> {string(GCL.Syntax.Lower.toString(value))} </div>;
+  let make = (~value: GCL.Syntax.Name.t) =>
+    <div> {string(GCL.Syntax.Name.toString(value))} </div>;
 };
 
 module Operator = {
@@ -129,9 +129,9 @@ module Prec = {
     GCL.Syntax.Expr.(
       fun
       | Var(s, loc) =>
-        Complete(<Link loc> {string(Lower.toString(s))} </Link>)
+        Complete(<Link loc> {string(Name.toString(s))} </Link>)
       | Const(s, loc) =>
-        Complete(<Link loc> {string(Upper.toString(s))} </Link>)
+        Complete(<Link loc> {string(Name.toString(s))} </Link>)
       | Lit(lit, loc) =>
         Complete(<Link loc> {string(Lit.toString(lit))} </Link>)
       | Op(op, loc) =>

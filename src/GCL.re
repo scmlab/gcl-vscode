@@ -229,46 +229,30 @@ module Syntax = {
       | Mod => string("Mod");
   };
 
-  module Upper = {
+  module Name = {
     type t =
-      | Upper(string, loc);
+      | Name(string, loc);
     let toString =
       fun
-      | Upper(x, _) => x;
+      | Name(x, _) => x;
     open Json.Decode;
     let decode: decoder(t) =
-      pair(string, Loc.decode) |> map(((x, r)) => Upper(x, r));
+      pair(string, Loc.decode) |> map(((x, r)) => Name(x, r));
     open! Json.Encode;
     let encode: encoder(t) =
       fun
-      | Upper(s, loc) => (s, loc) |> pair(string, Loc.encode);
-  };
-
-  module Lower = {
-    type t =
-      | Lower(string, loc);
-    let toString =
-      fun
-      | Lower(x, _) => x;
-    open Json.Decode;
-    let decode: decoder(t) =
-      pair(string, Loc.decode) |> map(((x, r)) => Lower(x, r));
-
-    open! Json.Encode;
-    let encode: encoder(t) =
-      fun
-      | Lower(s, loc) => (s, loc) |> pair(string, Loc.encode);
+      | Name(s, loc) => (s, loc) |> pair(string, Loc.encode);
   };
 
   module Expr = {
     type t =
-      | Var(Lower.t, loc)
-      | Const(Upper.t, loc)
+      | Var(Name.t, loc)
+      | Const(Name.t, loc)
       | Lit(Lit.t, loc)
       | Op(Op.t, loc)
       | App(t, t, loc)
       // (+ i : 0 <= i && i < N : f i)
-      | Quant(t, array(Lower.t), t, t, loc)
+      | Quant(t, array(Name.t), t, t, loc)
       | Hole(loc)
     and subst = Js.Dict.t(t);
 
@@ -308,12 +292,12 @@ module Syntax = {
              fun
              | "Var" =>
                Contents(
-                 pair(Lower.decode, Loc.decode)
+                 pair(Name.decode, Loc.decode)
                  |> map(((x, r)) => Var(x, r)),
                )
              | "Const" =>
                Contents(
-                 pair(Upper.decode, Loc.decode)
+                 pair(Name.decode, Loc.decode)
                  |> map(((x, r)) => Const(x, r)),
                )
              | "Lit" =>
@@ -333,7 +317,7 @@ module Syntax = {
                Contents(
                  Util.Decode.tuple5(
                    decode,
-                   array(Lower.decode),
+                   array(Name.decode),
                    decode,
                    decode,
                    Loc.decode,
@@ -353,12 +337,12 @@ module Syntax = {
       | Var(s, loc) =>
         object_([
           ("tag", string("Var")),
-          ("contents", (s, loc) |> pair(Lower.encode, Loc.encode)),
+          ("contents", (s, loc) |> pair(Name.encode, Loc.encode)),
         ])
       | Const(s, loc) =>
         object_([
           ("tag", string("Const")),
-          ("contents", (s, loc) |> pair(Upper.encode, Loc.encode)),
+          ("contents", (s, loc) |> pair(Name.encode, Loc.encode)),
         ])
       | Lit(lit, loc) =>
         object_([
@@ -381,13 +365,7 @@ module Syntax = {
           (
             "contents",
             (e, lowers, f, g, loc)
-            |> tuple5(
-                 encode,
-                 array(Lower.encode),
-                 encode,
-                 encode,
-                 Loc.encode,
-               ),
+            |> tuple5(encode, array(Name.encode), encode, encode, Loc.encode),
           ),
         ])
       | Hole(loc) =>
@@ -489,8 +467,8 @@ module Syntax = {
         }
       and handleExpr = n =>
         fun
-        | Var(s, _) => Complete(Lower.toString(s))
-        | Const(s, _) => Complete(Upper.toString(s))
+        | Var(s, _) => Complete(Name.toString(s))
+        | Const(s, _) => Complete(Name.toString(s))
         | Lit(lit, _) => Complete(Lit.toString(lit))
         | Op(op, _) => handleOperator(n, op)
         | App(p, q, _) =>
@@ -511,7 +489,7 @@ module Syntax = {
             "< "
             ++ toString(0, op)
             ++ " "
-            ++ Js.String.concatMany(Array.map(vars, Lower.toString), " ")
+            ++ Js.String.concatMany(Array.map(vars, Name.toString), " ")
             ++ " : "
             ++ toString(0, p)
             ++ " : "
