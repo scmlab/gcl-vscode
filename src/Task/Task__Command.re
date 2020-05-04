@@ -73,7 +73,6 @@ module Impl = (Editor: Sig.Editor) => {
         ),
       ]
     | Debug => {
-        Js.log("DEBUG");
-        [DispatchCommand(Debug)];
+        [SendRequest(Debug)];
       };
 };
