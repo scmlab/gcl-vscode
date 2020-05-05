@@ -176,6 +176,12 @@ module Prec = {
           </Link>,
         )
       | Hole(loc) => Complete(<Link loc> {string("[?]")} </Link>)
+      | Unknown(x) =>
+        Complete(
+          <Link loc=GCL.Loc.NoLoc>
+            {string("[? " ++ Js.Json.stringify(x) ++ " ?]")}
+          </Link>,
+        )
     );
   }
   [@react.component]

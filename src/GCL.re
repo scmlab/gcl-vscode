@@ -121,13 +121,15 @@ module Syntax = {
   module Lit = {
     type t =
       | Num(int)
-      | Bool(bool);
+      | Bool(bool)
+      | Unknown(Js.Json.t);
 
     let toString =
       fun
       | Num(i) => string_of_int(i)
       | Bool(true) => "True"
-      | Bool(false) => "False";
+      | Bool(false) => "False"
+      | Unknown(json) => Js.Json.stringify(json);
 
     open Util.Decode;
     open Json.Decode;
@@ -138,8 +140,7 @@ module Syntax = {
              fun
              | "Num" => Contents(int |> map(x => Num(x)))
              | "Bol" => Contents(bool |> map(x => Bool(x)))
-             | tag =>
-               raise(DecodeError("[Lit] Unknown constructor: " ++ tag)),
+             | _ => Contents(json => Unknown(json)),
            );
 
     open! Json.Encode;
@@ -147,7 +148,8 @@ module Syntax = {
       fun
       | Num(i) => object_([("tag", string("Num")), ("contents", i |> int)])
       | Bool(x) =>
-        object_([("tag", string("Bol")), ("contents", x |> bool)]);
+        object_([("tag", string("Bol")), ("contents", x |> bool)])
+      | _ => object_([("tag", string("Num")), ("contents", 42 |> int)]);
   };
 
   module Op = {
@@ -166,7 +168,8 @@ module Syntax = {
       | Sub
       | Mul
       | Div
-      | Mod;
+      | Mod
+      | Unknown(string);
 
     let toString =
       fun
@@ -184,7 +187,8 @@ module Syntax = {
       | Sub => "-"
       | Mul => {j|×|j}
       | Div => {j|÷|j}
-      | Mod => "%";
+      | Mod => "%"
+      | Unknown(string) => string;
 
     open Json.Decode;
     let decode: decoder(t) =
@@ -206,7 +210,7 @@ module Syntax = {
            | "Mul" => Mul
            | "Div" => Div
            | "Mod" => Mod
-           | tag => raise(DecodeError("[Op] Unknown constructor: " ++ tag)),
+           | string => Unknown(string),
          );
 
     open! Json.Encode;
@@ -226,7 +230,8 @@ module Syntax = {
       | Sub => string("Sub")
       | Mul => string("Mul")
       | Div => string("Div")
-      | Mod => string("Mod");
+      | Mod => string("Mod")
+      | Unknown(x) => string(x);
   };
 
   module Name = {
@@ -254,6 +259,7 @@ module Syntax = {
       // (+ i : 0 <= i && i < N : f i)
       | Quant(t, array(Name.t), t, t, loc)
       | Hole(loc)
+      | Unknown(Js.Json.t)
     and subst = Js.Dict.t(t);
 
     let locOf =
@@ -264,7 +270,8 @@ module Syntax = {
       | Op(_, loc) => loc
       | App(_, _, loc) => loc
       | Quant(_, _, _, _, loc) => loc
-      | Hole(loc) => loc;
+      | Hole(loc) => loc
+      | Unknown(_) => Loc.NoLoc;
 
     let negate = x => App(Op(Op.Neg, NoLoc), x, NoLoc);
     let disj = (x, y) => App(App(Op(Op.Disj, NoLoc), x, NoLoc), y, NoLoc);
@@ -325,8 +332,7 @@ module Syntax = {
                  |> map(((op, vars, p, q, l)) => Quant(op, vars, p, q, l)),
                )
              | "Hole" => Contents(Loc.decode |> map(r => Hole(r)))
-             | tag =>
-               raise(DecodeError("[Expr] Unknown constructor: " ++ tag)),
+             | _ => Contents(json => Unknown(json)),
            )
     and decodeSubst: decoder(subst) = json => json |> dict(decode);
 
@@ -369,9 +375,11 @@ module Syntax = {
           ),
         ])
       | Hole(loc) =>
+        object_([("tag", string("Hole")), ("contents", loc |> Loc.encode)])
+      | _ =>
         object_([
           ("tag", string("Hole")),
-          ("contents", loc |> Loc.encode),
+          ("contents", Loc.NoLoc |> Loc.encode),
         ]);
 
     module Precedence = {
@@ -402,7 +410,8 @@ module Syntax = {
         | Sub => InfixL(7)
         | Mul => InfixL(8)
         | Div => InfixL(8)
-        | Mod => InfixL(9);
+        | Mod => InfixL(9)
+        | Unknown(_) => InfixL(9);
 
       // adds parentheses when True
       let parensIf = (p, s) =>
@@ -497,6 +506,8 @@ module Syntax = {
             ++ " >",
           )
         | Hole(_) => Complete("[?]")
+        | Unknown(x) =>
+          Complete("[Uknown expr: " ++ Js.Json.stringify(x) ++ "]")
       // | Hole(_) => Complete("[" ++ string_of_int(i) ++ "]")
       and toString = (n, p) =>
         switch (handleExpr(n, p)) {
