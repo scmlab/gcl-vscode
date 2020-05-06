@@ -128,12 +128,12 @@ module Prec = {
     };
     GCL.Syntax.Expr.(
       fun
+      | Lit(lit, loc) =>
+        Complete(<Link loc> {string(Lit.toString(lit))} </Link>)
       | Var(s, loc) =>
         Complete(<Link loc> {string(Name.toString(s))} </Link>)
       | Const(s, loc) =>
         Complete(<Link loc> {string(Name.toString(s))} </Link>)
-      | Lit(lit, loc) =>
-        Complete(<Link loc> {string(Lit.toString(lit))} </Link>)
       | Op(op, loc) =>
         // HACK: if the precedence is smaller than 0, display the operator directly
         n >= 0
@@ -152,6 +152,15 @@ module Prec = {
             }
           }
         }
+      | Lam(x, body, loc) =>
+        Complete(
+          <Link loc>
+            {string("\\")}
+            {string(x)}
+            {string(" -> ")}
+            <Self prec=0 value=body />
+          </Link>,
+        )
       | Quant(op, vars, p, q, loc) =>
         Complete(
           <Link loc>
@@ -175,6 +184,8 @@ module Prec = {
             {string(">")}
           </Link>,
         )
+      | Subst(x, _subst) =>
+        Complete(<Link loc=GCL.Loc.NoLoc> <Self prec=0 value=x /> </Link>)
       | Hole(loc) => Complete(<Link loc> {string("[?]")} </Link>)
       | Unknown(x) =>
         Complete(

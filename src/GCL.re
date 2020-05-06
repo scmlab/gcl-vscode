@@ -251,26 +251,30 @@ module Syntax = {
 
   module Expr = {
     type t =
+      | Lit(Lit.t, loc)
       | Var(Name.t, loc)
       | Const(Name.t, loc)
-      | Lit(Lit.t, loc)
       | Op(Op.t, loc)
       | App(t, t, loc)
+      | Lam(string, t, loc)
+      | Hole(loc)
       // (+ i : 0 <= i && i < N : f i)
       | Quant(t, array(Name.t), t, t, loc)
-      | Hole(loc)
+      | Subst(t, subst)
       | Unknown(Js.Json.t)
     and subst = Js.Dict.t(t);
 
     let locOf =
       fun
+      | Lit(_, loc) => loc
       | Var(_, loc) => loc
       | Const(_, loc) => loc
-      | Lit(_, loc) => loc
       | Op(_, loc) => loc
       | App(_, _, loc) => loc
-      | Quant(_, _, _, _, loc) => loc
+      | Lam(_, _, loc) => loc
       | Hole(loc) => loc
+      | Quant(_, _, _, _, loc) => loc
+      | Subst(_, _) => Loc.NoLoc
       | Unknown(_) => Loc.NoLoc;
 
     let negate = x => App(Op(Op.Neg, NoLoc), x, NoLoc);
@@ -297,6 +301,10 @@ module Syntax = {
         json
         |> sum(
              fun
+             | "Lit" =>
+               Contents(
+                 pair(Lit.decode, Loc.decode) |> map(((x, r)) => Lit(x, r)),
+               )
              | "Var" =>
                Contents(
                  pair(Name.decode, Loc.decode)
@@ -307,10 +315,6 @@ module Syntax = {
                  pair(Name.decode, Loc.decode)
                  |> map(((x, r)) => Const(x, r)),
                )
-             | "Lit" =>
-               Contents(
-                 pair(Lit.decode, Loc.decode) |> map(((x, r)) => Lit(x, r)),
-               )
              | "Op" =>
                Contents(
                  pair(Op.decode, Loc.decode) |> map(((x, r)) => Op(x, r)),
@@ -320,6 +324,12 @@ module Syntax = {
                  tuple3(decode, decode, Loc.decode)
                  |> map(((x, y, r)) => App(x, y, r)),
                )
+             | "Lam" =>
+               Contents(
+                 tuple3(string, decode, Loc.decode)
+                 |> map(((x, y, r)) => Lam(x, y, r)),
+               )
+             | "Hole" => Contents(Loc.decode |> map(r => Hole(r)))
              | "Quant" =>
                Contents(
                  Util.Decode.tuple5(
@@ -331,7 +341,10 @@ module Syntax = {
                  )
                  |> map(((op, vars, p, q, l)) => Quant(op, vars, p, q, l)),
                )
-             | "Hole" => Contents(Loc.decode |> map(r => Hole(r)))
+             | "Subst" =>
+               Contents(
+                 pair(decode, decodeSubst) |> map(((x, y)) => Subst(x, y)),
+               )
              | _ => Contents(json => Unknown(json)),
            )
     and decodeSubst: decoder(subst) = json => json |> dict(decode);
@@ -340,6 +353,11 @@ module Syntax = {
     open! Util.Encode;
     let rec encode: encoder(t) =
       fun
+      | Lit(lit, loc) =>
+        object_([
+          ("tag", string("Lit")),
+          ("contents", (lit, loc) |> pair(Lit.encode, Loc.encode)),
+        ])
       | Var(s, loc) =>
         object_([
           ("tag", string("Var")),
@@ -349,11 +367,6 @@ module Syntax = {
         object_([
           ("tag", string("Const")),
           ("contents", (s, loc) |> pair(Name.encode, Loc.encode)),
-        ])
-      | Lit(lit, loc) =>
-        object_([
-          ("tag", string("Lit")),
-          ("contents", (lit, loc) |> pair(Lit.encode, Loc.encode)),
         ])
       | Op(op, loc) =>
         object_([
@@ -365,6 +378,16 @@ module Syntax = {
           ("tag", string("App")),
           ("contents", (e, f, loc) |> tuple3(encode, encode, Loc.encode)),
         ])
+      | Lam(x, body, loc) =>
+        object_([
+          ("tag", string("Lam")),
+          (
+            "contents",
+            (x, body, loc) |> tuple3(string, encode, Loc.encode),
+          ),
+        ])
+      | Hole(loc) =>
+        object_([("tag", string("Hole")), ("contents", loc |> Loc.encode)])
       | Quant(e, lowers, f, g, loc) =>
         object_([
           ("tag", string("Quant")),
@@ -374,13 +397,17 @@ module Syntax = {
             |> tuple5(encode, array(Name.encode), encode, encode, Loc.encode),
           ),
         ])
-      | Hole(loc) =>
-        object_([("tag", string("Hole")), ("contents", loc |> Loc.encode)])
+      | Subst(e, subst) =>
+        object_([
+          ("tag", string("Subst")),
+          ("contents", (e, subst) |> pair(encode, encodeSubst)),
+        ])
       | _ =>
         object_([
           ("tag", string("Hole")),
           ("contents", Loc.NoLoc |> Loc.encode),
-        ]);
+        ])
+    and encodeSubst: encoder(subst) = json => json |> dict(encode);
 
     module Precedence = {
       open VarArg;
@@ -476,23 +503,30 @@ module Syntax = {
         }
       and handleExpr = n =>
         fun
+        | Lit(lit, _) => Complete(Lit.toString(lit))
         | Var(s, _) => Complete(Name.toString(s))
         | Const(s, _) => Complete(Name.toString(s))
-        | Lit(lit, _) => Complete(Lit.toString(lit))
         | Op(op, _) => handleOperator(n, op)
         | App(p, q, _) =>
           switch (handleExpr(n, p)) {
+          // this branch happens when `p` is an `Op`
           | Expect(f) => f(q)
+          // otherwise, examine `q`
           | Complete(s) =>
             switch (handleExpr(n, q)) {
+            // this branch happens when `q` is also an `Op`
             | Expect(g) => Expect(g)
             | Complete(t) =>
+              // otherwise, juxtapose both
               switch (q) {
               | App(_, _, _) => Complete(s ++ " " ++ parensIf(true, t))
               | _ => Complete(s ++ " " ++ t)
               }
             }
           }
+        | Lam(x, body, _) =>
+          Complete("\\" ++ x ++ " -> " ++ toString(0, body))
+        | Hole(_) => Complete("[?]")
         | Quant(op, vars, p, q, _) =>
           Complete(
             "< "
@@ -505,7 +539,7 @@ module Syntax = {
             ++ toString(0, q)
             ++ " >",
           )
-        | Hole(_) => Complete("[?]")
+        | Subst(expr, _subst) => handleExpr(n, expr)
         | Unknown(x) =>
           Complete("[Uknown expr: " ++ Js.Json.stringify(x) ++ "]")
       // | Hole(_) => Complete("[" ++ string_of_int(i) ++ "]")
