@@ -184,8 +184,28 @@ module Prec = {
             {string(">")}
           </Link>,
         )
-      | Subst(x, _subst) =>
-        Complete(<Link loc=GCL.Loc.NoLoc> <Self prec=0 value=x /> </Link>)
+      | Subst(x, subst) =>
+        Complete(
+          <Link loc=GCL.Loc.NoLoc>
+            <Self prec=0 value=x />
+            {string("[")}
+            {subst
+             ->Js.Dict.entries
+             ->Belt.Array.map(((x, x')) =>
+                 <> <Self prec=0 value=x' /> {string("/" ++ x)} </>
+               )
+             ->(
+                 e =>
+                   Util.React.sepBy(
+                     {
+                       string(", ");
+                     },
+                     e,
+                   )
+               )}
+            {string("]")}
+          </Link>,
+        )
       | Hole(loc) => Complete(<Link loc> {string("[?]")} </Link>)
       | Unknown(x) =>
         Complete(
