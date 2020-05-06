@@ -57,22 +57,26 @@
 			{
 				"command": "guacamole.reload",
 				"key": "ctrl+s",
-				"mac": "cmd+s"
+				"mac": "cmd+s",
+				"when": "resourceExtname == .gcl"
 			},
 			{
 				"command": "guacamole.refine",
 				"key": "ctrl+c ctrl+r",
-				"mac": "ctrl+c ctrl+r"
+				"mac": "ctrl+c ctrl+r",
+				"when": "resourceExtname == .gcl"
 			},
 			{
 				"command": "guacamole.insert-assertion",
 				"key": "ctrl+c ctrl+a",
-				"mac": "ctrl+c ctrl+a"
+				"mac": "ctrl+c ctrl+a",
+				"when": "resourceExtname == .gcl"
 			},
 			{
 				"command": "guacamole.debug-gcl",
 				"key": "ctrl+c ctrl+[",
-				"mac": "ctrl+c ctrl+["
+				"mac": "ctrl+c ctrl+[",
+				"when": "resourceExtname == .gcl"
 			}
 		],
 		"configuration": {
