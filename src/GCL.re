@@ -21,21 +21,13 @@ module Pos = {
 
   open Json.Decode;
   let decode: decoder(t) =
-    json =>
-      Pos(
-        field("filepath", string, json),
-        field("line", int, json),
-        field("column", int, json),
-      );
+    tuple4(string, int, int, int) |> map(((w, x, y, _)) => Pos(w, x, y));
+
   open! Json.Encode;
   let encode: encoder(t) =
     fun
     | Pos(path, line, column) =>
-      object_([
-        ("filepath", string(path)),
-        ("line", int(line)),
-        ("column", int(column)),
-      ]);
+      (path, line, column, 0) |> tuple4(string, int, int, int);
 };
 
 module Loc = {
@@ -73,11 +65,7 @@ module Loc = {
       fun
       | "Loc" =>
         Contents(
-          json =>
-            Loc(
-              field("start", Pos.decode, json),
-              field("end", Pos.decode, json),
-            ),
+          pair(Pos.decode, Pos.decode) |> map(((x, y)) => Loc(x, y)),
         )
       | "NoLoc" => TagOnly(_ => NoLoc)
       | tag => raise(DecodeError("[Loc] Unknown constructor: " ++ tag)),
@@ -90,10 +78,7 @@ module Loc = {
     | Loc(x, y) =>
       object_([
         ("tag", string("Loc")),
-        (
-          "contents",
-          object_([("start", Pos.encode(x)), ("end", Pos.encode(y))]),
-        ),
+        ("contents", (x, y) |> pair(Pos.encode, Pos.encode)),
       ]);
 };
 
