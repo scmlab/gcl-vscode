@@ -103,17 +103,13 @@ module Request = {
 };
 
 module Response = {
-  type mode =
-    | WP1
-    | WP2;
-
   type linkEvent =
     | MouseOver(GCL.loc)
     | MouseOut(GCL.loc)
     | MouseClick(GCL.loc);
 
   type t =
-    | SetMode(mode)
+    | SetMode(GCL.mode)
     | Link(linkEvent)
     | Initialized
     | Destroyed;
@@ -121,11 +117,11 @@ module Response = {
   open Json.Decode;
   open Util.Decode;
 
-  let decodeMode: decoder(mode) =
+  let decodeMode: decoder(GCL.mode) =
     sum(
       fun
-      | "WP1" => TagOnly(_ => WP1)
-      | "WP2" => TagOnly(_ => WP2)
+      | "WP1" => TagOnly(_ => GCL.WP1)
+      | "WP2" => TagOnly(_ => GCL.WP2)
       | tag =>
         raise(
           DecodeError("[View.Response.mode] Unknown constructor: " ++ tag),
@@ -159,7 +155,7 @@ module Response = {
 
   open! Json.Encode;
 
-  let encodeMode: encoder(mode) =
+  let encodeMode: encoder(GCL.mode) =
     fun
     | WP1 => object_([("tag", string("WP1"))])
     | WP2 => object_([("tag", string("WP2"))]);

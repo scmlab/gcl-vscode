@@ -100,6 +100,10 @@ module Loc = {
 type pos = Pos.t;
 type loc = Loc.t;
 
+type mode =
+  | WP1
+  | WP2;
+
 module Syntax = {
   // for pretty printing
   module VarArg = {

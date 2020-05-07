@@ -5,13 +5,13 @@ let make =
     (
       ~header: View.Request.Header.t,
       ~editorType: Sig.editorType,
-      ~mode: View.Response.mode,
-      ~onChangeMode: View.Response.mode => unit,
+      ~mode: GCL.mode,
+      ~onChangeMode: GCL.mode => unit,
     ) => {
   open! View.Request.Header;
 
   let onChange = _ => {
-    open View.Response;
+    open GCL;
     let newMode =
       switch (mode) {
       | WP1 => WP2

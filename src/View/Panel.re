@@ -7,7 +7,7 @@ let make =
     ) => {
   let (header, setHeader) = React.useState(() => View.Request.Header.Loading);
   let (body, setBody) = React.useState(() => View.Request.Body.Nothing);
-  let (mode, setMode) = React.useState(_ => View.Response.WP1);
+  let (mode, setMode) = React.useState(_ => GCL.WP1);
   let (hidden, setHidden) = React.useState(_ => false);
   let onClickLink = React.useRef(Event.make());
 
