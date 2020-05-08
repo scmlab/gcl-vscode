@@ -10,7 +10,7 @@ let make =
   let (mode, setMode) = React.useState(_ => GCL.WP1);
   let (hidden, setHidden) = React.useState(_ => false);
   let onClickLink = React.useRef(Event.make());
-  let onReduce = React.useRef(Event.make());
+  let onSubstitute = React.useRef(Event.make());
 
   // response with Initialized on mount
   React.useEffect1(
@@ -62,12 +62,12 @@ let make =
     [||],
   );
 
-  // relay <Subst> reduction to "onResponse"
+  // relay <Subst> substitution to "onResponse"
   React.useEffect1(
     () =>
       Some(
-        React.Ref.current(onReduce).on(((expr, subst)) => {
-          onResponse.emit(Reduce(expr, subst))
+        React.Ref.current(onSubstitute).on(((expr, subst)) => {
+          onResponse.emit(Substitute(expr, subst))
         }),
       ),
     [||],
@@ -75,7 +75,7 @@ let make =
 
   let className = "gcl-panel native-key-bindings" ++ (hidden ? " hidden" : "");
 
-  <Subst.Provider value={React.Ref.current(onReduce)}>
+  <Subst.Provider value={React.Ref.current(onSubstitute)}>
     <Link.Provider value={React.Ref.current(onClickLink)}>
       <section className tabIndex=(-1)>
         <Header header editorType mode onChangeMode />
