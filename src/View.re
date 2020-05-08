@@ -111,6 +111,7 @@ module Response = {
   type t =
     | SetMode(GCL.mode)
     | Link(linkEvent)
+    // | Reduce(GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
     | Initialized
     | Destroyed;
 

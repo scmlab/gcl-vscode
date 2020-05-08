@@ -1,4 +1,5 @@
 open React;
+open Common;
 
 module Paren = {
   [@react.component]
@@ -33,11 +34,6 @@ module Paren = {
       children;
     };
   };
-};
-
-module Space = {
-  [@react.component]
-  let make = () => <div> {string(" ")} </div>;
 };
 
 module Low = {
@@ -187,23 +183,9 @@ module Prec = {
       | Subst(x, subst) =>
         Complete(
           <Link loc=GCL.Loc.NoLoc>
-            <Self prec=0 value=x />
-            {string("[")}
-            {subst
-             ->Js.Dict.entries
-             ->Belt.Array.map(((x, x')) =>
-                 <> <Self prec=0 value=x' /> {string("/" ++ x)} </>
-               )
-             ->(
-                 e =>
-                   Util.React.sepBy(
-                     {
-                       string(", ");
-                     },
-                     e,
-                   )
-               )}
-            {string("]")}
+            <Subst subst makeExpr=make makeExprProps={makeProps(~key="")}>
+              <Self prec=0 value=x />
+            </Subst>
           </Link>,
         )
       | Hole(loc) => Complete(<Link loc> {string("[?]")} </Link>)
