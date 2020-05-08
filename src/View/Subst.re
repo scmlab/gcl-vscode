@@ -2,7 +2,8 @@ open React;
 
 open Common;
 
-let emitter: Event.t(View.Response.linkEvent) = Event.make();
+let emitter: Event.t((GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)) =
+  Event.make();
 let eventContext = React.createContext(emitter);
 
 module Provider = {
@@ -15,31 +16,27 @@ module Provider = {
 };
 
 [@react.component]
-let make = (~subst, ~makeExpr, ~makeExprProps, ~children) => {
+let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
   module Expr = {
     let make = makeExpr;
     let makeProps = makeExprProps;
   };
 
+  let emitter = React.useContext(eventContext);
+
   let (hovered, setHover) = React.useState(_ => false);
   let (reduced, setReduced) = React.useState(_ => false);
   let onMouseOver = _ => setHover(_ => true);
   let onMouseLeave = _ => setHover(_ => false);
-  let onClick = _ => setReduced(_ => true);
+  let onClick = _ => {
+    setReduced(_ => true);
+    emitter.emit((expr, subst));
+  };
   let className =
     "expr-subst" ++ (hovered ? " hovered" : "") ++ (reduced ? " reduced" : "");
 
-  //   if (reduced) {
-  //     <div className onMouseOver onMouseLeave onClick> {string("(...)")} </div>;
-  //   } else {
-  //     <>
-  //       <div className onMouseOver onMouseLeave onClick> {string("(")} </div>
-  //       children
-  //       <div className onMouseOver onMouseLeave onClick> {string(")")} </div>
-  //     </>;
-  //   };
   <>
-    children
+    <Expr prec=0 value=expr />
     <Space />
     <div className onMouseOver onMouseLeave onClick>
       {string("[")}

@@ -132,7 +132,6 @@ let make = (getExtensionPath, context, editor) => {
   moveToBottom() |> ignore;
 
   // on message
-  // relay Webview.onDidReceiveMessage => onResponse
   let onResponse = Event.make();
   panel
   ->WebviewPanel.webview

@@ -111,7 +111,7 @@ module Response = {
   type t =
     | SetMode(GCL.mode)
     | Link(linkEvent)
-    // | Reduce(GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
+    | Reduce(GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
     | Initialized
     | Destroyed;
 
@@ -150,6 +150,11 @@ module Response = {
       | "Destroyed" => TagOnly(_ => Destroyed)
       | "SetMode" => Contents(json => SetMode(decodeMode(json)))
       | "Link" => Contents(json => Link(decodeLinkEvent(json)))
+      | "Reduce" =>
+        Contents(
+          pair(GCL.Syntax.Expr.decode, GCL.Syntax.Expr.decodeSubst)
+          |> map(((expr, subst)) => Reduce(expr, subst)),
+        )
       | tag =>
         raise(DecodeError("[View.Response.t] Unknown constructor: " ++ tag)),
     );
@@ -185,6 +190,15 @@ module Response = {
     | Destroyed => object_([("tag", string("Destroyed"))])
     | Link(e) =>
       object_([("tag", string("Link")), ("contents", encodeLinkEvent(e))])
+    | Reduce(expr, subst) =>
+      object_([
+        ("tag", string("Reduce")),
+        (
+          "contents",
+          (expr, subst)
+          |> pair(GCL.Syntax.Expr.encode, GCL.Syntax.Expr.encodeSubst),
+        ),
+      ])
     | SetMode(mode) =>
       object_([
         ("tag", string("SetMode")),

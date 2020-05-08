@@ -180,12 +180,15 @@ module Prec = {
             {string(">")}
           </Link>,
         )
-      | Subst(x, subst) =>
+      | Subst(expr, subst) =>
         Complete(
           <Link loc=GCL.Loc.NoLoc>
-            <Subst subst makeExpr=make makeExprProps={makeProps(~key="")}>
-              <Self prec=0 value=x />
-            </Subst>
+            <Subst
+              expr
+              subst
+              makeExpr=make
+              makeExprProps={makeProps(~key="")}
+            />
           </Link>,
         )
       | Hole(loc) => Complete(<Link loc> {string("[?]")} </Link>)

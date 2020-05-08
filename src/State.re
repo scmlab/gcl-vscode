@@ -120,6 +120,9 @@ module Impl = (Editor: Sig.Editor) => {
       | Link(MouseClick(loc)) =>
         let range = Editor.Range.fromLoc(loc);
         editor->Editor.selectText(range);
+      | Reduce(expr, subst) => Js.log("REDUCE!!")
+      // let range = Editor.Range.fromLoc(loc);
+      // editor->Editor.selectText(range);
       | Initialized => ()
       | Destroyed => destroy(state)->ignore
       };
