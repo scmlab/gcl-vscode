@@ -5,7 +5,10 @@ module Impl = (Editor: Sig.Editor) => {
   module State = State.Impl(Editor);
   open Belt;
 
-  type t = Event.t(Task.t);
+  type t = {
+    taskEmitter: Event.t(Task.t),
+    finishedEmitter: Event.t(Task.t),
+  };
 
   let runTask = (task: Task.t, state: State.t): Promise.t(list(Task.t)) =>
     switch (task) {
@@ -152,6 +155,8 @@ module Impl = (Editor: Sig.Editor) => {
 
     emitter;
   };
-
-  let destroy = (emitter: Event.t(Task.t)) => emitter.destroy();
+  let destroy = (emitter: Event.t(Task.t)) =>
+    if (Js.Array.length()) {
+      emitter.destroy();
+    };
 };
