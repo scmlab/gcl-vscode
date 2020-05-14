@@ -77,8 +77,9 @@ let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
 module Impl = (Editor: Sig.Editor) => {
   module States = StateDict.Impl(Editor);
-  module TaskCommand = Task__Command.Impl(Editor);
+  // module TaskCommand = Task__Command.Impl(Editor);
   module TaskRunner = TaskRunner.Impl(Editor);
+  module Task = Task.Impl(Editor);
   module State = State.Impl(Editor);
 
   let addToSubscriptions = (f, context) =>
@@ -130,6 +131,70 @@ module Impl = (Editor: Sig.Editor) => {
             ->State.onDestroy(() => {States.remove(fileName)})
             ->Editor.addToSubscriptions(context);
             States.add(fileName, (state, taskRunner));
+
+            // a dictionary of decorations for <Link>
+            let decorationDict: Js.Dict.t(array(Editor.Decoration.t)) =
+              Js.Dict.empty();
+            let delete_: string => unit = [%raw
+              "function (id) {delete decorationDict[id]}"
+            ];
+
+            // update the state on receiving messages from the view
+            let handleMessageFromView = x =>
+              switch (x) {
+              | View.Response.SetMode(mode) => [
+                  Task.WithState(
+                    state => {
+                      state.mode = mode;
+                      Promise.resolved([]);
+                    },
+                  ),
+                ]
+              | Link(MouseOver(loc)) =>
+                let key = GCL.Loc.toString(loc);
+                let range = Editor.Range.fromLoc(loc);
+                let decoration =
+                  Editor.Decoration.highlightBackground(
+                    editor,
+                    Highlight,
+                    range,
+                  );
+                Js.Dict.set(decorationDict, key, decoration);
+                [];
+              | Link(MouseOut(loc)) =>
+                let key = GCL.Loc.toString(loc);
+                Js.Dict.get(decorationDict, key)
+                ->Option.forEach(decos =>
+                    decos->Array.forEach(Editor.Decoration.destroy)
+                  );
+                delete_(key);
+                [];
+              | Link(MouseClick(loc)) =>
+                let range = Editor.Range.fromLoc(loc);
+                editor->Editor.selectText(range);
+                [];
+              | Substitute(expr, subst) => []
+              // state->sendRequest(Substitute(expr, subst))
+              // let range = Editor.Range.fromLoc(loc);
+              // editor->Editor.selectText(range);
+              | Initialized => []
+              | Destroyed => [
+                  WithState(
+                    state => {
+                      State.destroy(state)->ignore;
+                      Promise.resolved([]);
+                    },
+                  ),
+                ]
+              };
+
+            state.view
+            ->Editor.View.recv(msg => {
+                let tasks = handleMessageFromView(msg);
+                tasks->List.forEach(TaskRunner.addTask(taskRunner));
+              })
+            ->Editor.addToSubscriptions(context);
+
             // dispatch "Load"
             taskRunner->TaskRunner.addTask(DispatchCommand(Load));
           //  .dispatch(Load)->TaskRunner.run(state)->ignore;
