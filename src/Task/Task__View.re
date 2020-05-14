@@ -14,11 +14,10 @@ module Impl = (Editor: Sig.Editor) => {
     "function (id) {delete decorationDict[id]}"
   ];
 
-  open View.Response;
   // from View response to Tasks
   let handle = (editor, response): list(Task.t) =>
     switch (response) {
-    | SetMode(mode) => [
+    | View.Response.SetMode(mode) => [
         Task.WithState(
           state => {
             state.mode = mode;
@@ -45,9 +44,9 @@ module Impl = (Editor: Sig.Editor) => {
       let range = Editor.Range.fromLoc(loc);
       editor->Editor.selectText(range);
       [];
-    | Substitute(expr, subst) =>
-      Js.log("Substitute(expr, subst)");
-      [SendRequest(Substitute(expr, subst))];
+    | Substitute(i, expr, subst) => [
+        SendRequest(Substitute(i, expr, subst)),
+      ]
     // state->sendRequest(Substitute(expr, subst))
     // let range = Editor.Range.fromLoc(loc);
     // editor->Editor.selectText(range);

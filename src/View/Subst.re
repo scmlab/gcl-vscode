@@ -2,8 +2,11 @@ open React;
 
 open Common;
 
-let emitter: Event.t((GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)) =
-  Event.make();
+type event =
+  | Request(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
+  | Response(int, GCL.Syntax.Expr.subst);
+
+let emitter: Event.t(event) = Event.make();
 let eventContext = React.createContext(emitter);
 
 module Provider = {
@@ -14,6 +17,8 @@ module Provider = {
 
   let make = React.Context.provider(eventContext);
 };
+
+let counter = ref(0);
 
 [@react.component]
 let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
@@ -30,7 +35,8 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
   let onMouseLeave = _ => setHover(_ => false);
   let onClick = _ => {
     setReduced(_ => true);
-    emitter.emit((expr, subst));
+    emitter.emit(Request(counter^, expr, subst));
+    counter := counter^ + 1;
   };
   let className =
     "expr-subst" ++ (hovered ? " hovered" : "") ++ (reduced ? " reduced" : "");

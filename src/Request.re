@@ -2,7 +2,7 @@ type t =
   | Load(string, GCL.mode)
   | Refine(int, string)
   | InsertAssertion(int)
-  | Substitute(GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
+  | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
   | Debug;
 
 module Encode = {
@@ -24,13 +24,13 @@ module Encode = {
         ("tag", string("ReqRefine")),
         ("contents", (id, payload) |> pair(int, string)),
       ])
-    | Substitute(expr, subst) =>
+    | Substitute(i, expr, subst) =>
       object_([
         ("tag", string("ReqSubstitute")),
         (
           "contents",
-          (expr, subst)
-          |> pair(GCL.Syntax.Expr.encode, GCL.Syntax.Expr.encodeSubst),
+          (i, expr, subst)
+          |> tuple3(int, GCL.Syntax.Expr.encode, GCL.Syntax.Expr.encodeSubst),
         ),
       ])
     | InsertAssertion(n) =>

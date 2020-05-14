@@ -36,7 +36,7 @@ module Impl = (Editor: Sig.Editor) => {
         ),
         DispatchCommand(Reload),
       ]
-    | Substitute(expr) =>
+    | Substitute(i, expr) =>
       Js.log("SUBST");
       [];
     | InsertAssertion(i, expr) => [

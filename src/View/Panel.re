@@ -66,9 +66,15 @@ let make =
   React.useEffect1(
     () =>
       Some(
-        React.Ref.current(onSubstitute).on(((expr, subst)) => {
-          onResponse.emit(Substitute(expr, subst))
-        }),
+        React.Ref.current(onSubstitute).on(
+          fun
+          | Subst.Request(i, expr, subst) => {
+              onResponse.emit(Substitute(i, expr, subst));
+            }
+          | Response(i, expr) => {
+              ();
+            },
+        ),
       ),
     [||],
   );

@@ -72,6 +72,7 @@ module Request = {
   type t =
     | Show
     | Hide
+    | Substitute(int, GCL.Syntax.Expr.t)
     | Display(Header.t, Body.t);
 
   open Json.Decode;
@@ -81,7 +82,11 @@ module Request = {
       fun
       | "Show" => Contents(_ => Show)
       | "Hide" => Contents(_ => Hide)
-      // | "Display" => Contents(_json => Display(Loading, Nothing))
+      | "Substitute" =>
+        Contents(
+          pair(int, GCL.Syntax.Expr.decode)
+          |> map(((x, y)) => Substitute(x, y)),
+        )
       | "Display" =>
         Contents(
           pair(Header.decode, Body.decode)
@@ -95,6 +100,11 @@ module Request = {
     fun
     | Show => object_([("tag", string("Show"))])
     | Hide => object_([("tag", string("Hide"))])
+    | Substitute(i, expr) =>
+      object_([
+        ("tag", string("Substitute")),
+        ("contents", (i, expr) |> pair(int, GCL.Syntax.Expr.encode)),
+      ])
     | Display(header, body) =>
       object_([
         ("tag", string("Display")),
@@ -111,7 +121,7 @@ module Response = {
   type t =
     | SetMode(GCL.mode)
     | Link(linkEvent)
-    | Substitute(GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
+    | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
     | Initialized
     | Destroyed;
 
@@ -152,8 +162,8 @@ module Response = {
       | "Link" => Contents(json => Link(decodeLinkEvent(json)))
       | "Substitute" =>
         Contents(
-          pair(GCL.Syntax.Expr.decode, GCL.Syntax.Expr.decodeSubst)
-          |> map(((expr, subst)) => Substitute(expr, subst)),
+          tuple3(int, GCL.Syntax.Expr.decode, GCL.Syntax.Expr.decodeSubst)
+          |> map(((i, expr, subst)) => Substitute(i, expr, subst)),
         )
       | tag =>
         raise(DecodeError("[View.Response.t] Unknown constructor: " ++ tag)),
@@ -190,13 +200,13 @@ module Response = {
     | Destroyed => object_([("tag", string("Destroyed"))])
     | Link(e) =>
       object_([("tag", string("Link")), ("contents", encodeLinkEvent(e))])
-    | Substitute(expr, subst) =>
+    | Substitute(i, expr, subst) =>
       object_([
         ("tag", string("Substitute")),
         (
           "contents",
-          (expr, subst)
-          |> pair(GCL.Syntax.Expr.encode, GCL.Syntax.Expr.encodeSubst),
+          (i, expr, subst)
+          |> tuple3(int, GCL.Syntax.Expr.encode, GCL.Syntax.Expr.encodeSubst),
         ),
       ])
     | SetMode(mode) =>

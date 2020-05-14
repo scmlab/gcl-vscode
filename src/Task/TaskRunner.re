@@ -124,6 +124,8 @@ module Impl = (Editor: Sig.Editor) => {
         );
     | Display(header, body) =>
       state->State.display(header, body)->Promise.map(_ => [])
+    | ViewRequest(request) => Promise.resolved([])
+    // TaskView.handle(state.editor, response)->Promise.resolved
     | ViewResponse(response) =>
       TaskView.handle(state.editor, response)->Promise.resolved
     };
