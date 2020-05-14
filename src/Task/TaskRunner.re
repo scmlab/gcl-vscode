@@ -5,9 +5,14 @@ module Impl = (Editor: Sig.Editor) => {
   module State = State.Impl(Editor);
   open Belt;
 
+  type status =
+    | Busy
+    | Idle;
+
   type t = {
     taskEmitter: Event.t(Task.t),
-    finishedEmitter: Event.t(Task.t),
+    mutable status,
+    statusEmitter: Event.t(status),
   };
 
   let runTask = (task: Task.t, state: State.t): Promise.t(list(Task.t)) =>
@@ -120,43 +125,64 @@ module Impl = (Editor: Sig.Editor) => {
       state->State.display(header, body)->Promise.map(_ => [])
     };
 
-  let addTask = (emitter: Event.t(Task.t), task) => emitter.emit(task);
+  let addTask = (self: t, task) => self.taskEmitter.emit(task);
 
   let make = state => {
     // task queue, FIFO
     let queue: array(Task.t) = [||];
-    let emitter = Event.make();
-    // semaphore for indicating that if `runTasksInQueue` is running
-    let busy = ref(false);
+    let taskEmitter = Event.make();
+    let statusEmitter = Event.make();
+    let self = {taskEmitter, status: Idle, statusEmitter};
 
     // keep executing tasks in the queue until depleting it
     let rec runTasksInQueue = () => {
       let nextTask = Js.Array.shift(queue);
       switch (nextTask) {
-      | None => ()
+      | None =>
+        self.status = Idle;
+        self.statusEmitter.emit(Idle);
       | Some(task) =>
         runTask(task, state)
         ->Promise.get(newTasks => {
-            newTasks->List.forEach(addTask(emitter));
+            newTasks->List.forEach(addTask(self));
             runTasksInQueue();
           })
       };
     };
 
-    // we are ignoring the destructor
-    // because it's going to be destroyed along with the emitter anyway
     let _ =
-      emitter.on(task => {
+      taskEmitter.on(task => {
         Js.Array.push(task, queue)->ignore;
-        if (! busy^) {
+        // kick start `runTasksInQueue` if it's not already running
+        if (self.status == Idle) {
+          self.status = Busy;
+          self.statusEmitter.emit(Busy);
           runTasksInQueue();
         };
       });
 
-    emitter;
+    self;
   };
-  let destroy = (emitter: Event.t(Task.t)) =>
-    if (Js.Array.length()) {
-      emitter.destroy();
+  // destroy only after all tasks have been executed
+  let destroy = (self: t): Promise.t(unit) => {
+    let (promise, resolve) = Promise.pending();
+    let destroy' = () => {
+      self.statusEmitter.destroy();
+      self.taskEmitter.destroy();
+      resolve();
     };
+
+    switch (self.status) {
+    | Idle => destroy'()
+    | Busy =>
+      let _ =
+        self.statusEmitter.on(
+          fun
+          | Idle => destroy'()
+          | Busy => (),
+        );
+      ();
+    };
+    promise;
+  };
 };

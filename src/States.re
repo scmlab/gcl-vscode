@@ -45,12 +45,15 @@ module StateDict = {
     };
     let destroy = fileName => {
       get(fileName)
-      ->Option.forEach(((state, taskRunner)) => {
-          Js.log("[ states ][ destroy ]");
-          State.destroy(state) |> ignore;
-          TaskRunner.destroy(taskRunner);
-        });
-      remove(fileName);
+      ->Option.mapWithDefault(
+          Promise.resolved(),
+          ((state, taskRunner)) => {
+            Js.log("[ states ][ destroy ]");
+            State.destroy(state) |> ignore;
+            TaskRunner.destroy(taskRunner);
+          },
+        )
+      ->Promise.get(() => remove(fileName));
     };
 
     let contains = fileName => get(fileName)->Option.isSome;
@@ -58,12 +61,14 @@ module StateDict = {
     let destroyAll = () => {
       dict
       ->Js.Dict.entries
-      ->Array.forEach(((_, (state, taskRunner))) => {
+      ->Array.map(((_, (state, taskRunner))) => {
           Js.log("[ states ][ destroy ]");
           State.destroy(state) |> ignore;
           TaskRunner.destroy(taskRunner);
         })
-      ->ignore;
+      ->List.fromArray
+      ->Promise.all
+      ->Promise.get(_ => ());
     };
   };
 };
