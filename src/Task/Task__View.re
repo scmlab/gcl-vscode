@@ -45,7 +45,9 @@ module Impl = (Editor: Sig.Editor) => {
       let range = Editor.Range.fromLoc(loc);
       editor->Editor.selectText(range);
       [];
-    | Substitute(expr, subst) => []
+    | Substitute(expr, subst) =>
+      Js.log("Substitute(expr, subst)");
+      [SendRequest(Substitute(expr, subst))];
     // state->sendRequest(Substitute(expr, subst))
     // let range = Editor.Range.fromLoc(loc);
     // editor->Editor.selectText(range);

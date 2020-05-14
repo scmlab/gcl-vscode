@@ -324,6 +324,7 @@ type t =
       array(GlobalProp.t),
     )
   | Resolve(int)
+  | Substitute(Syntax.Expr.t)
   | InsertAssertion(int, Syntax.Expr.t)
   | UnknownResponse(Js.Json.t);
 
@@ -343,6 +344,8 @@ let decode: decoder(t) =
         )
         |> map(((obs, specs, globalProps)) => OK(obs, specs, globalProps)),
       )
+    | "ResSubstitute" =>
+      Contents(Syntax.Expr.decode |> map(expr => Substitute(expr)))
     | "ResInsert" =>
       Contents(
         pair(int, Syntax.Expr.decode)

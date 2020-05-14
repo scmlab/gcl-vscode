@@ -291,8 +291,10 @@ let make = (path, args): t => {
   |> Nd.ChildProcess.on(
        `exit(
          (code, signal) =>
-           emitter.emit(Error(ExitedByProcess(code, signal, stderr^)))
-           |> ignore,
+           if (code != 0) {
+             emitter.emit(Error(ExitedByProcess(code, signal, stderr^)))
+             |> ignore;
+           },
        ),
      )
   |> ignore;

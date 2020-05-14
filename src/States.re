@@ -140,7 +140,6 @@ module Impl = (Editor: Sig.Editor) => {
 
             // dispatch "Load"
             taskRunner->TaskRunner.addTask(DispatchCommand(Load));
-          //  .dispatch(Load)->TaskRunner.run(state)->ignore;
           | Some((_state, taskRunner)) =>
             // already in the States dict, dispatch "Quit"
             // and remove and destroy it from the dict
