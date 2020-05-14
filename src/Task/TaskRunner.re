@@ -1,6 +1,7 @@
 module Impl = (Editor: Sig.Editor) => {
   module TaskCommand = Task__Command.Impl(Editor);
   module TaskResponse = Task__Response.Impl(Editor);
+  module TaskView = Task__View.Impl(Editor);
   module Task = Task.Impl(Editor);
   module State = State.Impl(Editor);
   open Belt;
@@ -123,6 +124,8 @@ module Impl = (Editor: Sig.Editor) => {
         );
     | Display(header, body) =>
       state->State.display(header, body)->Promise.map(_ => [])
+    | ViewResponse(response) =>
+      TaskView.handle(state.editor, response)->Promise.resolved
     };
 
   let addTask = (self: t, task) => self.taskEmitter.emit(task);
