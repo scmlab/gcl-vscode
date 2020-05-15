@@ -83,7 +83,7 @@ module type Editor = {
     let show: view => unit;
     let hide: view => unit;
     // messaging
-    let send: (view, View.Request.t) => Promise.t(bool);
+    let send: (view, option(int), View.Request.t) => Promise.t(bool);
     let recv: (view, View.Response.t => unit) => Disposable.t;
   };
 

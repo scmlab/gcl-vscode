@@ -30,6 +30,7 @@ module Request = {
         object_([("tag", string("Error")), ("contents", string(s))]);
   };
   module Body = {
+    type id = int;
     type t =
       | Nothing
       | ProofObligations(array(Response.ProofObligation.t))
@@ -44,10 +45,8 @@ module Request = {
         | "Nothing" => Contents(_ => Nothing)
         | "ProofObligations" =>
           Contents(
-            json =>
-              ProofObligations(
-                json |> array(Response.ProofObligation.decode),
-              ),
+            array(Response.ProofObligation.decode)
+            |> map(xs => ProofObligations(xs)),
           )
         | "Plain" => Contents(json => Plain(string(json)))
         | tag =>

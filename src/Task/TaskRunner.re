@@ -27,7 +27,7 @@ module Impl = (Editor: Sig.Editor) => {
           fun
           | Error(e) => {
               let (header, body) = Sig.Error.toString(e);
-              [Task.Display(Error(header), Plain(body))];
+              [Task.Display(None, Error(header), Plain(body))];
             }
           | Ok(_c) => {
               TaskCommand.dispatch(Command.Reload);
@@ -118,14 +118,14 @@ module Impl = (Editor: Sig.Editor) => {
           fun
           | Error(error) => {
               let (header, body) = Sig.Error.toString(error);
-              [Task.Display(Error(header), Plain(body))];
+              [Task.Display(None, Error(header), Plain(body))];
             }
-          | Ok(response) => TaskResponse.handle(response),
+          | Ok((id, response)) => TaskResponse.handle(id, response),
         );
-    | Display(header, body) =>
-      state->State.display(header, body)->Promise.map(_ => [])
-    | ViewRequest(request) =>
-      state->State.sendRequestToView(request)->Promise.map(_ => [])
+    | Display(id, header, body) =>
+      state->State.display(id, header, body)->Promise.map(_ => [])
+    | ViewRequest(id, request) =>
+      state->State.sendRequestToView(id, request)->Promise.map(_ => [])
     | ViewResponse(response) =>
       TaskView.handle(state.editor, response)->Promise.resolved
     };

@@ -2,7 +2,7 @@
 let make =
     (
       ~editorType: Sig.editorType,
-      ~onRequest: Event.t(View.Request.t),
+      ~onRequest: Event.t((option(int), View.Request.t)),
       ~onResponse: Event.t(View.Response.t),
     ) => {
   let (header, setHeader) = React.useState(() => View.Request.Header.Loading);
@@ -28,18 +28,17 @@ let make =
     () => {
       open View.Request;
       let destructor =
-        onRequest.on(
-          fun
-          | Display(header, body) => {
-              setHeader(_ => header);
-              setBody(_ => body);
-            }
-          | Substitute(i, expr) => {
-              React.Ref.current(onSubstitute).emit(Subst.Response(i, expr));
-            }
+        onRequest.on(((id, req)) => {
+          switch (req) {
+          | Display(header, body) =>
+            setHeader(_ => header);
+            setBody(_ => body);
+          | Substitute(i, expr) =>
+            React.Ref.current(onSubstitute).emit(Subst.Response(i, expr))
           | Hide => setHidden(_ => true)
-          | Show => setHidden(_ => false),
-        );
+          | Show => setHidden(_ => false)
+          }
+        });
       Some(destructor);
     },
     [||],
@@ -74,9 +73,7 @@ let make =
           | Subst.Request(i, expr, subst) => {
               onResponse.emit(Substitute(i, expr, subst));
             }
-          | Response(i, expr) => {
-              Js.log("YOYOYO");
-            },
+          | Response(_, _) => (),
         ),
       ),
     [||],

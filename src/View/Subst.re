@@ -26,11 +26,11 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
     let make = makeExpr;
     let makeProps = makeExprProps;
   };
-
   let emitter = React.useContext(eventContext);
 
   let (hovered, setHover) = React.useState(_ => false);
   let (reduced, setReduced) = React.useState(_ => None);
+
   let id = React.useRef(None);
   let onMouseOver = _ => setHover(_ => true);
   let onMouseLeave = _ => setHover(_ => false);

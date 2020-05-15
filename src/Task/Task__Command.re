@@ -35,6 +35,7 @@ module Impl = (Editor: Sig.Editor) => {
                     } else {
                       [
                         Display(
+                          None,
                           Error("Cannot read filepath"),
                           Plain("Please save the file first"),
                         ),

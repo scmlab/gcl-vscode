@@ -7,8 +7,8 @@ module Impl = (Editor: Sig.Editor) => {
     | Connect
     | SendRequest(Request.t)
     // View related
-    | Display(View.Request.Header.t, View.Request.Body.t)
-    | ViewRequest(View.Request.t)
+    | Display(option(int), View.Request.Header.t, View.Request.Body.t)
+    | ViewRequest(option(int), View.Request.t)
     | ViewResponse(View.Response.t)
     // Decorations
     | MarkError(Response.Error.Site.t)
