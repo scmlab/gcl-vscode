@@ -319,6 +319,7 @@ module Error = {
 type t =
   | Error(array(Error.t))
   | OK(
+      int,
       array(ProofObligation.t),
       array(Specification.t),
       array(GlobalProp.t),
@@ -337,12 +338,15 @@ let decode: decoder(t) =
       Contents(array(Error.decode) |> map(errors => Error(errors)))
     | "ResOK" =>
       Contents(
-        tuple3(
+        tuple4(
+          int,
           array(ProofObligation.decode),
           array(Specification.decode),
           array(GlobalProp.decode),
         )
-        |> map(((obs, specs, globalProps)) => OK(obs, specs, globalProps)),
+        |> map(((id, obs, specs, globalProps)) =>
+             OK(id, obs, specs, globalProps)
+           ),
       )
     | "ResSubstitute" =>
       Contents(

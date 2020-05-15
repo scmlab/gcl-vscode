@@ -31,17 +31,20 @@ module ProofObligation = {
 let make = (~body: View.Request.Body.t) => {
   switch (body) {
   | Nothing => <> </>
-  | ProofObligations([||]) => <> </>
-  | ProofObligations(ps) =>
+  | ProofObligations(_id, [||]) => <> </>
+  | ProofObligations(id, ps) =>
     let list =
       ps
       ->Array.mapWithIndex((i, payload) =>
           <ProofObligation payload key={string_of_int(i)} />
         )
       ->React.array;
-    <div className="gcl-body">
-      <ul className="gcl-proof-obligation-list"> list </ul>
-    </div>;
+    Js.log("set as " ++ string_of_int(id));
+    <ReqID.Provider value={Some(id)}>
+      <div className="gcl-body">
+        <ul className="gcl-proof-obligation-list"> list </ul>
+      </div>
+    </ReqID.Provider>;
 
   | Plain(s) =>
     let paragraphs =

@@ -2,9 +2,10 @@
 let make =
     (
       ~editorType: Sig.editorType,
-      ~onRequest: Event.t((option(int), View.Request.t)),
+      ~onRequest: Event.t(View.Request.t),
       ~onResponse: Event.t(View.Response.t),
     ) => {
+  // let (reqID, setReqID) = React.useState(() => None);
   let (header, setHeader) = React.useState(() => View.Request.Header.Loading);
   let (body, setBody) = React.useState(() => View.Request.Body.Nothing);
   let (mode, setMode) = React.useState(_ => GCL.WP1);
@@ -28,7 +29,7 @@ let make =
     () => {
       open View.Request;
       let destructor =
-        onRequest.on(((id, req)) => {
+        onRequest.on(req => {
           switch (req) {
           | Display(header, body) =>
             setHeader(_ => header);
@@ -81,6 +82,7 @@ let make =
 
   let className = "gcl-panel native-key-bindings" ++ (hidden ? " hidden" : "");
 
+  // <ReqID.Provider value=reqID>
   <Subst.Provider value={React.Ref.current(onSubstitute)}>
     <Link.Provider value={React.Ref.current(onClickLink)}>
       <section className tabIndex=(-1)>
@@ -89,4 +91,5 @@ let make =
       </section>
     </Link.Provider>
   </Subst.Provider>;
+  // </ReqID.Provider>;
 };

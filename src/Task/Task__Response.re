@@ -7,14 +7,11 @@ module Impl = (Editor: Sig.Editor) => {
   module Task = Task.Impl(Editor);
   module Task__Error = Task__Error.Impl(Editor);
   // from GCL response to Task
-  let handle = (id, response): list(Task.t) => {
+  let handle = (response): list(Task.t) => {
     switch (response) {
     | Error(errors) =>
-      errors
-      ->Array.map(Task__Error.handle(id))
-      ->List.fromArray
-      ->Js.List.flatten
-    | OK(obligations, specifications, _) =>
+      errors->Array.map(Task__Error.handle)->List.fromArray->Js.List.flatten
+    | OK(id, obligations, specifications, _) =>
       List.concat(
         specifications->List.fromArray->List.map(spec => Task.MarkSpec(spec)),
         [
@@ -25,9 +22,8 @@ module Impl = (Editor: Sig.Editor) => {
             },
           ),
           Display(
-            Some(id),
             Plain("Proof Obligations"),
-            ProofObligations(obligations),
+            ProofObligations(id, obligations),
           ),
         ],
       )
@@ -40,7 +36,7 @@ module Impl = (Editor: Sig.Editor) => {
         ),
         DispatchCommand(Reload),
       ]
-    | Substitute(i, expr) => [ViewRequest(Some(id), Substitute(i, expr))]
+    | Substitute(i, expr) => [ViewRequest(Substitute(i, expr))]
     | InsertAssertion(i, expr) => [
         WithState(
           state => {State.Spec.insert(state, i, expr)->Promise.map(_ => [])},
@@ -49,7 +45,6 @@ module Impl = (Editor: Sig.Editor) => {
       ]
     | UnknownResponse(json) => [
         Display(
-          Some(id),
           Error("Panic: unknown response from GCL"),
           Plain(Js.Json.stringify(json)),
         ),

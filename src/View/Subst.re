@@ -27,11 +27,10 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
     let makeProps = makeExprProps;
   };
   let emitter = React.useContext(eventContext);
-
   let (hovered, setHover) = React.useState(_ => false);
   let (reduced, setReduced) = React.useState(_ => None);
-
   let id = React.useRef(None);
+  let reqID = React.useRef(None);
   let onMouseOver = _ => setHover(_ => true);
   let onMouseLeave = _ => setHover(_ => false);
   let onClick = _ => {
@@ -44,6 +43,25 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
     ++ (hovered ? " hovered" : "")
     ++ (Belt.Option.isSome(reduced) ? " reduced" : "");
 
+  // cache invalidaction
+  switch (reduced) {
+  | None => ()
+  | Some((cachedID, _)) =>
+    switch (cachedID) {
+    | None => Js.log("Current cached ID: _")
+    | Some(i) => Js.log("Current cached ID: " ++ string_of_int(i))
+    };
+    if (cachedID != React.Ref.current(reqID)) {
+      Js.log("invalidate!! ");
+      setReduced(_ => None);
+    };
+  };
+  React.Ref.setCurrent(reqID, React.useContext(ReqID.context));
+  switch (React.Ref.current(reqID)) {
+  | None => Js.log("Current Req: _")
+  | Some(i) => Js.log("Current Req: " ++ string_of_int(i))
+  };
+
   React.useEffect1(
     () =>
       Some(
@@ -52,7 +70,11 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
           | Request(_, _, _) => ()
           | Response(i, expr) =>
             if (Some(i) == React.Ref.current(id)) {
-              setReduced(_ => Some(expr));
+              switch (React.Ref.current(reqID)) {
+              | None => Js.log("Saved Req: _")
+              | Some(i) => Js.log("Saved Req: " ++ string_of_int(i))
+              };
+              setReduced(_ => Some((React.Ref.current(reqID), expr)));
             },
         ),
       ),
@@ -83,7 +105,7 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
         {string("]")}
       </div>
     </>
-  | Some(expr) => <Expr prec=0 value=expr />
+  | Some((_, expr)) => <Expr prec=0 value=expr />
   };
   // <div className onMouseOver onMouseLeave onClick> {string("(...)")} </div>;
 };

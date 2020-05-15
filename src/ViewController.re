@@ -2,7 +2,7 @@ open Vscode;
 
 type status =
   | Initialized
-  | Uninitialized(array((option(int), View.Request.t)));
+  | Uninitialized(array(View.Request.t));
 
 type t = {
   panel: WebviewPanel.t,
@@ -11,20 +11,13 @@ type t = {
 };
 
 // messaging
-let send = (view, id, req) =>
+let send = (view, req) =>
   switch (view.status) {
   | Uninitialized(queued) =>
-    Js.Array.push((id, req), queued)->ignore;
+    Js.Array.push(req, queued)->ignore;
     Promise.resolved(false);
   | Initialized =>
-    let stringified =
-      Js.Json.stringify(
-        (id, req)
-        |> Json.Encode.pair(
-             Json.Encode.nullable(Json.Encode.int),
-             View.Request.encode,
-           ),
-      );
+    let stringified = Js.Json.stringify(req |> View.Request.encode);
     view.panel->WebviewPanel.webview->Webview.postMessage(stringified);
   };
 
@@ -170,9 +163,7 @@ let make = (getExtensionPath, context, editor) => {
         switch (view.status) {
         | Uninitialized(queued) =>
           view.status = Initialized;
-          queued->Belt.Array.forEach(((id, req)) =>
-            send(view, id, req)->ignore
-          );
+          queued->Belt.Array.forEach(req => send(view, req)->ignore);
         | Initialized => ()
         };
       }

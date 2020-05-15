@@ -60,8 +60,8 @@ module Impl = (Editor: Sig.Editor) => {
     );
 
     // catching exceptions occured when decoding JSON values
-    switch (result |> Json.Decode.pair(Json.Decode.int, Response.decode)) {
-    | (i, value) => Promise.resolved(Ok((i, value)))
+    switch (result |> Response.decode) {
+    | value => Promise.resolved(Ok(value))
     | exception (Json.Decode.DecodeError(msg)) =>
       Promise.resolved(Error(Sig.Error.Decode(msg, result)))
     };
@@ -103,11 +103,11 @@ module Impl = (Editor: Sig.Editor) => {
 
   let show = state => state.view->Editor.View.show;
   let hide = state => state.view->Editor.View.hide;
-  let sendRequestToView = (state, id, request) => {
-    Editor.View.send(state.view, id, request);
+  let sendRequestToView = (state, request) => {
+    Editor.View.send(state.view, request);
   };
-  let display = (state, id, header, body) => {
-    sendRequestToView(state, id, View.Request.Display(header, body));
+  let display = (state, header, body) => {
+    sendRequestToView(state, View.Request.Display(header, body));
   };
   //
   // Spec-related
