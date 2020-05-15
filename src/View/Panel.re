@@ -34,6 +34,9 @@ let make =
               setHeader(_ => header);
               setBody(_ => body);
             }
+          | Substitute(i, expr) => {
+              React.Ref.current(onSubstitute).emit(Subst.Response(i, expr));
+            }
           | Hide => setHidden(_ => true)
           | Show => setHidden(_ => false),
         );
@@ -72,7 +75,7 @@ let make =
               onResponse.emit(Substitute(i, expr, subst));
             }
           | Response(i, expr) => {
-              ();
+              Js.log("YOYOYO");
             },
         ),
       ),

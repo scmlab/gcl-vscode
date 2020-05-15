@@ -36,9 +36,7 @@ module Impl = (Editor: Sig.Editor) => {
         ),
         DispatchCommand(Reload),
       ]
-    | Substitute(i, expr) =>
-      Js.log("SUBST");
-      [];
+    | Substitute(i, expr) => [ViewRequest(Substitute(i, expr))]
     | InsertAssertion(i, expr) => [
         WithState(
           state => {State.Spec.insert(state, i, expr)->Promise.map(_ => [])},

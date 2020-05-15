@@ -103,8 +103,11 @@ module Impl = (Editor: Sig.Editor) => {
 
   let show = state => state.view->Editor.View.show;
   let hide = state => state.view->Editor.View.hide;
+  let sendRequestToView = (state, request) => {
+    state.view->Editor.View.send(request);
+  };
   let display = (state, header, body) => {
-    state.view->Editor.View.send(View.Request.Display(header, body));
+    sendRequestToView(state, View.Request.Display(header, body));
   };
   //
   // Spec-related
