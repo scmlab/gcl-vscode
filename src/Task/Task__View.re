@@ -14,6 +14,14 @@ module Impl = (Editor: Sig.Editor) => {
     "function (id) {delete decorationDict[id]}"
   ];
 
+  let clearDict = () => {
+    Js.Dict.entries(decorationDict)
+    ->Array.forEach(((key, decos)) => {
+        delete_(key);
+        decos->Array.forEach(Editor.Decoration.destroy);
+      });
+  };
+
   // from View response to Tasks
   let handle = (editor, response): list(Task.t) =>
     switch (response) {
@@ -44,12 +52,9 @@ module Impl = (Editor: Sig.Editor) => {
       let range = Editor.Range.fromLoc(loc);
       editor->Editor.selectText(range);
       [];
-    | Substitute(i, expr, subst) => [
-        SendRequest(Substitute(i, expr, subst)),
-      ]
-    // state->sendRequest(Substitute(expr, subst))
-    // let range = Editor.Range.fromLoc(loc);
-    // editor->Editor.selectText(range);
+    | Substitute(i, expr, subst) =>
+      clearDict();
+      [SendRequest(Substitute(i, expr, subst))];
     | Initialized => []
     | Destroyed => [
         WithState(
