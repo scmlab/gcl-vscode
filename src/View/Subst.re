@@ -18,6 +18,13 @@ module Provider = {
   let make = React.Context.provider(eventContext);
 };
 
+//
+type redux =
+  | Unreduced(GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
+  | Reducing
+  | Reduced(option(int), GCL.Syntax.Expr.t);
+
+// a global counter for generating fresh IDs for <Subst>
 let counter = ref(0);
 
 [@react.component]
@@ -28,40 +35,42 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
   };
   let emitter = React.useContext(eventContext);
   let (hovered, setHover) = React.useState(_ => false);
-  let (reduced, setReduced) = React.useState(_ => None);
+  let (redux, setRedux) = React.useState(_ => Unreduced(expr, subst));
   let id = React.useRef(None);
   let reqID = React.useRef(None);
   let onMouseOver = _ => setHover(_ => true);
   let onMouseLeave = _ => setHover(_ => false);
+
   let onClick = _ => {
     emitter.emit(Request(counter^, expr, subst));
+    // bump the counter
     React.Ref.setCurrent(id, Some(counter^));
     counter := counter^ + 1;
   };
+
   let className =
     "expr-subst"
     ++ (hovered ? " hovered" : "")
-    ++ (Belt.Option.isSome(reduced) ? " reduced" : "");
+    ++ (
+      switch (redux) {
+      | Reduced(_, _) => " reduced"
+      | _ => ""
+      }
+    );
+
+  React.Ref.setCurrent(reqID, React.useContext(ReqID.context));
 
   // cache invalidaction
-  switch (reduced) {
-  | None => ()
-  | Some((cachedID, _)) =>
-    switch (cachedID) {
-    | None => Js.log("Current cached ID: _")
-    | Some(i) => Js.log("Current cached ID: " ++ string_of_int(i))
-    };
+  switch (redux) {
+  | Reduced(cachedID, _) =>
     if (cachedID != React.Ref.current(reqID)) {
       Js.log("invalidate!! ");
-      setReduced(_ => None);
-    };
-  };
-  React.Ref.setCurrent(reqID, React.useContext(ReqID.context));
-  switch (React.Ref.current(reqID)) {
-  | None => Js.log("Current Req: _")
-  | Some(i) => Js.log("Current Req: " ++ string_of_int(i))
+      setRedux(_ => Unreduced(expr, subst));
+    }
+  | _ => ()
   };
 
+  // listen to the response broadcast
   React.useEffect1(
     () =>
       Some(
@@ -70,19 +79,15 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
           | Request(_, _, _) => ()
           | Response(i, expr) =>
             if (Some(i) == React.Ref.current(id)) {
-              switch (React.Ref.current(reqID)) {
-              | None => Js.log("Saved Req: _")
-              | Some(i) => Js.log("Saved Req: " ++ string_of_int(i))
-              };
-              setReduced(_ => Some((React.Ref.current(reqID), expr)));
+              setRedux(_ => Reduced(React.Ref.current(reqID), expr));
             },
         ),
       ),
     [||],
   );
 
-  switch (reduced) {
-  | None =>
+  switch (redux) {
+  | Unreduced(expr, subst) =>
     <>
       <Expr prec=0 value=expr />
       <Space />
@@ -105,7 +110,8 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
         {string("]")}
       </div>
     </>
-  | Some((_, expr)) => <Expr prec=0 value=expr />
+  | Reduced(_, expr) => <Expr prec=0 value=expr />
+  | _ => <> {string("...")} </>
   };
   // <div className onMouseOver onMouseLeave onClick> {string("(...)")} </div>;
 };

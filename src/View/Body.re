@@ -28,7 +28,7 @@ module ProofObligation = {
 };
 
 [@react.component]
-let make = (~body: View.Request.Body.t) => {
+let make = (~body: View.Request.Body.t) =>
   switch (body) {
   | Nothing => <> </>
   | ProofObligations(_id, [||]) => <> </>
@@ -39,7 +39,6 @@ let make = (~body: View.Request.Body.t) => {
           <ProofObligation payload key={string_of_int(i)} />
         )
       ->React.array;
-    Js.log("set as " ++ string_of_int(id));
     <ReqID.Provider value={Some(id)}>
       <div className="gcl-body">
         <ul className="gcl-proof-obligation-list"> list </ul>
@@ -58,4 +57,3 @@ let make = (~body: View.Request.Body.t) => {
       <div className="gcl-plain-text gcl-body-item"> paragraphs </div>
     </div>;
   };
-};
