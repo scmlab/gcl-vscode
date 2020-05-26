@@ -25,11 +25,11 @@ module Impl = (Editor: Sig.Editor) => {
                       switch (state.mode) {
                       | WP1 => [
                           RemoveDecorations,
-                          SendRequest(Request.Load(fileName)),
+                          SendRequest(Request.Load(fileName, GCL.WP1)),
                         ]
                       | WP2 => [
                           RemoveDecorations,
-                          SendRequest(Request.Load2(fileName)),
+                          SendRequest(Request.Load(fileName, GCL.WP2)),
                         ]
                       };
                     } else {
@@ -71,5 +71,8 @@ module Impl = (Editor: Sig.Editor) => {
             Promise.resolved([SendRequest(InsertAssertion(line))]);
           },
         ),
-      ];
+      ]
+    | Debug => {
+        [SendRequest(Debug)];
+      };
 };

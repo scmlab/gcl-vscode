@@ -7,7 +7,7 @@ let vscode = Vscode.Api.acquireVsCodeApi();
 // relay Vscode.Api.onMessage => onRequest;
 let onRequest = Event.make();
 Vscode.Api.onMessage(stringifiedJSON => {
-  let request = stringifiedJSON->Js.Json.parseExn->View.Request.decode;
+  let request = Js.Json.parseExn(stringifiedJSON) |> View.Request.decode;
   onRequest.emit(request);
 });
 

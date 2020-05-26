@@ -21,21 +21,13 @@ module Pos = {
 
   open Json.Decode;
   let decode: decoder(t) =
-    json =>
-      Pos(
-        field("filepath", string, json),
-        field("line", int, json),
-        field("column", int, json),
-      );
+    tuple4(string, int, int, int) |> map(((w, x, y, _)) => Pos(w, x, y));
+
   open! Json.Encode;
   let encode: encoder(t) =
     fun
     | Pos(path, line, column) =>
-      object_([
-        ("filepath", string(path)),
-        ("line", int(line)),
-        ("column", int(column)),
-      ]);
+      (path, line, column, 0) |> tuple4(string, int, int, int);
 };
 
 module Loc = {
@@ -73,11 +65,7 @@ module Loc = {
       fun
       | "Loc" =>
         Contents(
-          json =>
-            Loc(
-              field("start", Pos.decode, json),
-              field("end", Pos.decode, json),
-            ),
+          pair(Pos.decode, Pos.decode) |> map(((x, y)) => Loc(x, y)),
         )
       | "NoLoc" => TagOnly(_ => NoLoc)
       | tag => raise(DecodeError("[Loc] Unknown constructor: " ++ tag)),
@@ -90,15 +78,16 @@ module Loc = {
     | Loc(x, y) =>
       object_([
         ("tag", string("Loc")),
-        (
-          "contents",
-          object_([("start", Pos.encode(x)), ("end", Pos.encode(y))]),
-        ),
+        ("contents", (x, y) |> pair(Pos.encode, Pos.encode)),
       ]);
 };
 
 type pos = Pos.t;
 type loc = Loc.t;
+
+type mode =
+  | WP1
+  | WP2;
 
 module Syntax = {
   // for pretty printing
@@ -121,13 +110,15 @@ module Syntax = {
   module Lit = {
     type t =
       | Num(int)
-      | Bool(bool);
+      | Bool(bool)
+      | Unknown(Js.Json.t);
 
     let toString =
       fun
       | Num(i) => string_of_int(i)
       | Bool(true) => "True"
-      | Bool(false) => "False";
+      | Bool(false) => "False"
+      | Unknown(json) => Js.Json.stringify(json);
 
     open Util.Decode;
     open Json.Decode;
@@ -138,8 +129,7 @@ module Syntax = {
              fun
              | "Num" => Contents(int |> map(x => Num(x)))
              | "Bol" => Contents(bool |> map(x => Bool(x)))
-             | tag =>
-               raise(DecodeError("[Lit] Unknown constructor: " ++ tag)),
+             | _ => Contents(json => Unknown(json)),
            );
 
     open! Json.Encode;
@@ -147,7 +137,8 @@ module Syntax = {
       fun
       | Num(i) => object_([("tag", string("Num")), ("contents", i |> int)])
       | Bool(x) =>
-        object_([("tag", string("Bol")), ("contents", x |> bool)]);
+        object_([("tag", string("Bol")), ("contents", x |> bool)])
+      | _ => object_([("tag", string("Num")), ("contents", 42 |> int)]);
   };
 
   module Op = {
@@ -166,7 +157,8 @@ module Syntax = {
       | Sub
       | Mul
       | Div
-      | Mod;
+      | Mod
+      | Unknown(string);
 
     let toString =
       fun
@@ -184,7 +176,8 @@ module Syntax = {
       | Sub => "-"
       | Mul => {j|×|j}
       | Div => {j|÷|j}
-      | Mod => "%";
+      | Mod => "%"
+      | Unknown(string) => string;
 
     open Json.Decode;
     let decode: decoder(t) =
@@ -206,7 +199,7 @@ module Syntax = {
            | "Mul" => Mul
            | "Div" => Div
            | "Mod" => Mod
-           | tag => raise(DecodeError("[Op] Unknown constructor: " ++ tag)),
+           | string => Unknown(string),
          );
 
     open! Json.Encode;
@@ -226,61 +219,52 @@ module Syntax = {
       | Sub => string("Sub")
       | Mul => string("Mul")
       | Div => string("Div")
-      | Mod => string("Mod");
+      | Mod => string("Mod")
+      | Unknown(x) => string(x);
   };
 
-  module Upper = {
+  module Name = {
     type t =
-      | Upper(string, loc);
+      | Name(string, loc);
     let toString =
       fun
-      | Upper(x, _) => x;
+      | Name(x, _) => x;
     open Json.Decode;
     let decode: decoder(t) =
-      pair(string, Loc.decode) |> map(((x, r)) => Upper(x, r));
+      pair(string, Loc.decode) |> map(((x, r)) => Name(x, r));
     open! Json.Encode;
     let encode: encoder(t) =
       fun
-      | Upper(s, loc) => (s, loc) |> pair(string, Loc.encode);
-  };
-
-  module Lower = {
-    type t =
-      | Lower(string, loc);
-    let toString =
-      fun
-      | Lower(x, _) => x;
-    open Json.Decode;
-    let decode: decoder(t) =
-      pair(string, Loc.decode) |> map(((x, r)) => Lower(x, r));
-
-    open! Json.Encode;
-    let encode: encoder(t) =
-      fun
-      | Lower(s, loc) => (s, loc) |> pair(string, Loc.encode);
+      | Name(s, loc) => (s, loc) |> pair(string, Loc.encode);
   };
 
   module Expr = {
     type t =
-      | Var(Lower.t, loc)
-      | Const(Upper.t, loc)
       | Lit(Lit.t, loc)
+      | Var(Name.t, loc)
+      | Const(Name.t, loc)
       | Op(Op.t, loc)
       | App(t, t, loc)
-      // (+ i : 0 <= i && i < N : f i)
-      | Quant(t, array(Lower.t), t, t, loc)
+      | Lam(string, t, loc)
       | Hole(loc)
+      // (+ i : 0 <= i && i < N : f i)
+      | Quant(t, array(Name.t), t, t, loc)
+      | Subst(t, subst)
+      | Unknown(Js.Json.t)
     and subst = Js.Dict.t(t);
 
     let locOf =
       fun
+      | Lit(_, loc) => loc
       | Var(_, loc) => loc
       | Const(_, loc) => loc
-      | Lit(_, loc) => loc
       | Op(_, loc) => loc
       | App(_, _, loc) => loc
+      | Lam(_, _, loc) => loc
+      | Hole(loc) => loc
       | Quant(_, _, _, _, loc) => loc
-      | Hole(loc) => loc;
+      | Subst(_, _) => Loc.NoLoc
+      | Unknown(_) => Loc.NoLoc;
 
     let negate = x => App(Op(Op.Neg, NoLoc), x, NoLoc);
     let disj = (x, y) => App(App(Op(Op.Disj, NoLoc), x, NoLoc), y, NoLoc);
@@ -306,19 +290,19 @@ module Syntax = {
         json
         |> sum(
              fun
+             | "Lit" =>
+               Contents(
+                 pair(Lit.decode, Loc.decode) |> map(((x, r)) => Lit(x, r)),
+               )
              | "Var" =>
                Contents(
-                 pair(Lower.decode, Loc.decode)
+                 pair(Name.decode, Loc.decode)
                  |> map(((x, r)) => Var(x, r)),
                )
              | "Const" =>
                Contents(
-                 pair(Upper.decode, Loc.decode)
+                 pair(Name.decode, Loc.decode)
                  |> map(((x, r)) => Const(x, r)),
-               )
-             | "Lit" =>
-               Contents(
-                 pair(Lit.decode, Loc.decode) |> map(((x, r)) => Lit(x, r)),
                )
              | "Op" =>
                Contents(
@@ -329,20 +313,28 @@ module Syntax = {
                  tuple3(decode, decode, Loc.decode)
                  |> map(((x, y, r)) => App(x, y, r)),
                )
+             | "Lam" =>
+               Contents(
+                 tuple3(string, decode, Loc.decode)
+                 |> map(((x, y, r)) => Lam(x, y, r)),
+               )
+             | "Hole" => Contents(Loc.decode |> map(r => Hole(r)))
              | "Quant" =>
                Contents(
                  Util.Decode.tuple5(
                    decode,
-                   array(Lower.decode),
+                   array(Name.decode),
                    decode,
                    decode,
                    Loc.decode,
                  )
                  |> map(((op, vars, p, q, l)) => Quant(op, vars, p, q, l)),
                )
-             | "Hole" => Contents(Loc.decode |> map(r => Hole(r)))
-             | tag =>
-               raise(DecodeError("[Expr] Unknown constructor: " ++ tag)),
+             | "Subst" =>
+               Contents(
+                 pair(decode, decodeSubst) |> map(((x, y)) => Subst(x, y)),
+               )
+             | _ => Contents(json => Unknown(json)),
            )
     and decodeSubst: decoder(subst) = json => json |> dict(decode);
 
@@ -350,20 +342,20 @@ module Syntax = {
     open! Util.Encode;
     let rec encode: encoder(t) =
       fun
-      | Var(s, loc) =>
-        object_([
-          ("tag", string("Var")),
-          ("contents", (s, loc) |> pair(Lower.encode, Loc.encode)),
-        ])
-      | Const(s, loc) =>
-        object_([
-          ("tag", string("Const")),
-          ("contents", (s, loc) |> pair(Upper.encode, Loc.encode)),
-        ])
       | Lit(lit, loc) =>
         object_([
           ("tag", string("Lit")),
           ("contents", (lit, loc) |> pair(Lit.encode, Loc.encode)),
+        ])
+      | Var(s, loc) =>
+        object_([
+          ("tag", string("Var")),
+          ("contents", (s, loc) |> pair(Name.encode, Loc.encode)),
+        ])
+      | Const(s, loc) =>
+        object_([
+          ("tag", string("Const")),
+          ("contents", (s, loc) |> pair(Name.encode, Loc.encode)),
         ])
       | Op(op, loc) =>
         object_([
@@ -375,26 +367,36 @@ module Syntax = {
           ("tag", string("App")),
           ("contents", (e, f, loc) |> tuple3(encode, encode, Loc.encode)),
         ])
+      | Lam(x, body, loc) =>
+        object_([
+          ("tag", string("Lam")),
+          (
+            "contents",
+            (x, body, loc) |> tuple3(string, encode, Loc.encode),
+          ),
+        ])
+      | Hole(loc) =>
+        object_([("tag", string("Hole")), ("contents", loc |> Loc.encode)])
       | Quant(e, lowers, f, g, loc) =>
         object_([
           ("tag", string("Quant")),
           (
             "contents",
             (e, lowers, f, g, loc)
-            |> tuple5(
-                 encode,
-                 array(Lower.encode),
-                 encode,
-                 encode,
-                 Loc.encode,
-               ),
+            |> tuple5(encode, array(Name.encode), encode, encode, Loc.encode),
           ),
         ])
-      | Hole(loc) =>
+      | Subst(e, subst) =>
+        object_([
+          ("tag", string("Subst")),
+          ("contents", (e, subst) |> pair(encode, encodeSubst)),
+        ])
+      | _ =>
         object_([
           ("tag", string("Hole")),
-          ("contents", loc |> Loc.encode),
-        ]);
+          ("contents", Loc.NoLoc |> Loc.encode),
+        ])
+    and encodeSubst: encoder(subst) = json => json |> dict(encode);
 
     module Precedence = {
       open VarArg;
@@ -424,7 +426,8 @@ module Syntax = {
         | Sub => InfixL(7)
         | Mul => InfixL(8)
         | Div => InfixL(8)
-        | Mod => InfixL(9);
+        | Mod => InfixL(9)
+        | Unknown(_) => InfixL(9);
 
       // adds parentheses when True
       let parensIf = (p, s) =>
@@ -489,36 +492,45 @@ module Syntax = {
         }
       and handleExpr = n =>
         fun
-        | Var(s, _) => Complete(Lower.toString(s))
-        | Const(s, _) => Complete(Upper.toString(s))
         | Lit(lit, _) => Complete(Lit.toString(lit))
+        | Var(s, _) => Complete(Name.toString(s))
+        | Const(s, _) => Complete(Name.toString(s))
         | Op(op, _) => handleOperator(n, op)
         | App(p, q, _) =>
           switch (handleExpr(n, p)) {
+          // this branch happens when `p` is an `Op`
           | Expect(f) => f(q)
+          // otherwise, examine `q`
           | Complete(s) =>
             switch (handleExpr(n, q)) {
+            // this branch happens when `q` is also an `Op`
             | Expect(g) => Expect(g)
             | Complete(t) =>
+              // otherwise, juxtapose both
               switch (q) {
               | App(_, _, _) => Complete(s ++ " " ++ parensIf(true, t))
               | _ => Complete(s ++ " " ++ t)
               }
             }
           }
+        | Lam(x, body, _) =>
+          Complete("\\" ++ x ++ " -> " ++ toString(0, body))
+        | Hole(_) => Complete("[?]")
         | Quant(op, vars, p, q, _) =>
           Complete(
             "< "
             ++ toString(0, op)
             ++ " "
-            ++ Js.String.concatMany(Array.map(vars, Lower.toString), " ")
+            ++ Js.String.concatMany(Array.map(vars, Name.toString), " ")
             ++ " : "
             ++ toString(0, p)
             ++ " : "
             ++ toString(0, q)
             ++ " >",
           )
-        | Hole(_) => Complete("[?]")
+        | Subst(expr, _subst) => handleExpr(n, expr)
+        | Unknown(x) =>
+          Complete("[Uknown expr: " ++ Js.Json.stringify(x) ++ "]")
       // | Hole(_) => Complete("[" ++ string_of_int(i) ++ "]")
       and toString = (n, p) =>
         switch (handleExpr(n, p)) {

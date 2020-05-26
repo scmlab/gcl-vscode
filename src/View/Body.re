@@ -28,20 +28,22 @@ module ProofObligation = {
 };
 
 [@react.component]
-let make = (~body: View.Request.Body.t) => {
+let make = (~body: View.Request.Body.t) =>
   switch (body) {
   | Nothing => <> </>
-  | ProofObligations([||]) => <> </>
-  | ProofObligations(ps) =>
+  | ProofObligations(_id, [||]) => <> </>
+  | ProofObligations(id, ps) =>
     let list =
       ps
       ->Array.mapWithIndex((i, payload) =>
           <ProofObligation payload key={string_of_int(i)} />
         )
       ->React.array;
-    <div className="gcl-body">
-      <ul className="gcl-proof-obligation-list"> list </ul>
-    </div>;
+    <ReqID.Provider value={Some(id)}>
+      <div className="gcl-body">
+        <ul className="gcl-proof-obligation-list"> list </ul>
+      </div>
+    </ReqID.Provider>;
 
   | Plain(s) =>
     let paragraphs =
@@ -55,4 +57,3 @@ let make = (~body: View.Request.Body.t) => {
       <div className="gcl-plain-text gcl-body-item"> paragraphs </div>
     </div>;
   };
-};

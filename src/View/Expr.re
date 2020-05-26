@@ -1,4 +1,5 @@
 open React;
+open Common;
 
 module Paren = {
   [@react.component]
@@ -35,15 +36,10 @@ module Paren = {
   };
 };
 
-module Space = {
-  [@react.component]
-  let make = () => <div> {string(" ")} </div>;
-};
-
 module Low = {
   [@react.component]
-  let make = (~value: GCL.Syntax.Lower.t) =>
-    <div> {string(GCL.Syntax.Lower.toString(value))} </div>;
+  let make = (~value: GCL.Syntax.Name.t) =>
+    <div> {string(GCL.Syntax.Name.toString(value))} </div>;
 };
 
 module Operator = {
@@ -128,12 +124,12 @@ module Prec = {
     };
     GCL.Syntax.Expr.(
       fun
-      | Var(s, loc) =>
-        Complete(<Link loc> {string(Lower.toString(s))} </Link>)
-      | Const(s, loc) =>
-        Complete(<Link loc> {string(Upper.toString(s))} </Link>)
       | Lit(lit, loc) =>
         Complete(<Link loc> {string(Lit.toString(lit))} </Link>)
+      | Var(s, loc) =>
+        Complete(<Link loc> {string(Name.toString(s))} </Link>)
+      | Const(s, loc) =>
+        Complete(<Link loc> {string(Name.toString(s))} </Link>)
       | Op(op, loc) =>
         // HACK: if the precedence is smaller than 0, display the operator directly
         n >= 0
@@ -152,6 +148,15 @@ module Prec = {
             }
           }
         }
+      | Lam(x, body, loc) =>
+        Complete(
+          <Link loc>
+            {string("\\")}
+            {string(x)}
+            {string(" -> ")}
+            <Self prec=0 value=body />
+          </Link>,
+        )
       | Quant(op, vars, p, q, loc) =>
         Complete(
           <Link loc>
@@ -175,7 +180,24 @@ module Prec = {
             {string(">")}
           </Link>,
         )
+      | Subst(expr, subst) =>
+        Complete(
+          <Link loc=GCL.Loc.NoLoc>
+            <Subst
+              expr
+              subst
+              makeExpr=make
+              makeExprProps={makeProps(~key="")}
+            />
+          </Link>,
+        )
       | Hole(loc) => Complete(<Link loc> {string("[?]")} </Link>)
+      | Unknown(x) =>
+        Complete(
+          <Link loc=GCL.Loc.NoLoc>
+            {string("[? " ++ Js.Json.stringify(x) ++ " ?]")}
+          </Link>,
+        )
     );
   }
   [@react.component]

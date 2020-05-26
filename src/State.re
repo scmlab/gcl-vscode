@@ -6,7 +6,7 @@ module Impl = (Editor: Sig.Editor) => {
     editor,
     context,
     view: Editor.view,
-    mutable mode: View.Response.mode,
+    mutable mode: GCL.mode,
     mutable decorations: array(Editor.Decoration.t),
     mutable specifications: array(Response.Specification.t),
     mutable connection: option(Connection.t),
@@ -60,7 +60,7 @@ module Impl = (Editor: Sig.Editor) => {
     );
 
     // catching exceptions occured when decoding JSON values
-    switch (Response.decode(result)) {
+    switch (result |> Response.decode) {
     | value => Promise.resolved(Ok(value))
     | exception (Json.Decode.DecodeError(msg)) =>
       Promise.resolved(Error(Sig.Error.Decode(msg, result)))
@@ -87,47 +87,12 @@ module Impl = (Editor: Sig.Editor) => {
       editor,
       context,
       view,
-      mode: View.Response.WP1,
+      mode: GCL.WP1,
       decorations: [||],
       specifications: [||],
       connection: None,
       onDestroyEventEmitter: Event.make(),
     };
-
-    // a dictionary of decorations for <Link>
-    let decorationDict: Js.Dict.t(array(Editor.Decoration.t)) =
-      Js.Dict.empty();
-    let delete_: string => unit = [%raw
-      "function (id) {delete decorationDict[id]}"
-    ];
-
-    let onRecvMessageFromView = x =>
-      switch (x) {
-      | View.Response.SetMode(mode) => state.mode = mode
-      | Link(MouseOver(loc)) =>
-        let key = GCL.Loc.toString(loc);
-        let range = Editor.Range.fromLoc(loc);
-        let decoration =
-          Editor.Decoration.highlightBackground(editor, Highlight, range);
-        Js.Dict.set(decorationDict, key, decoration);
-      | Link(MouseOut(loc)) =>
-        let key = GCL.Loc.toString(loc);
-        Js.Dict.get(decorationDict, key)
-        ->Option.forEach(decos =>
-            decos->Array.forEach(Editor.Decoration.destroy)
-          );
-        delete_(key);
-      | Link(MouseClick(loc)) =>
-        let range = Editor.Range.fromLoc(loc);
-        editor->Editor.selectText(range);
-      | Initialized => ()
-      | Destroyed => destroy(state)->ignore
-      };
-
-    // update the state on receiving messages from the view
-    view
-    ->Editor.View.recv(onRecvMessageFromView)
-    ->Editor.addToSubscriptions(context);
 
     state;
   };
@@ -138,8 +103,11 @@ module Impl = (Editor: Sig.Editor) => {
 
   let show = state => state.view->Editor.View.show;
   let hide = state => state.view->Editor.View.hide;
+  let sendRequestToView = (state, request) => {
+    Editor.View.send(state.view, request);
+  };
   let display = (state, header, body) => {
-    state.view->Editor.View.send(View.Request.Display(header, body));
+    sendRequestToView(state, View.Request.Display(header, body));
   };
   //
   // Spec-related

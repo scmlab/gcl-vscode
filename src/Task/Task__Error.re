@@ -144,6 +144,10 @@ module Impl = (Editor: Sig.Editor) => {
           ),
         ),
       ]
+    | CannotDecodeRequest(req) => [
+        MarkError(site),
+        Display(Error("Cannot Decode Request"), Plain(req)),
+      ]
     | CannotReadFile(path) => [
         MarkError(site),
         Display(

@@ -17,7 +17,7 @@ let send = (view, req) =>
     Js.Array.push(req, queued)->ignore;
     Promise.resolved(false);
   | Initialized =>
-    let stringified = Js.Json.stringify(View.Request.encode(req));
+    let stringified = Js.Json.stringify(req |> View.Request.encode);
     view.panel->WebviewPanel.webview->Webview.postMessage(stringified);
   };
 
@@ -132,7 +132,6 @@ let make = (getExtensionPath, context, editor) => {
   moveToBottom() |> ignore;
 
   // on message
-  // relay Webview.onDidReceiveMessage => onResponse
   let onResponse = Event.make();
   panel
   ->WebviewPanel.webview

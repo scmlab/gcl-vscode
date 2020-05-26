@@ -5,7 +5,8 @@ open Vscode;
 module StateDict = {
   module Impl = (Editor: Sig.Editor) => {
     module State = State.Impl(Editor);
-    let dict: Js.Dict.t(State.t) = Js.Dict.empty();
+    module TaskRunner = TaskRunner.Impl(Editor);
+    let dict: Js.Dict.t((State.t, TaskRunner.t)) = Js.Dict.empty();
 
     let get = fileName => dict->Js.Dict.get(fileName);
 
@@ -44,11 +45,15 @@ module StateDict = {
     };
     let destroy = fileName => {
       get(fileName)
-      ->Option.forEach(state => {
-          Js.log("[ states ][ destroy ]");
-          State.destroy(state) |> ignore;
-        });
-      remove(fileName);
+      ->Option.mapWithDefault(
+          Promise.resolved(),
+          ((state, taskRunner)) => {
+            Js.log("[ states ][ destroy ]");
+            State.destroy(state) |> ignore;
+            TaskRunner.destroy(taskRunner);
+          },
+        )
+      ->Promise.get(() => remove(fileName));
     };
 
     let contains = fileName => get(fileName)->Option.isSome;
@@ -56,8 +61,14 @@ module StateDict = {
     let destroyAll = () => {
       dict
       ->Js.Dict.entries
-      ->Array.map(((_, state)) => State.destroy(state))
-      ->ignore;
+      ->Array.map(((_, (state, taskRunner))) => {
+          Js.log("[ states ][ destroy ]");
+          State.destroy(state) |> ignore;
+          TaskRunner.destroy(taskRunner);
+        })
+      ->List.fromArray
+      ->Promise.all
+      ->Promise.get(_ => ());
     };
   };
 };
@@ -66,8 +77,9 @@ let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
 module Impl = (Editor: Sig.Editor) => {
   module States = StateDict.Impl(Editor);
-  module TaskCommand = Task__Command.Impl(Editor);
+  // module TaskCommand = Task__Command.Impl(Editor);
   module TaskRunner = TaskRunner.Impl(Editor);
+  module Task = Task.Impl(Editor);
   module State = State.Impl(Editor);
 
   let addToSubscriptions = (f, context) =>
@@ -95,8 +107,12 @@ module Impl = (Editor: Sig.Editor) => {
 
     // on editor activation, reveal the corresponding Panel (if any)
     Editor.onDidChangeActivation((prev, next) => {
-      prev->Option.flatMap(States.get)->Option.forEach(State.hide);
-      next->Option.flatMap(States.get)->Option.forEach(State.show);
+      prev
+      ->Option.flatMap(States.get)
+      ->Option.forEach(((state, _)) => State.hide(state));
+      next
+      ->Option.flatMap(States.get)
+      ->Option.forEach(((state, _)) => State.show(state));
     })
     ->Editor.addToSubscriptions(context);
 
@@ -109,19 +125,26 @@ module Impl = (Editor: Sig.Editor) => {
           | None =>
             // not in the States dict, instantiate one new
             let state = State.make(context, editor);
-            state
+            let taskRunner = TaskRunner.make(state);
             // remove it from the States dict if it got destroyed
+            state
             ->State.onDestroy(() => {States.remove(fileName)})
             ->Editor.addToSubscriptions(context);
-            States.add(fileName, state);
+            States.add(fileName, (state, taskRunner));
+
+            state.view
+            ->Editor.View.recv(response => {
+                TaskRunner.addTask(taskRunner, ViewResponse(response))
+              })
+            ->Editor.addToSubscriptions(context);
+
             // dispatch "Load"
-            TaskCommand.dispatch(Load)->TaskRunner.run(state)->ignore;
-          | Some(state) =>
+            taskRunner->TaskRunner.addTask(DispatchCommand(Load));
+          | Some((_state, taskRunner)) =>
             // already in the States dict, dispatch "Quit"
             // and remove and destroy it from the dict
-            TaskCommand.dispatch(Quit)
-            ->TaskRunner.run(state)
-            ->Promise.get(() => {fileName->States.destroy})
+            taskRunner->TaskRunner.addTask(DispatchCommand(Quit));
+            fileName->States.destroy;
           }
         })
     })
@@ -132,8 +155,8 @@ module Impl = (Editor: Sig.Editor) => {
       Editor.registerCommand(name, editor => {
         editor
         ->States.getByEditor
-        ->Option.forEach(state =>
-            TaskCommand.dispatch(command)->TaskRunner.run(state)->ignore
+        ->Option.forEach(((_, taskRunner)) =>
+            taskRunner->TaskRunner.addTask(DispatchCommand(command))
           )
       })
       ->Editor.addToSubscriptions(context)

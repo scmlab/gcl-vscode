@@ -94,3 +94,10 @@ module React = {
     | true => ""
     | false => " hidden";
 };
+
+module JsError = {
+  let toString = (_e: Js.Exn.t) => {
+    %raw
+    "_e.toString()";
+  };
+};

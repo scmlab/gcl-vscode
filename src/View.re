@@ -30,9 +30,10 @@ module Request = {
         object_([("tag", string("Error")), ("contents", string(s))]);
   };
   module Body = {
+    type id = int;
     type t =
       | Nothing
-      | ProofObligations(array(Response.ProofObligation.t))
+      | ProofObligations(id, array(Response.ProofObligation.t))
       | Plain(string);
 
     open Json.Decode;
@@ -44,10 +45,8 @@ module Request = {
         | "Nothing" => Contents(_ => Nothing)
         | "ProofObligations" =>
           Contents(
-            json =>
-              ProofObligations(
-                json |> array(Response.ProofObligation.decode),
-              ),
+            pair(int, array(Response.ProofObligation.decode))
+            |> map(((id, xs)) => ProofObligations(id, xs)),
           )
         | "Plain" => Contents(json => Plain(string(json)))
         | tag =>
@@ -60,10 +59,13 @@ module Request = {
     let encode: encoder(t) =
       fun
       | Nothing => object_([("tag", string("Nothing"))])
-      | ProofObligations(x) =>
+      | ProofObligations(id, x) =>
         object_([
           ("tag", string("ProofObligations")),
-          ("contents", x |> array(Response.ProofObligation.encode)),
+          (
+            "contents",
+            (id, x) |> pair(int, array(Response.ProofObligation.encode)),
+          ),
         ])
       | Plain(x) =>
         object_([("tag", string("Plain")), ("contents", string(x))]);
@@ -72,6 +74,7 @@ module Request = {
   type t =
     | Show
     | Hide
+    | Substitute(int, GCL.Syntax.Expr.t)
     | Display(Header.t, Body.t);
 
   open Json.Decode;
@@ -81,7 +84,11 @@ module Request = {
       fun
       | "Show" => Contents(_ => Show)
       | "Hide" => Contents(_ => Hide)
-      // | "Display" => Contents(_json => Display(Loading, Nothing))
+      | "Substitute" =>
+        Contents(
+          pair(int, GCL.Syntax.Expr.decode)
+          |> map(((x, y)) => Substitute(x, y)),
+        )
       | "Display" =>
         Contents(
           pair(Header.decode, Body.decode)
@@ -95,6 +102,11 @@ module Request = {
     fun
     | Show => object_([("tag", string("Show"))])
     | Hide => object_([("tag", string("Hide"))])
+    | Substitute(i, expr) =>
+      object_([
+        ("tag", string("Substitute")),
+        ("contents", (i, expr) |> pair(int, GCL.Syntax.Expr.encode)),
+      ])
     | Display(header, body) =>
       object_([
         ("tag", string("Display")),
@@ -103,29 +115,26 @@ module Request = {
 };
 
 module Response = {
-  type mode =
-    | WP1
-    | WP2;
-
   type linkEvent =
     | MouseOver(GCL.loc)
     | MouseOut(GCL.loc)
     | MouseClick(GCL.loc);
 
   type t =
-    | SetMode(mode)
+    | SetMode(GCL.mode)
     | Link(linkEvent)
+    | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
     | Initialized
     | Destroyed;
 
   open Json.Decode;
   open Util.Decode;
 
-  let decodeMode: decoder(mode) =
+  let decodeMode: decoder(GCL.mode) =
     sum(
       fun
-      | "WP1" => TagOnly(_ => WP1)
-      | "WP2" => TagOnly(_ => WP2)
+      | "WP1" => TagOnly(_ => GCL.WP1)
+      | "WP2" => TagOnly(_ => GCL.WP2)
       | tag =>
         raise(
           DecodeError("[View.Response.mode] Unknown constructor: " ++ tag),
@@ -153,13 +162,18 @@ module Response = {
       | "Destroyed" => TagOnly(_ => Destroyed)
       | "SetMode" => Contents(json => SetMode(decodeMode(json)))
       | "Link" => Contents(json => Link(decodeLinkEvent(json)))
+      | "Substitute" =>
+        Contents(
+          tuple3(int, GCL.Syntax.Expr.decode, GCL.Syntax.Expr.decodeSubst)
+          |> map(((i, expr, subst)) => Substitute(i, expr, subst)),
+        )
       | tag =>
         raise(DecodeError("[View.Response.t] Unknown constructor: " ++ tag)),
     );
 
   open! Json.Encode;
 
-  let encodeMode: encoder(mode) =
+  let encodeMode: encoder(GCL.mode) =
     fun
     | WP1 => object_([("tag", string("WP1"))])
     | WP2 => object_([("tag", string("WP2"))]);
@@ -188,6 +202,15 @@ module Response = {
     | Destroyed => object_([("tag", string("Destroyed"))])
     | Link(e) =>
       object_([("tag", string("Link")), ("contents", encodeLinkEvent(e))])
+    | Substitute(i, expr, subst) =>
+      object_([
+        ("tag", string("Substitute")),
+        (
+          "contents",
+          (i, expr, subst)
+          |> tuple3(int, GCL.Syntax.Expr.encode, GCL.Syntax.Expr.encodeSubst),
+        ),
+      ])
     | SetMode(mode) =>
       object_([
         ("tag", string("SetMode")),

@@ -5,11 +5,13 @@ let make =
       ~onRequest: Event.t(View.Request.t),
       ~onResponse: Event.t(View.Response.t),
     ) => {
+  // let (reqID, setReqID) = React.useState(() => None);
   let (header, setHeader) = React.useState(() => View.Request.Header.Loading);
   let (body, setBody) = React.useState(() => View.Request.Body.Nothing);
-  let (mode, setMode) = React.useState(_ => View.Response.WP1);
+  let (mode, setMode) = React.useState(_ => GCL.WP1);
   let (hidden, setHidden) = React.useState(_ => false);
   let onClickLink = React.useRef(Event.make());
+  let onSubstitute = React.useRef(Event.make());
 
   // response with Initialized on mount
   React.useEffect1(
@@ -27,15 +29,17 @@ let make =
     () => {
       open View.Request;
       let destructor =
-        onRequest.on(
-          fun
-          | Display(header, body) => {
-              setHeader(_ => header);
-              setBody(_ => body);
-            }
+        onRequest.on(req => {
+          switch (req) {
+          | Display(header, body) =>
+            setHeader(_ => header);
+            setBody(_ => body);
+          | Substitute(i, expr) =>
+            React.Ref.current(onSubstitute).emit(Subst.Response(i, expr))
           | Hide => setHidden(_ => true)
-          | Show => setHidden(_ => false),
-        );
+          | Show => setHidden(_ => false)
+          }
+        });
       Some(destructor);
     },
     [||],
@@ -61,12 +65,31 @@ let make =
     [||],
   );
 
+  // relay <Subst> substitution to "onResponse"
+  React.useEffect1(
+    () =>
+      Some(
+        React.Ref.current(onSubstitute).on(
+          fun
+          | Subst.Request(i, expr, subst) => {
+              onResponse.emit(Substitute(i, expr, subst));
+            }
+          | Response(_, _) => (),
+        ),
+      ),
+    [||],
+  );
+
   let className = "gcl-panel native-key-bindings" ++ (hidden ? " hidden" : "");
 
-  <Link.Provider value={React.Ref.current(onClickLink)}>
-    <section className tabIndex=(-1)>
-      <Header header editorType mode onChangeMode />
-      <Body body />
-    </section>
-  </Link.Provider>;
+  // <ReqID.Provider value=reqID>
+  <Subst.Provider value={React.Ref.current(onSubstitute)}>
+    <Link.Provider value={React.Ref.current(onClickLink)}>
+      <section className tabIndex=(-1)>
+        <Header header editorType mode onChangeMode />
+        <Body body />
+      </section>
+    </Link.Provider>
+  </Subst.Provider>;
+  // </ReqID.Provider>;
 };

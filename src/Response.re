@@ -141,9 +141,8 @@ module GlobalProp = {
   type t = Syntax.Expr.t;
 
   open Json.Decode;
-  let decode: decoder(t) =  Syntax.Expr.decode;
+  let decode: decoder(t) = Syntax.Expr.decode;
 };
-
 
 module Error = {
   module Site = {
@@ -282,6 +281,7 @@ module Error = {
     | StructError(StructError.t)
     | StructError2(StructError2.t)
     | TypeError(TypeError.t)
+    | CannotDecodeRequest(string)
     | CannotReadFile(string)
     | NotLoaded;
 
@@ -301,6 +301,8 @@ module Error = {
       | "StructError2" =>
         Contents(json => StructError2(json |> StructError2.decode))
       | "TypeError" => Contents(json => TypeError(json |> TypeError.decode))
+      | "CannotDecodeRequest" =>
+        Contents(json => CannotDecodeRequest(json |> string))
       | "CannotReadFile" => Contents(json => CannotReadFile(json |> string))
       | "NotLoaded" => TagOnly(_ => NotLoaded)
       | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
@@ -316,8 +318,14 @@ module Error = {
 
 type t =
   | Error(array(Error.t))
-  | OK(array(ProofObligation.t), array(Specification.t), array(GlobalProp.t))
+  | OK(
+      int,
+      array(ProofObligation.t),
+      array(Specification.t),
+      array(GlobalProp.t),
+    )
   | Resolve(int)
+  | Substitute(int, Syntax.Expr.t)
   | InsertAssertion(int, Syntax.Expr.t)
   | UnknownResponse(Js.Json.t);
 
@@ -326,18 +334,30 @@ open Util.Decode;
 let decode: decoder(t) =
   sum(
     fun
-    | "Error" =>
+    | "ResError" =>
       Contents(array(Error.decode) |> map(errors => Error(errors)))
-    | "OK" =>
+    | "ResOK" =>
       Contents(
-        tuple3(array(ProofObligation.decode), array(Specification.decode), array(GlobalProp.decode))
-        |> map(((obs, specs, globalProps)) => OK(obs, specs, globalProps)),
+        tuple4(
+          int,
+          array(ProofObligation.decode),
+          array(Specification.decode),
+          array(GlobalProp.decode),
+        )
+        |> map(((id, obs, specs, globalProps)) =>
+             OK(id, obs, specs, globalProps)
+           ),
       )
-    | "Insert" =>
+    | "ResSubstitute" =>
+      Contents(
+        pair(int, Syntax.Expr.decode)
+        |> map(((i, expr)) => Substitute(i, expr)),
+      )
+    | "ResInsert" =>
       Contents(
         pair(int, Syntax.Expr.decode)
         |> map(((i, expr)) => InsertAssertion(i, expr)),
       )
-    | "Resolve" => Contents(int |> map(i => Resolve(i)))
+    | "ResResolve" => Contents(int |> map(i => Resolve(i)))
     | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
   );

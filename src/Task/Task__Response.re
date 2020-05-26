@@ -11,7 +11,7 @@ module Impl = (Editor: Sig.Editor) => {
     switch (response) {
     | Error(errors) =>
       errors->Array.map(Task__Error.handle)->List.fromArray->Js.List.flatten
-    | OK(obligations, specifications, _) =>
+    | OK(id, obligations, specifications, _) =>
       List.concat(
         specifications->List.fromArray->List.map(spec => Task.MarkSpec(spec)),
         [
@@ -23,7 +23,7 @@ module Impl = (Editor: Sig.Editor) => {
           ),
           Display(
             Plain("Proof Obligations"),
-            ProofObligations(obligations),
+            ProofObligations(id, obligations),
           ),
         ],
       )
@@ -36,6 +36,7 @@ module Impl = (Editor: Sig.Editor) => {
         ),
         DispatchCommand(Reload),
       ]
+    | Substitute(i, expr) => [ViewRequest(Substitute(i, expr))]
     | InsertAssertion(i, expr) => [
         WithState(
           state => {State.Spec.insert(state, i, expr)->Promise.map(_ => [])},
