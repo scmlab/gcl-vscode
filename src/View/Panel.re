@@ -35,7 +35,7 @@ let make =
             setHeader(_ => header);
             setBody(_ => body);
           | Substitute(i, expr) =>
-            React.Ref.current(onSubstitute).emit(Subst.Response(i, expr))
+            onSubstitute.current.emit(Subst.Response(i, expr))
           | Hide => setHidden(_ => true)
           | Show => setHidden(_ => false)
           }
@@ -56,12 +56,7 @@ let make =
 
   // relay <Link> events to "onResponse"
   React.useEffect1(
-    () =>
-      Some(
-        React.Ref.current(onClickLink).on(ev => {
-          onResponse.emit(Link(ev))
-        }),
-      ),
+    () => Some(onClickLink.current.on(ev => {onResponse.emit(Link(ev))})),
     [||],
   );
 
@@ -69,7 +64,7 @@ let make =
   React.useEffect1(
     () =>
       Some(
-        React.Ref.current(onSubstitute).on(
+        onSubstitute.current.on(
           fun
           | Subst.Request(i, expr, subst) => {
               onResponse.emit(Substitute(i, expr, subst));
@@ -83,8 +78,8 @@ let make =
   let className = "gcl-panel native-key-bindings" ++ (hidden ? " hidden" : "");
 
   // <ReqID.Provider value=reqID>
-  <Subst.Provider value={React.Ref.current(onSubstitute)}>
-    <Link.Provider value={React.Ref.current(onClickLink)}>
+  <Subst.Provider value={onSubstitute.current}>
+    <Link.Provider value={onClickLink.current}>
       <section className tabIndex=(-1)>
         <Header header editorType mode onChangeMode />
         <Body body />

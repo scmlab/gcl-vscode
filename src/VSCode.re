@@ -863,17 +863,17 @@ module OverviewRulerLane = {
 // https://code.visualstudio.com/api/references/vscode-api#DecorationRangeBehavior;
 module DecorationRangeBehavior = {
   type raw = int;
-  type t = 
-   | OpenOpen
-   | ClosedClosed
-   | OpenClosed
-   | ClosedOpen;
+  type t =
+    | OpenOpen
+    | ClosedClosed
+    | OpenClosed
+    | ClosedOpen;
   let toEnum =
     fun
-   | OpenOpen => 0
-   | ClosedClosed => 1
-   | OpenClosed => 2
-   | ClosedOpen => 3;
+    | OpenOpen => 0
+    | ClosedClosed => 1
+    | OpenClosed => 2
+    | ClosedOpen => 3;
   let fromEnum =
     fun
     | 0 => OpenOpen

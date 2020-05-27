@@ -44,7 +44,7 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
   let onClick = _ => {
     emitter.emit(Request(counter^, expr, subst));
     // bump the counter
-    React.Ref.setCurrent(id, Some(counter^));
+    id.current = Some(counter^);
     counter := counter^ + 1;
   };
 
@@ -58,12 +58,12 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
       }
     );
 
-  React.Ref.setCurrent(reqID, React.useContext(ReqID.context));
+  reqID.current = React.useContext(ReqID.context);
 
   // cache invalidaction
   switch (redux) {
   | Reduced(cachedID, _) =>
-    if (cachedID != React.Ref.current(reqID)) {
+    if (cachedID != reqID.current) {
       Js.log("invalidate!! ");
       setRedux(_ => Unreduced(expr, subst));
     }
@@ -78,8 +78,8 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
           fun
           | Request(_, _, _) => ()
           | Response(i, expr) =>
-            if (Some(i) == React.Ref.current(id)) {
-              setRedux(_ => Reduced(React.Ref.current(reqID), expr));
+            if (Some(i) == id.current) {
+              setRedux(_ => Reduced(reqID.current, expr));
             },
         ),
       ),
