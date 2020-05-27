@@ -1,4 +1,4 @@
-open Vscode;
+open VSCode;
 
 type status =
   | Initialized

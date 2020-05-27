@@ -91,13 +91,6 @@ module ExtensionContext = {
 };
 
 module Commands = {
-  [@bs.module "vscode"] [@bs.scope "commands"]
-  external registerCommand: (string, 'a => unit) => Disposable.t =
-    "registerCommand";
-
-  // [@bs.module "vscode"] [@bs.scope "commands"]
-  // external executeCommand: string => Promise.t('a) = "executeCommand";
-
   module Layout = {
     [@unboxed]
     type group =
@@ -117,6 +110,7 @@ module Commands = {
     };
   };
 
+  // methods
   [@bs.module "vscode"] [@bs.scope "commands"]
   external executeCommand:
     (
@@ -125,6 +119,13 @@ module Commands = {
     ) =>
     Promise.t('a) =
     "executeCommand";
+
+  [@bs.module "vscode"] [@bs.scope "commands"]
+  external getCommands: option(bool) => Promise.t(array(string)) =
+    "getCommands";
+  [@bs.module "vscode"] [@bs.scope "commands"]
+  external registerCommand: (string, 'a => unit) => Disposable.t =
+    "registerCommand";
 };
 
 module Uri = {
@@ -362,7 +363,7 @@ module Position = {
   [@bs.get] external character: t => int = "character";
   [@bs.get] external line: t => int = "line";
   // methods
-  [@bs.send] external compareTo: (t, t) => unit = "compareTo";
+  [@bs.send] external compareTo: (t, t) => int = "compareTo";
   [@bs.send] external isAfter: (t, t) => bool = "isAfter";
   [@bs.send] external isAfterOrEqual: (t, t) => bool = "isAfterOrEqual";
   [@bs.send] external isBefore: (t, t) => bool = "isBefore";
@@ -1432,6 +1433,25 @@ module GlobPattern = {
 // https://code.visualstudio.com/api/references/vscode-api#FileSystemWatcher
 module FileSystemWatcher = {
   type t;
+  // events
+  [@bs.send]
+  external onDidChange: (t, Uri.t => unit) => Disposable.t = "onDidChange";
+  [@bs.send]
+  external onDidCreate: (t, Uri.t => unit) => Disposable.t = "onDidCreate";
+  [@bs.send]
+  external onDidDelete: (t, Uri.t => unit) => Disposable.t = "onDidDelete";
+  // static
+  [@bs.val]
+  external from: array({. "dispose": unit => 'a}) => Disposable.t = "from";
+  // constructors
+  [@bs.module "vscode"] [@bs.new]
+  external make: (unit => unit) => t = "FileSystemWatcher";
+  // properties
+  [@bs.get] external ignoreChangeEvents: t => bool = "ignoreChangeEvents";
+  [@bs.get] external ignoreCreateEvents: t => bool = "ignoreCreateEvents";
+  [@bs.get] external ignoreDeleteEvents: t => bool = "ignoreDeleteEvents";
+  // methods
+  [@bs.send] external dispose: t => 'a = "dispose";
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#WorkspaceConfiguration

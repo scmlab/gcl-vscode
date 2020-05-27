@@ -1,8 +1,8 @@
-open Vscode;
+open VSCode;
 open! Belt;
 
-type editor = Vscode.TextEditor.t;
-type context = Vscode.ExtensionContext.t;
+type editor = VSCode.TextEditor.t;
+type context = VSCode.ExtensionContext.t;
 module Disposable = {
   type t = Disposable.t;
   let make = Disposable.make;
@@ -30,21 +30,21 @@ module Point = {
 };
 
 module Range = {
-  type t = Vscode.Range.t;
-  let make = Vscode.Range.make;
-  let start = Vscode.Range.start;
-  let end_ = Vscode.Range.end_;
-  // let make =  Vscode.Range.make;
+  type t = VSCode.Range.t;
+  let make = VSCode.Range.make;
+  let start = VSCode.Range.start;
+  let end_ = VSCode.Range.end_;
+  // let make =  VSCode.Range.make;
 
   let fromLoc =
     fun
     | GCL.Loc.NoLoc =>
-      Vscode.Range.make(Position.make(0, 0), Position.make(0, 0))
+      VSCode.Range.make(Position.make(0, 0), Position.make(0, 0))
     | Loc(x, Pos(_, line, column)) =>
-      Vscode.Range.make(Point.fromPos(x), Position.make(line - 1, column));
+      VSCode.Range.make(Point.fromPos(x), Position.make(line - 1, column));
   let toLoc = (range, filepath) => {
-    let start = Vscode.Range.start(range);
-    let end_ = Vscode.Range.end_(range);
+    let start = VSCode.Range.start(range);
+    let end_ = VSCode.Range.end_(range);
     GCL.Loc.Loc(
       Pos(
         filepath,
@@ -55,8 +55,8 @@ module Range = {
     );
   };
 
-  let contains = Vscode.Range.contains;
-  let containsRange = Vscode.Range.containsRange;
+  let contains = VSCode.Range.contains;
+  let containsRange = VSCode.Range.containsRange;
 };
 
 type fileName = string;
@@ -84,7 +84,7 @@ let onDidCloseEditor = callback =>
 let onDidChangeFileName = callback =>
   Workspace.onDidRenameFiles(event =>
     event
-    ->Option.map(Vscode.FileRenameEvent.files)
+    ->Option.map(VSCode.FileRenameEvent.files)
     ->Option.forEach(files => {
         files->Array.forEach(file =>
           callback(
@@ -150,20 +150,20 @@ module View = {
 //
 
 module Decoration = {
-  type t = Vscode.TextEditorDecorationType.t;
+  type t = VSCode.TextEditorDecorationType.t;
 
   type kind =
     | Error
     | Highlight
     | Spec;
 
-  let digHole = (editor: editor, range: Vscode.Range.t) => {
-    let start = Vscode.Range.start(range);
+  let digHole = (editor: editor, range: VSCode.Range.t) => {
+    let start = VSCode.Range.start(range);
     // add indentation to the hole
-    let indent = Js.String.repeat(Vscode.Position.character(start), " ");
+    let indent = Js.String.repeat(VSCode.Position.character(start), " ");
     let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}";
     let holeRange =
-      Vscode.Range.make(start, Vscode.Position.translate(start, 0, 1));
+      VSCode.Range.make(start, VSCode.Position.translate(start, 0, 1));
 
     let editCallback = edit => {
       edit->TextEditorEdit.replaceAtRange(holeRange, holeText);
@@ -171,7 +171,7 @@ module Decoration = {
     editor->TextEditor.edit(editCallback, None)->ignore;
     // set the cursor inside the hole
 
-    let pos = Vscode.Position.translate(start, 1, 0);
+    let pos = VSCode.Position.translate(start, 1, 0);
     let selection = Selection.make(pos, pos);
     editor->TextEditor.setSelection(selection);
   };

@@ -2,19 +2,19 @@ open Belt;
 
 // As this so called "WebView" is isolated and independent from the Extension
 // this is the only way to send messages back to the extension
-let vscode = Vscode.Api.acquireVsCodeApi();
+let vscode = VSCode.Api.acquireVsCodeApi();
 
-// relay Vscode.Api.onMessage => onRequest;
+// relay VSCode.Api.onMessage => onRequest;
 let onRequest = Event.make();
-Vscode.Api.onMessage(stringifiedJSON => {
+VSCode.Api.onMessage(stringifiedJSON => {
   let request = Js.Json.parseExn(stringifiedJSON) |> View.Request.decode;
   onRequest.emit(request);
 });
 
-// relay onResponse => Vscode.Api.postMessage
+// relay onResponse => VSCode.Api.postMessage
 let onResponse = Event.make();
 onResponse.on(response => {
-  vscode->Vscode.Api.postMessage(View.Response.encode(response))
+  vscode->VSCode.Api.postMessage(View.Response.encode(response))
 });
 
 // mount the view at the "root" element
