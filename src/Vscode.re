@@ -862,7 +862,25 @@ module OverviewRulerLane = {
 
 // https://code.visualstudio.com/api/references/vscode-api#DecorationRangeBehavior;
 module DecorationRangeBehavior = {
-  type t;
+  type raw = int;
+  type t = 
+   | OpenOpen
+   | ClosedClosed
+   | OpenClosed
+   | ClosedOpen;
+  let toEnum =
+    fun
+   | OpenOpen => 0
+   | ClosedClosed => 1
+   | OpenClosed => 2
+   | ClosedOpen => 3;
+  let fromEnum =
+    fun
+    | 0 => OpenOpen
+    | 1 => ClosedClosed
+    | 2 => OpenClosed
+    | 3 => ClosedOpen
+    | _ => OpenOpen;
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#DecorationRenderOptions
@@ -922,7 +940,7 @@ module DecorationRenderOptions = {
     [@bs.optional]
     overviewRulerLane: OverviewRulerLane.t,
     [@bs.optional]
-    rangeBehavior: DecorationRangeBehavior.t,
+    rangeBehavior: DecorationRangeBehavior.raw,
     [@bs.optional]
     textDecoration: string,
   };
