@@ -18,7 +18,7 @@
   "suffix": ".bs.js",
   "namespace": true,
   "bs-dependencies": [
-    "agda-mode",
+    "agda-mode-vscode",
     "@glennsl/bs-json",
     "bs-webapi",
     "bs-nd",

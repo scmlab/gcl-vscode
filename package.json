@@ -94,9 +94,8 @@
 	"scripts": {
 		"build": "bsb -make-world && npx webpack --mode=production",
 		"watch-style": "npx less-watch-compiler style/ dist/",
-		"watch-view": "npm run watch-style & npx webpack --mode=production --watch",
 		"watch-code": "npx webpack --mode=production --watch",
-		"watch": "npm run watch-view",
+		"dev": "bsb -make-world && npm run watch-style & npm run watch-code",
 		"clean": "bsb -clean-world"
 	},
 	"devDependencies": {
@@ -104,11 +103,11 @@
 		"less-watch-compiler": "^1.14.6",
 		"vscode-test": "^1.2.2",
 		"webpack": "^4.42.0",
-		"webpack-cli": "^3.3.11"
+		"webpack-cli": "^3.3.12"
 	},
 	"dependencies": {
 		"@glennsl/bs-json": "^5.0.1",
-		"agda-mode": "github:banacorn/agda-mode#dev",
+		"agda-mode-vscode": "github:banacorn/agda-mode-vscode#v0.1.2",
 		"bs-let": "^0.1.11",
 		"bs-nd": "^0.1.5",
 		"bs-platform": "^7.2",
