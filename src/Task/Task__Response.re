@@ -29,10 +29,7 @@ module Impl = (Editor: Sig.Editor) => {
       )
     | Resolve(i) => [
         WithState(
-          state => {
-            let%P _ = State.Spec.resolve(state, i);
-            Promise.resolved([]);
-          },
+          state => {State.Spec.resolve(state, i)->Promise.map(_ => [])},
         ),
         DispatchCommand(Reload),
       ]

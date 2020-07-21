@@ -62,59 +62,68 @@ module Prec = {
     };
     switch (GCL.Syntax.Expr.Precedence.classify(op)) {
     | Infix(m) =>
-      let%VarArg p = var;
-      let%VarArg q = var;
-      Complete(
-        <Paren activate={n > m}>
-          <Self prec={m + 1} value=p />
-          <Space />
-          <Operator value=op loc />
-          <Space />
-          <Self prec={m + 1} value=q />
-        </Paren>,
-      );
+      var->VarArg.flatMap(p => {
+        var->VarArg.flatMap(q => {
+          Complete(
+            <Paren activate={n > m}>
+              <Self prec={m + 1} value=p />
+              <Space />
+              <Operator value=op loc />
+              <Space />
+              <Self prec={m + 1} value=q />
+            </Paren>,
+          )
+        })
+      })
+
     | InfixL(m) =>
-      let%VarArg p = var;
-      let%VarArg q = var;
-      Complete(
-        <Paren activate={n > m}>
-          <Self prec=m value=p />
-          <Space />
-          <Operator value=op loc />
-          <Space />
-          <Self prec={m + 1} value=q />
-        </Paren>,
-      );
+      var->VarArg.flatMap(p => {
+        var->VarArg.flatMap(q => {
+          Complete(
+            <Paren activate={n > m}>
+              <Self prec=m value=p />
+              <Space />
+              <Operator value=op loc />
+              <Space />
+              <Self prec={m + 1} value=q />
+            </Paren>,
+          )
+        })
+      })
     | InfixR(m) =>
-      let%VarArg p = var;
-      let%VarArg q = var;
-      Complete(
-        <Paren activate={n > m}>
-          <Self prec={m + 1} value=p />
-          <Space />
-          <Operator value=op loc />
-          <Space />
-          <Self prec=m value=q />
-        </Paren>,
-      );
+      var->VarArg.flatMap(p => {
+        var->VarArg.flatMap(q => {
+          Complete(
+            <Paren activate={n > m}>
+              <Self prec={m + 1} value=p />
+              <Space />
+              <Operator value=op loc />
+              <Space />
+              <Self prec=m value=q />
+            </Paren>,
+          )
+        })
+      })
     | Prefix(m) =>
-      let%VarArg p = var;
-      Complete(
-        <Paren activate={n > m}>
-          <Operator value=op loc />
-          <Space />
-          <Self prec=m value=p />
-        </Paren>,
-      );
+      var->VarArg.flatMap(p => {
+        Complete(
+          <Paren activate={n > m}>
+            <Operator value=op loc />
+            <Space />
+            <Self prec=m value=p />
+          </Paren>,
+        )
+      })
     | Postfix(m) =>
-      let%VarArg p = var;
-      Complete(
-        <Paren activate={n > m}>
-          <Self prec=m value=p />
-          <Space />
-          <Operator value=op loc />
-        </Paren>,
-      );
+      var->VarArg.flatMap(p => {
+        Complete(
+          <Paren activate={n > m}>
+            <Self prec=m value=p />
+            <Space />
+            <Operator value=op loc />
+          </Paren>,
+        )
+      })
     };
   }
   and handleExpr = n => {

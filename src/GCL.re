@@ -102,7 +102,7 @@ module Syntax = {
       | Expect(g) => Expect(x => flatMap(g(x), f))
       | Complete(x) => f(x)
       };
-    let let_ = flatMap;
+    // let let_ = flatMap;
 
     let var = Expect(x => Complete(x));
   };
@@ -440,55 +440,62 @@ module Syntax = {
       let rec handleOperator = (n, op) =>
         switch (classify(op)) {
         | Infix(m) =>
-          let%VarArg p = var;
-          let%VarArg q = var;
-          Complete(
-            parensIf(
-              n > m,
-              toString(m + 1, p)
-              ++ " "
-              ++ Op.toString(op)
-              ++ " "
-              ++ toString(m + 1, q),
-            ),
-          );
+          var->VarArg.flatMap(p =>
+            var->VarArg.flatMap(q => {
+              Complete(
+                parensIf(
+                  n > m,
+                  toString(m + 1, p)
+                  ++ " "
+                  ++ Op.toString(op)
+                  ++ " "
+                  ++ toString(m + 1, q),
+                ),
+              )
+            })
+          )
         | InfixL(m) =>
-          let%VarArg p = var;
-          let%VarArg q = var;
-
-          Complete(
-            parensIf(
-              n > m,
-              toString(m, p)
-              ++ " "
-              ++ Op.toString(op)
-              ++ " "
-              ++ toString(m + 1, q),
-            ),
-          );
+          var->VarArg.flatMap(p =>
+            var->VarArg.flatMap(q => {
+              Complete(
+                parensIf(
+                  n > m,
+                  toString(m, p)
+                  ++ " "
+                  ++ Op.toString(op)
+                  ++ " "
+                  ++ toString(m + 1, q),
+                ),
+              )
+            })
+          )
         | InfixR(m) =>
-          let%VarArg p = var;
-          let%VarArg q = var;
-          Complete(
-            parensIf(
-              n > m,
-              toString(m + 1, p)
-              ++ " "
-              ++ Op.toString(op)
-              ++ " "
-              ++ toString(m, q),
-            ),
-          );
+          var->VarArg.flatMap(p =>
+            var->VarArg.flatMap(q => {
+              Complete(
+                parensIf(
+                  n > m,
+                  toString(m + 1, p)
+                  ++ " "
+                  ++ Op.toString(op)
+                  ++ " "
+                  ++ toString(m, q),
+                ),
+              )
+            })
+          )
         | Prefix(m) =>
-          let%VarArg p = var;
-          Complete(
-            parensIf(n > m, Op.toString(op) ++ " " ++ toString(m, p)),
-          );
+          var->VarArg.flatMap(p =>
+            Complete(
+              parensIf(n > m, Op.toString(op) ++ " " ++ toString(m, p)),
+            )
+          )
         | Postfix(m) =>
-          let%VarArg p = var;
-          Complete(
-            parensIf(n > m, toString(m, p) ++ " " ++ Op.toString(op)),
-          );
+          var->VarArg.flatMap(p =>
+            Complete(
+              parensIf(n > m, toString(m, p) ++ " " ++ Op.toString(op)),
+            )
+          )
         }
       and handleExpr = n =>
         fun

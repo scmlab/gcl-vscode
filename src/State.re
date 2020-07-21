@@ -49,22 +49,25 @@ module Impl = (Editor: Sig.Editor) => {
     let value = Request.encode(request);
     Js.log2("<<<", value);
 
-    let%Ok conn = state->connect;
-    let%Ok result =
-      Connection.send(value, conn)
-      ->Promise.mapError(e => Sig.Error.Connection(e));
+    state
+    ->connect
+    ->Promise.flatMapOk(conn => {
+        Connection.send(value, conn)
+        ->Promise.mapError(e => Sig.Error.Connection(e))
+      })
+    ->Promise.flatMapOk(result => {
+        Js.log2(
+          ">>>",
+          Js.String.substring(~from=0, ~to_=200, Js.Json.stringify(result)),
+        );
 
-    Js.log2(
-      ">>>",
-      Js.String.substring(~from=0, ~to_=200, Js.Json.stringify(result)),
-    );
-
-    // catching exceptions occured when decoding JSON values
-    switch (result |> Response.decode) {
-    | value => Promise.resolved(Ok(value))
-    | exception (Json.Decode.DecodeError(msg)) =>
-      Promise.resolved(Error(Sig.Error.Decode(msg, result)))
-    };
+        // catching exceptions occured when decoding JSON values
+        switch (result |> Response.decode) {
+        | value => Promise.resolved(Ok(value))
+        | exception (Json.Decode.DecodeError(msg)) =>
+          Promise.resolved(Error(Sig.Error.Decode(msg, result)))
+        };
+      });
   };
 
   //
