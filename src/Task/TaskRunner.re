@@ -26,7 +26,7 @@ module Impl = (Editor: Sig.Editor) => {
       ->Promise.map(
           fun
           | Error(e) => {
-              let (header, body) = Sig.Error.toString(e);
+              let (header, body) = Error.toString(e);
               [Task.Display(Error(header), Plain(body))];
             }
           | Ok(_c) => {
@@ -117,7 +117,7 @@ module Impl = (Editor: Sig.Editor) => {
       ->Promise.map(
           fun
           | Error(error) => {
-              let (header, body) = Sig.Error.toString(error);
+              let (header, body) = Error.toString(error);
               [Task.Display(Error(header), Plain(body))];
             }
           | Ok(response) => TaskResponse.handle(response),

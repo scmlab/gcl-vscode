@@ -36,7 +36,7 @@ module Impl = (Editor: Sig.Editor) => {
     switch (state.connection) {
     | None =>
       Connection.make(Editor.Config.getGCLPath, Editor.Config.setGCLPath)
-      ->Promise.mapError(e => Sig.Error.Connection(e))
+      ->Promise.mapError(e => Error.Connection(e))
       ->Promise.tapOk(conn => state.connection = Some(conn))
     | Some(connection) => Promise.resolved(Ok(connection))
     };
@@ -53,7 +53,7 @@ module Impl = (Editor: Sig.Editor) => {
     ->connect
     ->Promise.flatMapOk(conn => {
         Connection.send(value, conn)
-        ->Promise.mapError(e => Sig.Error.Connection(e))
+        ->Promise.mapError(e => Error.Connection(e))
       })
     ->Promise.flatMapOk(result => {
         Js.log2(
@@ -65,7 +65,7 @@ module Impl = (Editor: Sig.Editor) => {
         switch (result |> Response.decode) {
         | value => Promise.resolved(Ok(value))
         | exception (Json.Decode.DecodeError(msg)) =>
-          Promise.resolved(Error(Sig.Error.Decode(msg, result)))
+          Promise.resolved(Error(Error.Decode(msg, result)))
         };
       });
   };
