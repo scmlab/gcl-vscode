@@ -3,18 +3,18 @@ open Belt;
 module Process = AgdaModeVscode.Process;
 module Error = {
   type t =
-    | PathSearch(Process2.PathSearch.Error.t)
-    | Validation(Process2.Validation.Error.t)
-    | Process(Process2.Error.t);
+    | PathSearch(Process.PathSearch.Error.t)
+    | Validation(Process.Validation.Error.t)
+    | Process(Process.Error.t);
   let toString =
     fun
-    | PathSearch(e) => Process2.PathSearch.Error.toString(e)
-    | Validation(e) => Process2.Validation.Error.toString(e)
-    | Process(e) => Process2.Error.toString(e);
+    | PathSearch(e) => Process.PathSearch.Error.toString(e)
+    | Validation(e) => Process.Validation.Error.toString(e)
+    | Process(e) => Process.Error.toString(e);
 };
 type t = {
   mutable path: string,
-  mutable process: Process2.t,
+  mutable process: Process.t,
   mutable emitter: Event.t(result(Js.Json.t, Error.t)),
 };
 let isConnected = connection => connection.process.isConnected();
@@ -54,7 +54,7 @@ let getGCLPath =
     : Promise.t(result(string, Error.t)) => {
   let storedPath = fromConfig()->Option.mapWithDefault("", Js.String.trim);
   if (storedPath == "" || storedPath == ".") {
-    Process2.PathSearch.run("gcl")
+    Process.PathSearch.run("gcl")
     ->Promise.mapOk(Js.String.trim)
     ->Promise.mapError(e => Error.PathSearch(e));
   } else {
@@ -71,7 +71,7 @@ let setGCLPath =
 
 // see if the path is valid by trying "gcl --help"
 let validateGCLPath = (path): Promise.t(result(string, Error.t)) =>
-  Process2.Validation.run(path ++ " --help", output =>
+  Process.Validation.run(path ++ " --help", output =>
     if (Js.Re.test_([%re "/^GCL/"], output)) {
       Ok(path);
     } else {
@@ -87,7 +87,7 @@ let make =
   ->Promise.flatMapOk(setGCLPath(toConfig))
   // ->Promise.tapOk(path => Atom.Config.set("gcl-atom.path", path) |> ignore)
   ->Promise.mapOk(path => {
-      let process = Process2.make(path, [||]);
+      let process = Process.make(path, [||]);
       {path, process, emitter: Event.make()};
     })
   ->Promise.tapOk(wire);
