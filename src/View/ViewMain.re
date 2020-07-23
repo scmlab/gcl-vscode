@@ -7,14 +7,14 @@ open AgdaModeVscode.VSCode;
 let vscode = Api.acquireVsCodeApi();
 
 // relay VSCode.Api.onMessage => onRequest;
-let onRequest = Event.make();
+let onRequest = AgdaModeVscode.Event.make();
 Api.onMessage(stringifiedJSON => {
   let request = Js.Json.parseExn(stringifiedJSON) |> View.Request.decode;
   onRequest.emit(request);
 });
 
 // relay onResponse => VSCode.Api.postMessage
-let onResponse = Event.make();
+let onResponse = AgdaModeVscode.Event.make();
 onResponse.on(response => {
   vscode->Api.postMessage(View.Response.encode(response))
 });

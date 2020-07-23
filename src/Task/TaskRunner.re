@@ -11,9 +11,9 @@ module Impl = (Editor: Sig.Editor) => {
     | Idle;
 
   type t = {
-    taskEmitter: Event.t(Task.t),
+    taskEmitter: AgdaModeVscode.Event.t(Task.t),
     mutable status,
-    statusEmitter: Event.t(status),
+    statusEmitter: AgdaModeVscode.Event.t(status),
   };
 
   let runTask = (task: Task.t, state: State.t): Promise.t(list(Task.t)) =>
@@ -135,8 +135,8 @@ module Impl = (Editor: Sig.Editor) => {
   let make = state => {
     // task queue, FIFO
     let queue: array(Task.t) = [||];
-    let taskEmitter = Event.make();
-    let statusEmitter = Event.make();
+    let taskEmitter = AgdaModeVscode.Event.make();
+    let statusEmitter = AgdaModeVscode.Event.make();
     let self = {taskEmitter, status: Idle, statusEmitter};
 
     // keep executing tasks in the queue until depleting it

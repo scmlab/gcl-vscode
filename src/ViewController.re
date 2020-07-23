@@ -6,7 +6,7 @@ type status =
 
 type t = {
   panel: WebviewPanel.t,
-  onResponse: Event.t(View.Response.t),
+  onResponse: AgdaModeVscode.Event.t(View.Response.t),
   mutable status,
 };
 
@@ -132,7 +132,7 @@ let make = (getExtensionPath, context, editor) => {
   moveToBottom() |> ignore;
 
   // on message
-  let onResponse = Event.make();
+  let onResponse = AgdaModeVscode.Event.make();
   panel
   ->WebviewPanel.webview
   ->Webview.onDidReceiveMessage(json => {

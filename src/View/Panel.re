@@ -2,16 +2,16 @@
 let make =
     (
       ~editorType: Sig.editorType,
-      ~onRequest: Event.t(View.Request.t),
-      ~onResponse: Event.t(View.Response.t),
+      ~onRequest: AgdaModeVscode.Event.t(View.Request.t),
+      ~onResponse: AgdaModeVscode.Event.t(View.Response.t),
     ) => {
   // let (reqID, setReqID) = React.useState(() => None);
   let (header, setHeader) = React.useState(() => View.Request.Header.Loading);
   let (body, setBody) = React.useState(() => View.Request.Body.Nothing);
   let (mode, setMode) = React.useState(_ => GCL.WP1);
   let (hidden, setHidden) = React.useState(_ => false);
-  let onClickLink = React.useRef(Event.make());
-  let onSubstitute = React.useRef(Event.make());
+  let onClickLink = React.useRef(AgdaModeVscode.Event.make());
+  let onSubstitute = React.useRef(AgdaModeVscode.Event.make());
 
   // response with Initialized on mount
   React.useEffect1(

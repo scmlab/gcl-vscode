@@ -6,7 +6,7 @@ type event =
   | Request(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
   | Response(int, GCL.Syntax.Expr.t);
 
-let emitter: Event.t(event) = Event.make();
+let emitter: AgdaModeVscode.Event.t(event) = AgdaModeVscode.Event.make();
 let eventContext = React.createContext(emitter);
 
 module Provider = {

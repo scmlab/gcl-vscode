@@ -10,7 +10,7 @@ module Impl = (Editor: Sig.Editor) => {
     mutable decorations: array(Editor.Decoration.t),
     mutable specifications: array(Response.Specification.t),
     mutable connection: option(Connection.t),
-    onDestroyEventEmitter: Event.t(unit),
+    onDestroyEventEmitter: AgdaModeVscode.Event.t(unit),
   };
 
   //
@@ -94,7 +94,7 @@ module Impl = (Editor: Sig.Editor) => {
       decorations: [||],
       specifications: [||],
       connection: None,
-      onDestroyEventEmitter: Event.make(),
+      onDestroyEventEmitter: AgdaModeVscode.Event.make(),
     };
 
     state;

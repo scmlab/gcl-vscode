@@ -21,7 +21,6 @@
     "agda-mode-vscode",
     "@glennsl/bs-json",
     "bs-webapi",
-    "bs-nd",
     "reason-promise",
     "reason-react",
     "reason-react-update"

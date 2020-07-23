@@ -15,7 +15,7 @@ module Error = {
 type t = {
   mutable path: string,
   mutable process: Process.t,
-  mutable emitter: Event.t(result(Js.Json.t, Error.t)),
+  mutable emitter: AgdaModeVscode.Event.t(result(Js.Json.t, Error.t)),
 };
 let isConnected = connection => connection.process.isConnected();
 let disconnect = connection => connection.process.disconnect();
@@ -88,7 +88,7 @@ let make =
   // ->Promise.tapOk(path => Atom.Config.set("gcl-atom.path", path) |> ignore)
   ->Promise.mapOk(path => {
       let process = Process.make(path, [||]);
-      {path, process, emitter: Event.make()};
+      {path, process, emitter: AgdaModeVscode.Event.make()};
     })
   ->Promise.tapOk(wire);
 };
