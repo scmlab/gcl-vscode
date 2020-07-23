@@ -1,5 +1,5 @@
 open Belt;
-open VSCode;
+open AgdaModeVscode.VSCode;
 
 // a dictionary of FileName-State entries
 module StateDict = {

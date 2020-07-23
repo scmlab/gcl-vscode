@@ -1,4 +1,4 @@
-open VSCode;
+open AgdaModeVscode.VSCode;
 
 type status =
   | Initialized

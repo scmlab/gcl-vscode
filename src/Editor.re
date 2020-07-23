@@ -1,8 +1,8 @@
-open VSCode;
+open AgdaModeVscode.VSCode;
 open! Belt;
 
-type editor = VSCode.TextEditor.t;
-type context = VSCode.ExtensionContext.t;
+type editor = TextEditor.t;
+type context = ExtensionContext.t;
 module Disposable = {
   type t = Disposable.t;
   let make = Disposable.make;
@@ -30,21 +30,27 @@ module Point = {
 };
 
 module Range = {
-  type t = VSCode.Range.t;
-  let make = VSCode.Range.make;
-  let start = VSCode.Range.start;
-  let end_ = VSCode.Range.end_;
+  type t = AgdaModeVscode.VSCode.Range.t;
+  let make = AgdaModeVscode.VSCode.Range.make;
+  let start = AgdaModeVscode.VSCode.Range.start;
+  let end_ = AgdaModeVscode.VSCode.Range.end_;
   // let make =  VSCode.Range.make;
 
   let fromLoc =
     fun
     | GCL.Loc.NoLoc =>
-      VSCode.Range.make(Position.make(0, 0), Position.make(0, 0))
+      AgdaModeVscode.VSCode.Range.make(
+        Position.make(0, 0),
+        Position.make(0, 0),
+      )
     | Loc(x, Pos(_, line, column)) =>
-      VSCode.Range.make(Point.fromPos(x), Position.make(line - 1, column));
+      AgdaModeVscode.VSCode.Range.make(
+        Point.fromPos(x),
+        Position.make(line - 1, column),
+      );
   let toLoc = (range, filepath) => {
-    let start = VSCode.Range.start(range);
-    let end_ = VSCode.Range.end_(range);
+    let start = AgdaModeVscode.VSCode.Range.start(range);
+    let end_ = AgdaModeVscode.VSCode.Range.end_(range);
     GCL.Loc.Loc(
       Pos(
         filepath,
@@ -55,8 +61,8 @@ module Range = {
     );
   };
 
-  let contains = VSCode.Range.contains;
-  let containsRange = VSCode.Range.containsRange;
+  let contains = AgdaModeVscode.VSCode.Range.contains;
+  let containsRange = AgdaModeVscode.VSCode.Range.containsRange;
 };
 
 type fileName = string;
@@ -84,7 +90,7 @@ let onDidCloseEditor = callback =>
 let onDidChangeFileName = callback =>
   Workspace.onDidRenameFiles(event =>
     event
-    ->Option.map(VSCode.FileRenameEvent.files)
+    ->Option.map(AgdaModeVscode.VSCode.FileRenameEvent.files)
     ->Option.forEach(files => {
         files->Array.forEach(file =>
           callback(
@@ -150,20 +156,23 @@ module View = {
 //
 
 module Decoration = {
-  type t = VSCode.TextEditorDecorationType.t;
+  type t = TextEditorDecorationType.t;
 
   type kind =
     | Error
     | Highlight
     | Spec;
 
-  let digHole = (editor: editor, range: VSCode.Range.t) => {
-    let start = VSCode.Range.start(range);
+  let digHole = (editor: editor, range: AgdaModeVscode.VSCode.Range.t) => {
+    let start = AgdaModeVscode.VSCode.Range.start(range);
     // add indentation to the hole
-    let indent = Js.String.repeat(VSCode.Position.character(start), " ");
+    let indent = Js.String.repeat(Position.character(start), " ");
     let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}";
     let holeRange =
-      VSCode.Range.make(start, VSCode.Position.translate(start, 0, 1));
+      AgdaModeVscode.VSCode.Range.make(
+        start,
+        Position.translate(start, 0, 1),
+      );
 
     let editCallback = edit => {
       edit->TextEditorEdit.replaceAtRange(holeRange, holeText);
@@ -171,7 +180,7 @@ module Decoration = {
     editor->TextEditor.edit(editCallback, None)->ignore;
     // set the cursor inside the hole
 
-    let pos = VSCode.Position.translate(start, 1, 0);
+    let pos = Position.translate(start, 1, 0);
     let selection = Selection.make(pos, pos);
     editor->TextEditor.setSelection(selection);
   };
