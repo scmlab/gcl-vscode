@@ -11,7 +11,7 @@ module Impl = (Editor: Sig.Editor) => {
     switch (response) {
     | Error(errors) =>
       errors->Array.map(Task__Error.handle)->List.fromArray->Js.List.flatten
-    | OK(id, obligations, specifications, _) =>
+    | OK(id, obligations, specifications, globalProps) =>
       List.concat(
         specifications->List.fromArray->List.map(spec => Task.MarkSpec(spec)),
         [
@@ -23,7 +23,7 @@ module Impl = (Editor: Sig.Editor) => {
           ),
           Display(
             Plain("Proof Obligations"),
-            ProofObligations(id, obligations),
+            ProofObligations(id, obligations, globalProps)
           ),
         ],
       )

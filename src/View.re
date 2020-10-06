@@ -33,7 +33,7 @@ module Request = {
     type id = int;
     type t =
       | Nothing
-      | ProofObligations(id, array(Response.ProofObligation.t))
+      | ProofObligations(id, array(Response.ProofObligation.t), array(Response.GlobalProp.t))
       | Plain(string);
 
     open Json.Decode;
@@ -45,8 +45,8 @@ module Request = {
         | "Nothing" => Contents(_ => Nothing)
         | "ProofObligations" =>
           Contents(
-            pair(int, array(Response.ProofObligation.decode))
-            |> map(((id, xs)) => ProofObligations(id, xs)),
+            tuple3(int, array(Response.ProofObligation.decode), array(Response.GlobalProp.decode))
+            |> map(((id, xs, ys)) => ProofObligations(id, xs, ys)),
           )
         | "Plain" => Contents(json => Plain(string(json)))
         | tag =>
@@ -59,12 +59,12 @@ module Request = {
     let encode: encoder(t) =
       fun
       | Nothing => object_([("tag", string("Nothing"))])
-      | ProofObligations(id, x) =>
+      | ProofObligations(id, xs, ys) =>
         object_([
           ("tag", string("ProofObligations")),
           (
             "contents",
-            (id, x) |> pair(int, array(Response.ProofObligation.encode)),
+            (id, xs, ys) |> tuple3(int, array(Response.ProofObligation.encode), array(Response.GlobalProp.encode)),
           ),
         ])
       | Plain(x) =>

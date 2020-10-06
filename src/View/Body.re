@@ -31,10 +31,10 @@ module ProofObligation = {
 let make = (~body: View.Request.Body.t) =>
   switch (body) {
   | Nothing => <> </>
-  | ProofObligations(_id, [||]) => <> </>
-  | ProofObligations(id, ps) =>
+  // | ProofObligations(_id) => <> </>
+  | ProofObligations(id, pos, gps) =>
     let list =
-      ps
+      pos
       ->Array.mapWithIndex((i, payload) =>
           <ProofObligation payload key={string_of_int(i)} />
         )

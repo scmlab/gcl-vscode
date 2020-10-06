@@ -142,6 +142,9 @@ module GlobalProp = {
 
   open Json.Decode;
   let decode: decoder(t) = Syntax.Expr.decode;
+
+  open Json.Encode;
+  let encode: encoder(t) = Syntax.Expr.encode;
 };
 
 module Error = {

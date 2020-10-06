@@ -15,28 +15,28 @@ module Impl = (Editor: Sig.Editor) => {
             Error("Bound Missing"),
             Plain(
               "Bound missing at the end of the assertion before the DO construct \" , bnd : ... }\"",
-            ),
+            )
           ),
         ]
       | MissingAssertion => [
           MarkError(site),
           Display(
             Error("Assertion Missing"),
-            Plain("Assertion before the DO construct is missing"),
+            Plain("Assertion before the DO construct is missing")
           ),
         ]
       | ExcessBound => [
           MarkError(site),
           Display(
             Error("Excess Bound"),
-            Plain("Unnecessary bound annotation at this assertion"),
+            Plain("Unnecessary bound annotation at this assertion")
           ),
         ]
       | MissingPostcondition => [
           MarkError(site),
           Display(
             Error("Postcondition Missing"),
-            Plain("The last statement of the program should be an assertion"),
+            Plain("The last statement of the program should be an assertion")
           ),
         ]
       | DigHole => [DigHole(site), DispatchCommand(Reload)];
@@ -52,14 +52,14 @@ module Impl = (Editor: Sig.Editor) => {
             Error("Bound Missing"),
             Plain(
               "Bound missing at the end of the assertion before the DO construct \" , bnd : ... }\"",
-            ),
+            )
           ),
         ]
       | MissingLoopInvariant => [
           MarkError(site),
           Display(
             Error("Loop Invariant Missing"),
-            Plain("Loop invariant before the DO construct is missing"),
+            Plain("Loop invariant before the DO construct is missing")
           ),
         ]
       | MissingPrecondition => [
@@ -67,15 +67,15 @@ module Impl = (Editor: Sig.Editor) => {
           Display(
             Error("Precondition Missing"),
             Plain(
-              "The first statement of the program should be an assertion",
-            ),
+              "The first statement of the program should be an assertion"
+            )
           ),
         ]
       | MissingPostcondition => [
           MarkError(site),
           Display(
             Error("Postcondition Missing"),
-            Plain("The last statement of the program should be an assertion"),
+            Plain("The last statement of the program should be an assertion")
           ),
         ]
       | PreconditionUnknown => [
@@ -91,14 +91,14 @@ module Impl = (Editor: Sig.Editor) => {
         Task.MarkError(site),
         Display(
           Error("Lexical Error"),
-          Plain(Response.Error.Site.toString(site)),
+          Plain(Response.Error.Site.toString(site))
         ),
       ]
     | SyntacticError(messages) => [
         MarkError(site),
         Display(
           Error("Parse Error"),
-          Plain(messages->Js.String.concatMany("\n")),
+          Plain(messages->Js.String.concatMany("\n"))
         ),
       ]
     | StructError(error) => StructError.handle(site, error)
@@ -107,7 +107,7 @@ module Impl = (Editor: Sig.Editor) => {
         MarkError(site),
         Display(
           Error("Type Error"),
-          Plain("The definition " ++ name ++ " is not in scope"),
+          Plain("The definition " ++ name ++ " is not in scope")
         ),
       ]
     | TypeError(UnifyFailed(s, t)) => [
@@ -119,7 +119,7 @@ module Impl = (Editor: Sig.Editor) => {
             ++ Type.toString(s)
             ++ "\nwith        : "
             ++ Type.toString(t),
-          ),
+          )
         ),
       ]
     | TypeError(RecursiveType(var, t)) => [
@@ -132,7 +132,7 @@ module Impl = (Editor: Sig.Editor) => {
             ++ "\n"
             ++ "in type             : "
             ++ Type.toString(t),
-          ),
+          )
         ),
       ]
     | TypeError(NotFunction(t)) => [
@@ -141,7 +141,7 @@ module Impl = (Editor: Sig.Editor) => {
           Error("Type Error"),
           Plain(
             "The type " ++ Type.toString(t) ++ " is not a function type",
-          ),
+          )
         ),
       ]
     | CannotDecodeRequest(req) => [
@@ -152,12 +152,12 @@ module Impl = (Editor: Sig.Editor) => {
         MarkError(site),
         Display(
           Error("Cannot Read File"),
-          Plain("Cannot read file of path: " ++ path),
+          Plain("Cannot read file of path: " ++ path)
         ),
       ]
     | NotLoaded => [
         MarkError(site),
-        Display(Error("Not Loaded"), Plain("Please load the file first")),
+        Display(Error("Not Loaded"), Plain("Please load the file first")), 
       ]
     };
   };
