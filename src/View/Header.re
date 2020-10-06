@@ -24,7 +24,7 @@ let make =
   let modeToggle =
     switch (editorType) {
     | Sig.VsCode =>
-      <button className="gcl-mode-vscode" onClick=onChange>
+      <button className="gcl-mode-button gcl-mode-vscode" onClick=onChange>
         {string(
            switch (mode) {
            | WP1 => "WP"
@@ -33,7 +33,7 @@ let make =
          )}
       </button>
     | Atom =>
-      <div className="gcl-mode-atom">
+      <div className="gcl-mode-button gcl-mode-atom">
         <label className="input-label">
           <input
             className="input-toggle"
@@ -51,12 +51,12 @@ let make =
       </div>
     };
 
-  <h2 className="gcl-header">
+  <div className="gcl-header">
     {switch (header) {
-     | Loading => <div className="text-plain"> {string("Loading ...")} </div>
-     | Plain(s) => <div> {string(s)} </div>
-     | Error(s) => <div className="text-error"> {string(s)} </div>
+     | Loading => <h2 className="text-plain"> {string("Loading ...")} </h2>
+     | Plain(s) => <h2> {string(s)} </h2>
+     | Error(s) => <h2 className="text-error"> {string(s)} </h2>
      }}
     modeToggle
-  </h2>;
+  </div>;
 };

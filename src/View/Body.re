@@ -11,7 +11,6 @@ module ProofObligation = {
     | ProofObligation(_, p, q, o) =>
       let origin =
         <Link loc={Origin.locOf(o)}> {string(Origin.toString(o))} </Link>;
-
       <li className="gcl-body-item native-key-bindings" tabIndex=(-1)>
         <span className="gcl-proof-obligation-message"> origin </span>
         <span className="gcl-proof-obligation-antecedent">
@@ -27,24 +26,39 @@ module ProofObligation = {
     };
 };
 
+module GlobalProp = {
+  [@react.component]
+  let make = (~payload: GlobalProp.t) => 
+    <li className="gcl-body-item native-key-bindings" tabIndex=(-1)><Expr value=payload /></li>
+};
+
 [@react.component]
 let make = (~body: View.Request.Body.t) =>
   switch (body) {
   | Nothing => <> </>
-  // | ProofObligations(_id) => <> </>
-  | ProofObligations(id, pos, gps) =>
-    let list =
+  | ProofObligations(id, pos, globalProps) =>
+    let pos =
       pos
       ->Array.mapWithIndex((i, payload) =>
           <ProofObligation payload key={string_of_int(i)} />
         )
       ->React.array;
+    let globalPropHeader = if (Array.length(globalProps) !== 0) {
+      <h2>{string("Global properties")}</h2>
+    } else {<> </>};
+    let globalProps =
+      globalProps
+      ->Array.mapWithIndex((i, payload) =>
+          <GlobalProp payload key={string_of_int(i)} />
+        )
+      ->React.array;
     <ReqID.Provider value={Some(id)}>
       <div className="gcl-body">
-        <ul className="gcl-proof-obligation-list"> list </ul>
+        <ul className="gcl-proof-obligation-list"> pos </ul>
+        globalPropHeader
+        <ul className="gcl-global-property-list"> globalProps </ul>
       </div>
     </ReqID.Provider>;
-
   | Plain(s) =>
     let paragraphs =
       Js.String.split("\n", s)
