@@ -12,7 +12,35 @@
 	"activationEvents": [
 		"onCommand:guacamole.toggle"
 	],
-	"main": "./lib/js/src/Main.bs.js",
+	"main": "./lib/js/src/MainImpl.bs.js",
+	"scripts": {
+		"build-css": "npx less-watch-compiler --run-once style/ dist/",
+		"build": "bsb -make-world && npm run build-css && npx webpack --mode=production",
+		"watch-css": "npx less-watch-compiler style/ dist/",
+		"watch-code": "npx webpack --mode=production --watch",
+		"dev": "bsb -make-world && npm run watch-css & npm run watch-code",
+		"clean": "bsb -clean-world"
+	},
+	"devDependencies": {
+		"less-loader": "^5.0.0",
+		"less-watch-compiler": "^1.14.6",
+		"vscode-test": "^1.2.2",
+		"webpack": "^5.0.0-beta.30",
+		"webpack-cli": "^3.3.12"
+	},
+	"dependencies": {
+		"@glennsl/bs-json": "^5.0.1",
+		"agda-mode-vscode": "github:banacorn/agda-mode-vscode#v0.1.2",
+		"bs-platform": "^7.2",
+		"bs-webapi": "^0.15.3",
+		"reason-promise": "^1.0.1",
+		"reason-react": ">=0.7.0",
+		"reason-react-update": "^0.1.1"
+	},
+	"peerDependencies": {
+		"react": "16.9.0",
+		"react-dom": "16.9.0"
+	},
 	"contributes": {
 		"languages": [
 			{
@@ -90,34 +118,6 @@
 				}
 			}
 		}
-	},
-	"scripts": {
-		"build-css": "npx less-watch-compiler --run-once style/ dist/",
-		"build": "bsb -make-world && npm run build-css && npx webpack --mode=production",
-		"watch-css": "npx less-watch-compiler style/ dist/",
-		"watch-code": "npx webpack --mode=production --watch",
-		"dev": "bsb -make-world && npm run watch-css & npm run watch-code",
-		"clean": "bsb -clean-world"
-	},
-	"devDependencies": {
-		"less-loader": "^5.0.0",
-		"less-watch-compiler": "^1.14.6",
-		"vscode-test": "^1.2.2",
-		"webpack": "^5.0.0-beta.30",
-		"webpack-cli": "^3.3.12"
-	},
-	"dependencies": {
-		"@glennsl/bs-json": "^5.0.1",
-		"agda-mode-vscode": "github:banacorn/agda-mode-vscode#v0.1.2",
-		"bs-platform": "^7.2",
-		"bs-webapi": "^0.15.3",
-		"reason-promise": "^1.0.1",
-		"reason-react": ">=0.7.0",
-		"reason-react-update": "^0.1.1"
-	},
-	"peerDependencies": {
-		"react": "16.9.0",
-		"react-dom": "16.9.0"
 	},
 	"resolutions": {
 		"**/react": "16.9.0",

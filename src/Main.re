@@ -91,4 +91,3 @@ module Impl = (Editor: Sig.Editor) => {
   };
 };
 
-include Impl(SigImpl);
