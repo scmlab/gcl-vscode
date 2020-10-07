@@ -88,25 +88,18 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
 
   switch (redux) {
   | Unreduced(expr, subst) =>
+
+    let expressions = Js.Dict.values(subst)->Belt.Array.map(value => <Expr prec=0 value />);
+    let variables = Js.Dict.keys(subst)->Belt.Array.map(value => <> {React.string(value)} </>);
+               
     <>
       <Expr prec=0 value=expr />
       <Space />
       <div className onMouseOver onMouseLeave onClick>
         {string("[")}
-        {subst
-         ->Js.Dict.entries
-         ->Belt.Array.map(((x, x')) =>
-             <> <Expr prec=0 value=x' /> {string("/" ++ x)} </>
-           )
-         ->(
-             e =>
-               Util.React.sepBy(
-                 {
-                   string(", ");
-                 },
-                 e,
-               )
-           )}
+        {Util.React.sepBy(string(", "), expressions)}
+        {string("/")}
+        {Util.React.sepBy(string(", "), variables)}
         {string("]")}
       </div>
     </>
