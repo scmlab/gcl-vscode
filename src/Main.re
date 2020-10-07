@@ -1,5 +1,4 @@
 module Impl = (Editor: Sig.Editor) => {
-  open AgdaModeVscode.VSCode;
   open Belt;
   module States = Registry.Impl(Editor);
   // module TaskCommand = Task__Command.Impl(Editor);
@@ -8,9 +7,6 @@ module Impl = (Editor: Sig.Editor) => {
   module State = State.Impl(Editor);
 
   let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
-
-  let addToSubscriptions = (f, context) =>
-    f->Js.Array.push(context->ExtensionContext.subscriptions)->ignore;
 
   let activate = context => {
     // when a TextEditor gets closed, destroy the corresponding State
