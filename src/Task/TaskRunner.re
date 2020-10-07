@@ -71,7 +71,6 @@ module Impl = (Editor: Sig.Editor) => {
 
       let preCondText = " " ++ trim(GCL.Syntax.Pred.toString(spec.pre));
       let postCondText = " " ++ trim(GCL.Syntax.Pred.toString(spec.post));
-
       // see if the Spec's precondition and the post-condition look the same (i.e. the Q_Q case)
       let isQQ = preCondText == postCondText;
       let decorations =

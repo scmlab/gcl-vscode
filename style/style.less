@@ -51,16 +51,10 @@
 .gcl-panel {
     font-size: 125%;
     padding: @component-padding;
+    line-height : 200%;
 
     h2 {
-        // margin   : 0;
-        // padding  : @component-padding * 2 @component-padding * 2;
         font-size: 100%;
-    }
-
-    // vscode: removes focus outline  
-    *:focus {
-        outline: none;
     }
 
     // For hiding React components
@@ -68,10 +62,8 @@
         display: none
     }
 
-    line-height : 200%;
 
     .gcl-header {
-
         // HACK
         margin-right: 10px;
 
@@ -81,24 +73,18 @@
 
         // WP/WP2 button
         .gcl-mode-button {
-            &.gcl-mode-atom {
-                font-size: 50%;
-            }
-            
-            &.gcl-mode-vscode {
-                font-size : 75%;
-                border    : 0;
-                width     : 3em;
-                outline   : 0;
-                background: @background2;
-    
-                text-align: left;
-                color     : @foreground3;
-    
-                &:hover {
-                    color : @foreground;
-                    cursor: pointer;
-                }
+            font-size : 75%;
+            border    : 0;
+            width     : 3em;
+            outline   : 0;
+            background: @background2;
+
+            text-align: left;
+            color     : @foreground3;
+
+            &:hover {
+                color : @foreground;
+                cursor: pointer;
             }
         }
     }
@@ -162,6 +148,12 @@
             width     : 10%;
             text-align: center;
         }
+
+        // vscode: removes focus outline  
+        *:focus {
+            outline: none;
+        }
+
     }
 
 

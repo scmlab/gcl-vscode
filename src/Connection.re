@@ -27,7 +27,7 @@ let wire = connection => {
   let _destructor =
     connection.process.emitter.on(
       fun
-      | Ok(data) => {
+      | Stdout(data) => {
           // for incremental parsing
           let augmented =
             switch (unfinishedMsg^) {
@@ -42,6 +42,7 @@ let wire = connection => {
             connection.emitter.emit(Ok(result)) |> ignore;
           };
         }
+      | Stderr(data) => Js.Console.warn(data)
       | Error(e) => connection.emitter.emit(Error(Error.Process(e))),
     );
   ();
