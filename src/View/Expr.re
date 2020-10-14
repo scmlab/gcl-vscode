@@ -53,8 +53,8 @@ module Operator = {
 module Prec = {
   open GCL.Syntax;
   open VarArg;
-  // module VarArg = Syntax.VarArg;
 
+  // function for printing operater and operands, with parentheses 
   let rec handleOperator = (n, op, loc) => {
     module Self = {
       let make = make;

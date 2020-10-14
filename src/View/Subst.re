@@ -2,9 +2,16 @@ open React;
 
 open Common;
 
+// for identifying substitions
+type substID = int;
+
+// each request to the backend comes with a unique ID
+// for invalidating the current reduction (restore it to `Unreduced`)
+type reqID = int;
+
 type event =
-  | Request(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
-  | Response(int, GCL.Syntax.Expr.t);
+  | Request(substID, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
+  | Response(substID, GCL.Syntax.Expr.t);
 
 let emitter: AgdaModeVscode.Event.t(event) = AgdaModeVscode.Event.make();
 let eventContext = React.createContext(emitter);
@@ -14,7 +21,6 @@ module Provider = {
     "value": value,
     "children": children,
   };
-
   let make = React.Context.provider(eventContext);
 };
 
@@ -22,7 +28,7 @@ module Provider = {
 type redux =
   | Unreduced(GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
   | Reducing
-  | Reduced(option(int), GCL.Syntax.Expr.t);
+  | Reduced(option(reqID), GCL.Syntax.Expr.t);
 
 // a global counter for generating fresh IDs for <Subst>
 let counter = ref(0);
@@ -36,15 +42,19 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
   let emitter = React.useContext(eventContext);
   let (hovered, setHover) = React.useState(_ => false);
   let (redux, setRedux) = React.useState(_ => Unreduced(expr, subst));
+  // for storing substition ID
   let id = React.useRef(None);
+  // request ID from the backend
   let reqID = React.useRef(None);
   let onMouseOver = _ => setHover(_ => true);
   let onMouseLeave = _ => setHover(_ => false);
 
+  // initiate substition request
   let onClick = _ => {
     emitter.emit(Request(counter^, expr, subst));
-    // bump the counter
+    // store the substition ID 
     id.current = Some(counter^);
+    // bump the counter
     counter := counter^ + 1;
   };
 
@@ -58,13 +68,15 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
       }
     );
 
+  // access and store the request ID
   reqID.current = React.useContext(ReqID.context);
 
-  // cache invalidaction
+  // cache invalidaction:
+  //  if the current substition has been reduced
+  //  restore the substition if the request ID is invalid
   switch (redux) {
-  | Reduced(cachedID, _) =>
-    if (cachedID != reqID.current) {
-      Js.log("invalidate!! ");
+  | Reduced(cachedReqID, _) =>
+    if (cachedReqID != reqID.current) {
       setRedux(_ => Unreduced(expr, subst));
     }
   | _ => ()
@@ -103,8 +115,7 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
         {string("]")}
       </div>
     </>
+  | Reducing => <> {string("...")} </>
   | Reduced(_, expr) => <Expr prec=0 value=expr />
-  | _ => <> {string("...")} </>
   };
-  // <div className onMouseOver onMouseLeave onClick> {string("(...)")} </div>;
 };
