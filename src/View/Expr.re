@@ -140,7 +140,7 @@ module Prec = {
       | Const(s, loc) =>
         Complete(<Link loc> {string(Name.toString(s))} </Link>)
       | Op(op, loc) =>
-        // HACK: if the precedence is smaller than 0, display the operator directly
+        // HACK: if the precedence is smaller or equal to 0, display the operator directly
         n >= 0
           ? handleOperator(n, op, loc) : Complete(<Operator value=op loc />)
       | App(p, q, _) =>
@@ -195,8 +195,8 @@ module Prec = {
             <Subst
               expr
               subst
-              makeExpr=make
-              makeExprProps={makeProps(~key="")}
+              makePrec=make
+              makePrecProps={makeProps(~key="")}
             />
           </Link>,
         )

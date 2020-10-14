@@ -34,10 +34,10 @@ type redux =
 let counter = ref(0);
 
 [@react.component]
-let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
-  module Expr = {
-    let make = makeExpr;
-    let makeProps = makeExprProps;
+let make = (~expr, ~subst, ~makePrec, ~makePrecProps) => {
+  module Prec = {
+    let make = makePrec;
+    let makeProps = makePrecProps;
   };
   let emitter = React.useContext(eventContext);
   let (hovered, setHover) = React.useState(_ => false);
@@ -101,11 +101,11 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
   switch (redux) {
   | Unreduced(expr, subst) =>
 
-    let expressions = Js.Dict.values(subst)->Belt.Array.map(value => <Expr prec=0 value />);
+    let expressions = Js.Dict.values(subst)->Belt.Array.map(value => <Prec prec=0 value />);
     let variables = Js.Dict.keys(subst)->Belt.Array.map(value => <> {React.string(value)} </>);
                
     <>
-      <Expr prec=0 value=expr />
+      <Prec prec=0 value=expr />
       <Space />
       <div className onMouseOver onMouseLeave onClick>
         {string("[")}
@@ -116,6 +116,6 @@ let make = (~expr, ~subst, ~makeExpr, ~makeExprProps) => {
       </div>
     </>
   | Reducing => <> {string("...")} </>
-  | Reduced(_, expr) => <Expr prec=0 value=expr />
+  | Reduced(_, expr) => <Prec prec=0 value=expr />
   };
 };
