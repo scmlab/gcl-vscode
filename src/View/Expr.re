@@ -152,7 +152,7 @@ module Prec = {
           | Complete(t) =>
             switch (q) {
             | App(_, _, _) =>
-              Complete(<> s <Paren activate=true> t </Paren> </>)
+              Complete(<> s <Space /> <Paren activate=true> t </Paren> </>)
             | _ => Complete(<> s <Space /> t </>)
             }
           }
