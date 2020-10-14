@@ -53,6 +53,11 @@
     padding: @component-padding;
     line-height : 200%;
 
+    // vscode: removes focus outline  
+    &:focus, *:focus {
+        outline: none;
+    }
+
     h2 {
         font-size: 100%;
     }
@@ -149,55 +154,40 @@
             text-align: center;
         }
 
-        // vscode: removes focus outline  
-        *:focus {
-            outline: none;
-        }
 
     }
 
 
 
     .expr {
-        white-space: pre;
         color      : @text-color-highlight;
-
-        display: inline-flex;
-
+    
         * {
-            display: inline-flex;
+          display: inline;
         }
-
+    
         .expr-paren {
-            cursor: zoom-out;
-
-            &.hovered {
-                color: @text-color-selected
-            }
-
-            &.collapsed {
-                cursor: zoom-in
-            }
+          cursor: zoom-out;
+    
+          &.hovered {
+            color: @text-color-selected
+          }
+    
+          &.collapsed {
+            cursor: zoom-in
+          }
         }
-
+    
         .expr-subst {
-            cursor     : ew-resize;
-            white-space: pre;
-            display    : inline-flex;
+          cursor     : ew-resize;
         }
-
+    
         .expr-link {
-            display: inline-flex;
-
-            &:hover {
-                color: @text-color-selected
-            }
+          &:hover {
+            color: @text-color-selected
+          }
         }
-
-        .expr-space {
-            display: inline;
-        }
-    }
+      }
 
     .marker {
         display       : inline-flex;
