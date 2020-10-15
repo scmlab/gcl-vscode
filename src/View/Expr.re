@@ -126,19 +126,26 @@ module Prec = {
       })
     };
   }
-  and handleExpr = n => {
+  and handleExpr = n => expr => {
     module Self = {
       let make = make;
       let makeProps = makeProps;
     };
-    GCL.Syntax.Expr.(
-      fun
+
+    open GCL.Syntax.Expr;
+    switch expr {
       | Lit(lit, loc) =>
         Complete(<Link loc> {string(Lit.toString(lit))} </Link>)
       | Var(s, loc) =>
         Complete(<Link loc> {string(Name.toString(s))} </Link>)
-      | Const(s, loc) =>
-        Complete(<Link loc> {string(Name.toString(s))} </Link>)
+      | Const(_, _) =>
+        Complete(
+          <Subst2
+            expr
+            makePrec=make
+            makePrecProps={makeProps(~key="")}
+          />
+        )
       | Op(op, loc) =>
         // HACK: if the precedence is smaller or equal to 0, display the operator directly
         n >= 0
@@ -207,7 +214,7 @@ module Prec = {
             {string("[? " ++ Js.Json.stringify(x) ++ " ?]")}
           </Link>,
         )
-    );
+  };
   }
   [@react.component]
   and make = (~prec, ~value) =>
