@@ -1,41 +1,6 @@
 open React;
 open Common;
 
-module Paren = {
-  [@react.component]
-  let make = (~activate, ~children) => {
-    let (hovered, setHover) = React.useState(_ => false);
-    let (collapsed, setCollapse) = React.useState(_ => false);
-    let onMouseOver = _ => setHover(_ => true);
-    let onMouseLeave = _ => setHover(_ => false);
-    let onClick = _ => setCollapse(_ => collapsed ? false : true);
-    let className =
-      "expr-paren"
-      ++ (hovered ? " hovered" : "")
-      ++ (collapsed ? " collapsed" : "");
-
-    if (activate) {
-      if (collapsed) {
-        <div className onMouseOver onMouseLeave onClick>
-          {string("(...)")}
-        </div>;
-      } else {
-        <>
-          <div className onMouseOver onMouseLeave onClick>
-            {string("(")}
-          </div>
-          children
-          <div className onMouseOver onMouseLeave onClick>
-            {string(")")}
-          </div>
-        </>;
-      };
-    } else {
-      children;
-    };
-  };
-};
-
 module Low = {
   [@react.component]
   let make = (~value: GCL.Syntax.Name.t) =>
@@ -54,7 +19,7 @@ module Prec = {
   open GCL.Syntax;
   open VarArg;
 
-  // function for printing operater and operands, with parentheses 
+  // function for printing operater and operands, with parentheses
   let rec handleOperator = (n, op, loc) => {
     module Self = {
       let make = make;
@@ -126,25 +91,20 @@ module Prec = {
       })
     };
   }
-  and handleExpr = n => expr => {
+  and handleExpr = (n, expr) => {
     module Self = {
       let make = make;
       let makeProps = makeProps;
     };
-
-    open GCL.Syntax.Expr;
-    switch expr {
+    GCL.Syntax.Expr.(
+      switch (expr) {
       | Lit(lit, loc) =>
         Complete(<Link loc> {string(Lit.toString(lit))} </Link>)
       | Var(s, loc) =>
         Complete(<Link loc> {string(Name.toString(s))} </Link>)
       | Const(_, _) =>
         Complete(
-          <Subst2
-            expr
-            makePrec=make
-            makePrecProps={makeProps(~key="")}
-          />
+          <Subst expr makePrec=make makePrecProps={makeProps(~key="")} />,
         )
       | Op(op, loc) =>
         // HACK: if the precedence is smaller or equal to 0, display the operator directly
@@ -196,16 +156,9 @@ module Prec = {
             {string(">")}
           </Link>,
         )
-      | Subst(expr, subst) =>
+      | Subst(_, _) =>
         Complete(
-          <Link loc=GCL.Loc.NoLoc>
-            <Subst
-              expr
-              subst
-              makePrec=make
-              makePrecProps={makeProps(~key="")}
-            />
-          </Link>,
+          <Subst expr makePrec=make makePrecProps={makeProps(~key="")} />,
         )
       | Hole(loc) => Complete(<Link loc> {string("[?]")} </Link>)
       | Unknown(x) =>
@@ -214,7 +167,8 @@ module Prec = {
             {string("[? " ++ Js.Json.stringify(x) ++ " ?]")}
           </Link>,
         )
-  };
+      }
+    );
   }
   [@react.component]
   and make = (~prec, ~value) =>

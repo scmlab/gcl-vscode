@@ -78,15 +78,13 @@ let make =
   let className = "gcl-panel native-key-bindings" ++ (hidden ? " hidden" : "");
 
   // <ReqID.Provider value=reqID>
-  <Subst2.Provider value={onSubstitute.current}>
-    <Subst.Provider value={onSubstitute.current}>
-      <Link.Provider value={onClickLink.current}>
-        <section className tabIndex=(-1)>
-          <Header header editorType mode onChangeMode />
-          <Body body />
-        </section>
-      </Link.Provider>
-    </Subst.Provider>
-  </Subst2.Provider>;
+  <Subst.Provider value={onSubstitute.current}>
+    <Link.Provider value={onClickLink.current}>
+      <section className tabIndex=(-1)>
+        <Header header editorType mode onChangeMode />
+        <Body body />
+      </section>
+    </Link.Provider>
+  </Subst.Provider>;
   // </ReqID.Provider>;
 };
