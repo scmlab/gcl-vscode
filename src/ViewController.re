@@ -1,4 +1,4 @@
-open AgdaModeVscode.VSCode;
+open VSCode;
 
 type status =
   | Initialized
@@ -7,6 +7,7 @@ type status =
 type t = {
   panel: WebviewPanel.t,
   onResponse: AgdaModeVscode.Event.t(View.Response.t),
+  subscriptions: array(VSCode.Disposable.t),
   mutable status,
 };
 
@@ -27,7 +28,7 @@ let recv = (view, callback) => {
   ->Disposable.make;
 };
 
-let make = (getExtensionPath, context, editor) => {
+let make = (extentionPath, editor) => {
   let html = (distPath, styleUri, scriptUri) => {
     let nonce = {
       let text = ref("");
@@ -77,8 +78,8 @@ let make = (getExtensionPath, context, editor) => {
         |j};
   };
 
-  let createPanel = (context, editor) => {
-    let distPath = Node.Path.join2(context->getExtensionPath, "dist");
+  let createPanel = (editor) => {
+    let distPath = Node.Path.join2(extentionPath, "dist");
     let fileName =
       Node.Path.basename_ext(
         editor->TextEditor.document->TextDocument.fileName,
@@ -128,8 +129,11 @@ let make = (getExtensionPath, context, editor) => {
   };
 
   // intantiate the panel
-  let panel = createPanel(context, editor);
+  let panel = createPanel(editor);
   moveToBottom() |> ignore;
+
+  // array of Disposable.t
+  let subscriptions = [||];
 
   // on message
   let onResponse = AgdaModeVscode.Event.make();
@@ -145,16 +149,16 @@ let make = (getExtensionPath, context, editor) => {
         )
       }
     })
-  ->Js.Array.push(context->ExtensionContext.subscriptions)
+  ->Js.Array.push(subscriptions)
   ->ignore;
 
   // on destroy
   panel
   ->WebviewPanel.onDidDispose(() => onResponse.emit(View.Response.Destroyed))
-  ->Js.Array.push(context->ExtensionContext.subscriptions)
+  ->Js.Array.push(subscriptions)
   ->ignore;
 
-  let view = {panel, onResponse, status: Uninitialized([||])};
+  let view = {panel, subscriptions, onResponse, status: Uninitialized([||])};
 
   // on initizlied
   view.onResponse.on(
@@ -170,7 +174,7 @@ let make = (getExtensionPath, context, editor) => {
     | _ => (),
   )
   ->Disposable.make
-  ->Js.Array.push(context->ExtensionContext.subscriptions)
+  ->Js.Array.push(subscriptions)
   ->ignore;
 
   view;
@@ -183,4 +187,5 @@ let destroy = view => {
 
 // show/hide
 let show = view => view.panel->WebviewPanel.reveal(~preserveFocus=true, ());
+let focus = view => view.panel->WebviewPanel.reveal();
 let hide = _view => ();

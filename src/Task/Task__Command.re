@@ -2,8 +2,9 @@ open Belt;
 
 open Command;
 
-module Impl = (Editor: Sig.Editor) => {
+module Impl = (Editor: API.Editor) => {
   module Task__Types = Task.Impl(Editor);
+  module GCLImpl = GCLImpl.Impl(Editor);
   module State = State.Impl(Editor);
   open! Task__Types;
   // from Editor Command to Tasks
@@ -14,11 +15,11 @@ module Impl = (Editor: Sig.Editor) => {
     | Reload => [
         WithState(
           state => {
-            let editor = state->State.getEditor;
-            editor
+            let doc = Editor.getDocument(State.getEditor(state));
+            doc
             ->Editor.getFileName
             ->Option.mapWithDefault(Promise.resolved([]), fileName => {
-                editor
+                doc
                 ->Editor.save
                 ->Promise.map(saveSucceed =>
                     if (saveSucceed && fileName != "") {
@@ -54,7 +55,8 @@ module Impl = (Editor: Sig.Editor) => {
             ->Option.mapWithDefault(
                 Promise.resolved([]),
                 spec => {
-                  let payload = State.Spec.getPayload(state.editor, spec);
+                  let doc = Editor.getDocument(state.editor);
+                  let payload = State.Spec.getPayload(doc, spec);
                   Promise.resolved([SendRequest(Refine(spec.id, payload))]);
                 },
               )
@@ -67,7 +69,7 @@ module Impl = (Editor: Sig.Editor) => {
           state => {
             let cursor = Editor.getCursorPosition(state.editor);
             open GCL.Pos;
-            let Pos(_, line, _) = Editor.Point.toPos(cursor, "whatever");
+            let Pos(_, line, _) = GCLImpl.Pos.fromPoint(cursor, "whatever");
             Promise.resolved([SendRequest(InsertAssertion(line))]);
           },
         ),

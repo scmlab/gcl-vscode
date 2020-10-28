@@ -4,7 +4,7 @@ open React;
 let make =
     (
       ~header: View.Request.Header.t,
-      ~editorType: Sig.editorType,
+      ~editorType: API.editorType,
       ~mode: GCL.mode,
       ~onChangeMode: GCL.mode => unit,
     ) => {
@@ -23,7 +23,7 @@ let make =
   // display different type fo mode toggle base on the editor type
   let modeToggle =
     switch (editorType) {
-    | Sig.VsCode =>
+    | API.VsCode =>
       <button className="gcl-mode-button gcl-mode-vscode" onClick=onChange>
         {string(
            switch (mode) {

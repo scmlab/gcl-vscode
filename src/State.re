@@ -1,10 +1,8 @@
-module Impl = (Editor: Sig.Editor) => {
+module Impl = (Editor: API.Editor) => {
   open Belt;
   type editor = Editor.editor;
-  type context = Editor.context;
   type t = {
     editor,
-    context,
     view: Editor.view,
     mutable mode: GCL.mode,
     mutable decorations: array(Editor.Decoration.t),
@@ -82,13 +80,12 @@ module Impl = (Editor: Sig.Editor) => {
     state->disconnect;
   };
 
-  let make = (context, editor) => {
+  let make = (extentionPath, editor) => {
     // view initialization
-    let view = Editor.View.make(context, editor);
+    let view = Editor.View.make(extentionPath, editor);
 
     let state = {
       editor,
-      context,
       view,
       mode: GCL.WP1,
       decorations: [||],
@@ -117,6 +114,7 @@ module Impl = (Editor: Sig.Editor) => {
   //
 
   module Spec = {
+    module GCLImpl = GCLImpl.Impl(Editor);
     // find the hole containing the cursor
     let fromCursorPosition = state => {
       let cursor = Editor.getCursorPosition(state.editor);
@@ -124,7 +122,7 @@ module Impl = (Editor: Sig.Editor) => {
       let smallestHole = ref(None);
       state.specifications
       ->Array.keep(spec => {
-          let range = Editor.Range.fromLoc(spec.loc);
+          let range = GCLImpl.Loc.toRange(spec.loc);
           Editor.Range.contains(range, cursor);
         })
       ->Array.forEach(spec =>
@@ -132,8 +130,8 @@ module Impl = (Editor: Sig.Editor) => {
           | None => smallestHole := Some(spec)
           | Some(spec') =>
             if (Editor.Range.containsRange(
-                  Editor.Range.fromLoc(spec.loc),
-                  Editor.Range.fromLoc(spec'.loc),
+                  GCLImpl.Loc.toRange(spec.loc),
+                  GCLImpl.Loc.toRange(spec'.loc),
                 )) {
               smallestHole := Some(spec);
             }
@@ -142,37 +140,37 @@ module Impl = (Editor: Sig.Editor) => {
       smallestHole^;
     };
 
-    let getPayloadRange = (editor, spec: Response.Specification.t) => {
+    let getPayloadRange = (doc, spec: Response.Specification.t) => {
       open! Editor;
-      let range = Editor.Range.fromLoc(spec.loc);
+      let range = GCLImpl.Loc.toRange(spec.loc);
       let startingLine = Point.line(Range.start(range)) + 1;
       let endingLine = Point.line(Range.end_(range)) - 1;
 
-      let start = editor->Editor.rangeForLine(startingLine)->Range.start;
-      let end_ = editor->Editor.rangeForLine(endingLine)->Range.end_;
+      let start = Editor.rangeForLine(doc, startingLine)->Range.start;
+      let end_ = Editor.rangeForLine(doc, endingLine)->Range.end_;
       Range.make(start, end_);
     };
-    let getPayload = (editor, spec) => {
+    let getPayload = (doc, spec) => {
       // return the text in the targeted hole
-      let innerRange = getPayloadRange(editor, spec);
-      editor->Editor.getText(innerRange);
+      let innerRange = getPayloadRange(doc, spec);
+      Editor.getTextInRange(doc, innerRange);
     };
 
     let resolve = (state, i) => {
       let specs = state.specifications->Array.keep(spec => spec.id == i);
       specs[0]
       ->Option.forEach(spec => {
-          let payload = getPayload(state.editor, spec);
-          let range = Editor.Range.fromLoc(spec.loc);
+          let doc = Editor.getDocument(state.editor);
+          let payload = getPayload(doc, spec);
+          let range = GCLImpl.Loc.toRange(spec.loc);
           let start = Editor.Range.start(range);
-          state.editor
+          doc
           ->Editor.deleteText(range)
           ->Promise.flatMap(
               fun
               | false => Promise.resolved(false)
               | true =>
-                state.editor
-                ->Editor.insertText(start, Js.String.trim(payload)),
+                doc->Editor.insertText(start, Js.String.trim(payload)),
             )
           ->Promise.get(_ => ());
         });
@@ -183,7 +181,8 @@ module Impl = (Editor: Sig.Editor) => {
       let assertion = "{ " ++ GCL.Syntax.Expr.toString(expr) ++ " }\n";
       let point = Editor.Point.make(lineNo - 1, 0);
       // insert the assertion
-      Editor.insertText(state.editor, point, assertion);
+      let doc = Editor.getDocument(state.editor);
+      Editor.insertText(doc, point, assertion);
     };
   };
 };

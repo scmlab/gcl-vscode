@@ -1,7 +1,7 @@
 [@react.component]
 let make =
     (
-      ~editorType: Sig.editorType,
+      ~editorType: API.editorType,
       ~onRequest: AgdaModeVscode.Event.t(View.Request.t),
       ~onResponse: AgdaModeVscode.Event.t(View.Response.t),
     ) => {

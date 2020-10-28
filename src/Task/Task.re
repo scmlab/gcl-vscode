@@ -1,4 +1,4 @@
-module Impl = (Editor: Sig.Editor) => {
+module Impl = (Editor: API.Editor) => {
   module State = State.Impl(Editor);
   type t =
     | WithState(State.t => Promise.t(list(t)))

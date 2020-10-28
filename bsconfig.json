@@ -19,6 +19,7 @@
   "namespace": true,
   "bs-dependencies": [
     "agda-mode-vscode",
+    "bs-vscode",
     "@glennsl/bs-json",
     "bs-webapi",
     "reason-promise",

@@ -2,7 +2,7 @@ open GCL.Syntax;
 
 open! Response.Error;
 
-module Impl = (Editor: Sig.Editor) => {
+module Impl = (Editor: API.Editor) => {
   module State = State.Impl(Editor);
   module Task = Task.Impl(Editor);
   module StructError = {

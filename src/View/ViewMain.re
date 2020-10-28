@@ -23,7 +23,7 @@ onResponse.on(response => {
 Webapi.Dom.Document.getElementById("root", Webapi.Dom.document)
 ->Option.forEach(element => {
     ReactDOMRe.render(
-      <Panel editorType=Sig.VsCode onRequest onResponse />,
+      <Panel editorType=API.VsCode onRequest onResponse />,
       element,
     )
   });

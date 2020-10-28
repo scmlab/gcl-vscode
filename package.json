@@ -2,7 +2,7 @@
 	"name": "guacamole",
 	"displayName": "Guacamole",
 	"description": "Guacamole on vscode",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"engines": {
 		"vscode": "^1.41.0"
 	},
@@ -30,6 +30,7 @@
 	},
 	"dependencies": {
 		"@glennsl/bs-json": "^5.0.1",
+		"bs-vscode": "github:banacorn/bs-vscode#v0.0.2",
 		"agda-mode-vscode": "github:banacorn/agda-mode-vscode#759355",
 		"bs-platform": "^7.2",
 		"bs-webapi": "^0.15.3",

@@ -1,9 +1,10 @@
-module Impl = (Editor: Sig.Editor) => {
+module Impl = (Editor: API.Editor) => {
   module TaskCommand = Task__Command.Impl(Editor);
   module TaskResponse = Task__Response.Impl(Editor);
   module TaskView = Task__View.Impl(Editor);
   module Task = Task.Impl(Editor);
   module State = State.Impl(Editor);
+  module GCLImpl = GCLImpl.Impl(Editor);
   open Belt;
 
   type status =
@@ -38,20 +39,21 @@ module Impl = (Editor: Sig.Editor) => {
         Response.Error.Site.toRange(
           site,
           state.specifications,
-          Editor.Range.fromLoc,
+          GCLImpl.Loc.toRange,
         );
       let decorations =
         state.editor
         ->Editor.Decoration.highlightBackground(
-            Editor.Decoration.Error,
-            range,
+            "inputValidation.errorBackground",
+            [|range|],
           );
-      state.decorations = Js.Array.concat(decorations, state.decorations);
+      state.decorations =
+        Js.Array.concat([|decorations|], state.decorations);
       Promise.resolved([]);
     | MarkSpec(spec) =>
       open! Editor;
 
-      let range = Range.fromLoc(spec.loc);
+      let range = GCLImpl.Loc.toRange(spec.loc);
 
       let startPoint = Range.start(range);
       let endPoint = Range.end_(range);
@@ -73,23 +75,30 @@ module Impl = (Editor: Sig.Editor) => {
       let postCondText = " " ++ trim(GCL.Syntax.Pred.toString(spec.post));
       // see if the Spec's precondition and the post-condition look the same (i.e. the Q_Q case)
       let isQQ = preCondText == postCondText;
-      let decorations =
-        Array.concatMany([|
-          Decoration.overlayText(
-            state.editor,
-            Spec,
-            isQQ ? "" : preCondText,
-            startRange,
-          ),
-          Decoration.overlayText(
-            state.editor,
-            Spec,
-            postCondText,
-            endRange,
-          ),
-          Decoration.highlightBackground(state.editor, Spec, startRange),
-          Decoration.highlightBackground(state.editor, Spec, endRange),
-        |]);
+      let decorations = [|
+        Decoration.overlayText(
+          state.editor,
+          "descriptionForeground",
+          isQQ ? "" : preCondText,
+          startRange,
+        ),
+        Decoration.overlayText(
+          state.editor,
+          "descriptionForeground",
+          postCondText,
+          endRange,
+        ),
+        Decoration.highlightBackground(
+          state.editor,
+          "editor.wordHighlightStrongBackground",
+          [|startRange|],
+        ),
+        Decoration.highlightBackground(
+          state.editor,
+          "editor.wordHighlightStrongBackground",
+          [|endRange|],
+        ),
+      |];
 
       state.decorations = Js.Array.concat(decorations, state.decorations);
       Promise.resolved([]);
@@ -98,10 +107,37 @@ module Impl = (Editor: Sig.Editor) => {
         Response.Error.Site.toRange(
           site,
           state.specifications,
-          Editor.Range.fromLoc,
+          GCLImpl.Loc.toRange,
         );
-      state.editor->Editor.Decoration.digHole(range);
-      Promise.resolved([]);
+
+      let digHole = (editor: Editor.editor, range: Editor.Range.t) => {
+        // replace the question mark "?" with a hole "{!  !}"
+        let indent =
+          Js.String.repeat(
+            Editor.Point.column(Editor.Range.start(range)),
+            " ",
+          );
+        let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}";
+        let holeRange =
+          Editor.Range.make(
+            Editor.Range.start(range),
+            Editor.Point.translate(Editor.Range.start(range), 0, 1),
+          );
+        editor
+        ->Editor.getDocument
+        ->Editor.replaceText(holeRange, holeText)
+        ->Promise.map(_ => {
+            // set the cursor inside the hole
+            let selectionRange =
+              Editor.Range.make(
+                Editor.Point.translate(Editor.Range.start(range), 1, 0),
+                Editor.Point.translate(Editor.Range.start(range), 1, 0),
+              );
+            editor->Editor.selectText(selectionRange);
+            [];
+          });
+      };
+      digHole(state.editor, range);
     | RemoveDecorations =>
       state.decorations->Array.forEach(Editor.Decoration.destroy);
       Promise.resolved([]);

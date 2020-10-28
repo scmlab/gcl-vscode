@@ -2,8 +2,9 @@ open Belt;
 
 open! Response;
 
-module Impl = (Editor: Sig.Editor) => {
+module Impl = (Editor: API.Editor) => {
   module State = State.Impl(Editor);
+  module GCLImpl = GCLImpl.Impl(Editor);
   module Task = Task.Impl(Editor);
   module Task__Error = Task__Error.Impl(Editor);
 
@@ -35,10 +36,10 @@ module Impl = (Editor: Sig.Editor) => {
       ]
     | Link(MouseOver(loc)) =>
       let key = GCL.Loc.toString(loc);
-      let range = Editor.Range.fromLoc(loc);
+      let range = GCLImpl.Loc.toRange(loc);
       let decoration =
-        Editor.Decoration.highlightBackground(editor, Highlight, range);
-      Js.Dict.set(decorationDict, key, decoration);
+        Editor.Decoration.highlightBackground(editor, "editor.symbolHighlightBackground", [|range|]);
+      Js.Dict.set(decorationDict, key, [|decoration|]);
       [];
     | Link(MouseOut(loc)) =>
       let key = GCL.Loc.toString(loc);
@@ -49,7 +50,7 @@ module Impl = (Editor: Sig.Editor) => {
       delete_(key);
       [];
     | Link(MouseClick(loc)) =>
-      let range = Editor.Range.fromLoc(loc);
+      let range = GCLImpl.Loc.toRange(loc);
       editor->Editor.selectText(range);
       [];
     | Substitute(i, expr, subst) =>

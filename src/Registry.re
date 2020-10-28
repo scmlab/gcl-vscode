@@ -1,7 +1,7 @@
 open Belt;
 
 // a dictionary of FileName-State entries
-module Impl = (Editor: Sig.Editor) => {
+module Impl = (Editor: API.Editor) => {
   module State = State.Impl(Editor);
   module TaskRunner = TaskRunner.Impl(Editor);
   let dict: Js.Dict.t((State.t, TaskRunner.t)) = Js.Dict.empty();
@@ -9,16 +9,13 @@ module Impl = (Editor: Sig.Editor) => {
   let get = fileName => dict->Js.Dict.get(fileName);
 
   let getByEditor = (editor: Editor.editor) =>
-    editor->Editor.getFileName->Option.flatMap(get);
+    editor->Editor.getDocument->Editor.getFileName->Option.flatMap(get);
 
   // do nothing if the state already exists
-  let add = (fileName, state) => {
-    // let fileName = editor->Interface.getFileName';
+  let add = (fileName, dispatcher) => {
     switch (get(fileName)) {
     | Some(_) => ()
-    | None =>
-      Js.log("[ states ][ add ]");
-      dict->Js.Dict.set(fileName, state);
+    | None => dict->Js.Dict.set(fileName, dispatcher)
     };
   };
 

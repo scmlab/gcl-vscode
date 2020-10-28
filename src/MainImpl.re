@@ -1,2 +1,2 @@
 // entry point of the whole extension
-include Main.Impl(SigImpl);
+include Main.Impl(VSCodeImpl);
