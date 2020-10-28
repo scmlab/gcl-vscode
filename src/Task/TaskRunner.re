@@ -84,7 +84,7 @@ module Impl = (Editor: Sig.Editor) => {
           Decoration.overlayText(
             state.editor,
             Spec,
-            isQQ ? "" : postCondText,
+            postCondText,
             endRange,
           ),
           Decoration.highlightBackground(state.editor, Spec, startRange),
