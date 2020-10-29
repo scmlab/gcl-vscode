@@ -3,7 +3,7 @@
 	"displayName": "Guacamole",
 	"description": "Guacamole on vscode",
 	"publisher": "scmlab",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"repository": "https://github.com/scmlab/gcl-vscode",
 	"engines": {
 		"vscode": "^1.41.0"
@@ -14,7 +14,7 @@
 	"activationEvents": [
 		"onCommand:guacamole.toggle"
 	],
-	"main": "./lib/js/src/MainImpl.bs.js",
+	"main": "./dist/app.bundle.js",
 	"scripts": {
 		"clean": "npx bsb -clean-world",
 		"build": "npx bsb -make-world && npx lessc style/style.less dist/style.css && webpack --mode development",
