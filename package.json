@@ -3,7 +3,7 @@
 	"displayName": "Guacamole",
 	"description": "Guacamole on vscode",
 	"publisher": "scmlab",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"repository": "https://github.com/scmlab/gcl-vscode",
 	"engines": {
 		"vscode": "^1.41.0"
@@ -16,13 +16,10 @@
 	],
 	"main": "./lib/js/src/MainImpl.bs.js",
 	"scripts": {
-		"build-css": "npx less-watch-compiler --run-once style/ dist/",
-		"build": "bsb -make-world && npm run build-css && npx webpack --mode=production",
-		"watch-css": "npx less-watch-compiler style/ dist/",
-		"watch-code": "npx webpack --mode=production --watch",
-		"dev": "bsb -make-world && npm run watch-css & npm run watch-code",
-		"vscode:prepublish": "npx bsb -make-world && npx lessc style/style.less dist/style.css && webpack --mode production",
-		"clean": "bsb -clean-world"
+		"clean": "npx bsb -clean-world",
+		"build": "npx bsb -make-world && npx lessc style/style.less dist/style.css && webpack --mode development",
+		"dev": "npm run build && webpack --mode development --watch & npx less-watch-compiler style/ dist/",
+		"vscode:prepublish": "npx bsb -make-world && npx lessc style/style.less dist/style.css && webpack --mode production"
 	},
 	"devDependencies": {
 		"less-loader": "^5.0.0",
