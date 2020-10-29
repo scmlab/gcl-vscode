@@ -21,6 +21,7 @@
 		"watch-css": "npx less-watch-compiler style/ dist/",
 		"watch-code": "npx webpack --mode=production --watch",
 		"dev": "bsb -make-world && npm run watch-css & npm run watch-code",
+		"vscode:prepublish": "npx bsb -make-world && npx lessc style/style.less dist/style.css && webpack --mode production",
 		"clean": "bsb -clean-world"
 	},
 	"devDependencies": {
