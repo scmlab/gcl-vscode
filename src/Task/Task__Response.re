@@ -2,10 +2,6 @@ open Belt;
 
 open! Response;
 
-module Impl = (Editor: API.Editor) => {
-  module State = State.Impl(Editor);
-  module Task = Task.Impl(Editor);
-  module Task__Error = Task__Error.Impl(Editor);
   // from GCL response to Task
   let handle = (response): list(Task.t) => {
     switch (response) {
@@ -48,4 +44,3 @@ module Impl = (Editor: API.Editor) => {
       ]
     };
   };
-};

@@ -1,5 +1,3 @@
-module Impl = (Editor: API.Editor) => {
-  module State = State.Impl(Editor);
   type t =
     | WithState(State.t => Promise.t(list(t)))
     | DispatchCommand(Command.t)
@@ -15,4 +13,3 @@ module Impl = (Editor: API.Editor) => {
     | MarkSpec(Response.Specification.t)
     | DigHole(Response.Error.Site.t)
     | RemoveDecorations;
-};

@@ -24,7 +24,7 @@ module.exports = [
     },
     {
         target: "node",
-        entry: './lib/js/src/MainImpl.bs.js',
+        entry: './lib/js/src/Main.bs.js',
         output: {
             path: path.join(__dirname, 'dist'),
             filename: 'app.bundle.js',

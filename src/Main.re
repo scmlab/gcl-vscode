@@ -1,97 +1,118 @@
-module Impl = (Editor: API.Editor) => {
-  open Belt;
-  module Registry = Registry.Impl(Editor);
-  // module TaskCommand = Task__Command.Impl(Editor);
-  module TaskRunner = TaskRunner.Impl(Editor);
-  module Task = Task.Impl(Editor);
-  module State = State.Impl(Editor);
+open Belt;
+open VSCode;
 
-  let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
+let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
-  let activate = context => {
-    let disposables = Editor.getDisposables(context);
-    let extensionPath = Editor.getExtensionPath(context);
-    // when a TextEditor gets closed, destroy the corresponding State
-    Editor.onDidCloseEditor(Registry.destroy)
-    ->Js.Array.push(disposables)
-    ->ignore;
-    // when a file got renamed, destroy the corresponding State if it becomes non-GCL
-    Editor.onDidChangeFileName((oldName, newName) =>
-      oldName->Option.forEach(oldName =>
-        newName->Option.forEach(newName =>
+let activate = context => {
+  let disposables = context->ExtensionContext.subscriptions;
+  let extensionPath = context->ExtensionContext.extensionPath;
+  // when a TextEditor gets closed, destroy the corresponding State
+  Workspace.onDidCloseTextDocument(textDoc =>
+    textDoc->Option.forEach(textDoc =>
+      Registry.destroy(textDoc->TextDocument.fileName)
+    )
+  )
+  ->Js.Array.push(disposables)
+  ->ignore;
+  // when a file got renamed, destroy the corresponding State if it becomes non-GCL
+  Workspace.onDidRenameFiles(event =>
+    event
+    ->Option.map(FileRenameEvent.files)
+    ->Option.forEach(files => {
+        files->Array.forEach(file => {
+          let oldName = file##oldUri->Uri.path;
+          let newName = file##newUri->Uri.path;
           if (Registry.contains(oldName)) {
             if (isGCL(newName)) {
               Registry.rename(oldName, newName);
             } else {
               Registry.destroy(oldName);
             };
-          }
-        )
-      )
-    )
-    ->Js.Array.push(disposables)
-    ->ignore;
+          };
+        })
+      })
+  )
+  ->Js.Array.push(disposables)
+  ->ignore;
 
-    // on editor activation, reveal the corresponding Panel (if any)
-    Editor.onDidChangeActivation((prev, next) => {
-      prev
+  // on editor activation, reveal the corresponding Panel (if any)
+  let previous = ref(Window.activeTextEditor);
+  Window.onDidChangeActiveTextEditor(next =>
+    if (next
+        ->Option.map(TextEditor.document)
+        ->Option.map(TextDocument.fileName)
+        != (previous^)
+           ->Option.map(TextEditor.document)
+           ->Option.map(TextDocument.fileName)) {
+      (previous^)
       ->Option.flatMap(Registry.getByEditor)
       ->Option.forEach(((state, _)) => State.hide(state));
+
       next
       ->Option.flatMap(Registry.getByEditor)
       ->Option.forEach(((state, _)) => State.show(state));
-    })
-    ->Js.Array.push(disposables)
-    ->ignore;
 
-    // on "toggle activate/deactivate"
-    Editor.registerCommand("toggle", (editor, fileName) => {
-      switch (Registry.get(fileName)) {
-      | None =>
-        // not in the Registry, instantiate one new
-        let state = State.make(extensionPath, editor);
-        let taskRunner = TaskRunner.make(state);
-        // remove it from the Registry if it got destroyed
-        state
-        ->State.onDestroy(() => {Registry.remove(fileName)})
-        ->Js.Array.push(disposables)
-        ->ignore;
-        Registry.add(fileName, (state, taskRunner));
+      previous := next;
+    }
+  )
+  ->Js.Array.push(disposables)
+  ->ignore;
 
-        state.view
-        ->Editor.View.recv(response => {
-            TaskRunner.addTask(taskRunner, ViewResponse(response))
-          })
-        ->Js.Array.push(disposables)
-        ->ignore;
-
-        // dispatch "Load"
-        taskRunner->TaskRunner.addTask(DispatchCommand(Load));
-      | Some((_state, taskRunner)) =>
-        // already in the Registry, dispatch "Quit"
-        // and remove and destroy it from the Registry
-        taskRunner->TaskRunner.addTask(DispatchCommand(Quit));
-        fileName->Registry.destroy;
-      }
-    })
-    ->Js.Array.push(disposables)
-    ->ignore;
-
-    // on other commands
-    Command.names->Array.forEach(((command, name)) => {
-      Editor.registerCommand(name, (_editor, fileName) => {
-        fileName
-        ->Registry.get
-        ->Option.forEach(((_, taskRunner)) =>
-            taskRunner->TaskRunner.addTask(DispatchCommand(command))
-          )
+  // on "toggle activate/deactivate"
+  let registerCommand = (name, callback) =>
+    Commands.registerCommand("guacamole." ++ name, () =>
+      Window.activeTextEditor->Option.map(editor => {
+        let fileName = editor->TextEditor.document->TextDocument.fileName;
+        callback(editor, fileName);
       })
-      ->Js.Array.push(disposables)
-      ->ignore
-    });
-  };
+    );
 
-  let deactivate = () => {
-    Registry.destroyAll();
-  };
+  registerCommand("toggle", (editor, fileName) => {
+    switch (Registry.get(fileName)) {
+    | None =>
+      // not in the Registry, instantiate one new
+      let state = State.make(extensionPath, editor);
+      let taskRunner = TaskRunner.make(state);
+      // remove it from the Registry if it got destroyed
+      state
+      ->State.onDestroy(() => {Registry.remove(fileName)})
+      ->Js.Array.push(disposables)
+      ->ignore;
+      Registry.add(fileName, (state, taskRunner));
+
+      state.view
+      ->ViewController.recv(response => {
+          TaskRunner.addTask(taskRunner, ViewResponse(response))
+        })
+      ->Js.Array.push(disposables)
+      ->ignore;
+
+      // dispatch "Load"
+      taskRunner->TaskRunner.addTask(DispatchCommand(Load));
+    | Some((_state, taskRunner)) =>
+      // already in the Registry, dispatch "Quit"
+      // and remove and destroy it from the Registry
+      taskRunner->TaskRunner.addTask(DispatchCommand(Quit));
+      fileName->Registry.destroy;
+    }
+  })
+  ->Js.Array.push(disposables)
+  ->ignore;
+
+  // on other commands
+  Command.names->Array.forEach(((command, name)) => {
+    registerCommand(name, (_editor, fileName) => {
+      fileName
+      ->Registry.get
+      ->Option.forEach(((_, taskRunner)) =>
+          taskRunner->TaskRunner.addTask(DispatchCommand(command))
+        )
+    })
+    ->Js.Array.push(disposables)
+    ->ignore
+  });
+};
+
+let deactivate = () => {
+  Registry.destroyAll();
 };

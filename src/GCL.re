@@ -3,6 +3,17 @@ module Pos = {
   type t =
     | Pos(string, int, int);
 
+  let toPoint =
+    fun
+    | Pos(_, line, column) => VSCode.Position.make(line - 1, column - 1);
+
+  let fromPoint = (point, filepath) =>
+    Pos(
+      filepath,
+      VSCode.Position.line(point) + 1,
+      VSCode.Position.character(point) + 1,
+    );
+
   let toString =
     fun
     | Pos(_, line, column) =>
@@ -14,7 +25,7 @@ module Pos = {
         let Pos(_, y, x) = by;
         Pos(path, line + y, column + x);
       };
-
+    
   let translateBy = (y, x) =>
     fun
     | Pos(path, line, column) => Pos(path, line + y, column + x);
@@ -35,6 +46,18 @@ module Loc = {
     | NoLoc
     | Loc(Pos.t, Pos.t);
 
+    let toRange =
+      fun
+      | NoLoc =>
+        VSCode.Range.make(
+          VSCode.Position.make(0, 0),
+          VSCode.Position.make(0, 0),
+        )
+      | Loc(x, Pos(_, line, column)) =>
+        VSCode.Range.make(
+          Pos.toPoint(x),
+          VSCode.Position.make(line - 1, column),
+        );
   let toString =
     fun
     | NoLoc => "NoLoc"
