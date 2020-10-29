@@ -176,26 +176,11 @@ module Spec = {
         let range = GCL.Loc.toRange(spec.loc);
         let start = Range.start(range);
         // delete text
-        let workspaceEdit = WorkspaceEdit.make();
-        workspaceEdit->WorkspaceEdit.delete(
-          doc->TextDocument.uri,
-          range,
-          None,
-        );
-        Workspace.applyEdit(workspaceEdit)
+        Editor.deleteText(doc, range)
         ->Promise.flatMap(
             fun
             | false => Promise.resolved(false)
-            | true => {
-                let workspaceEdit = WorkspaceEdit.make();
-                workspaceEdit->WorkspaceEdit.insert(
-                  doc->TextDocument.uri,
-                  start,
-                  Js.String.trim(payload),
-                  None,
-                );
-                Workspace.applyEdit(workspaceEdit);
-              },
+            | true => Editor.insertText(doc, start, Js.String.trim(payload)),
           )
         ->Promise.get(_ => ());
       });
@@ -207,13 +192,6 @@ module Spec = {
     let point = Position.make(lineNo - 1, 0);
     // insert the assertion
     let doc = TextEditor.document(state.editor);
-    let workspaceEdit = WorkspaceEdit.make();
-    workspaceEdit->WorkspaceEdit.insert(
-      doc->TextDocument.uri,
-      point,
-      assertion,
-      None,
-    );
-    Workspace.applyEdit(workspaceEdit);
+    Editor.insertText(doc, point, assertion);
   };
 };
