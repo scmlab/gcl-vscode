@@ -2,7 +2,9 @@
 	"name": "guacamole",
 	"displayName": "Guacamole",
 	"description": "Guacamole on vscode",
-	"version": "0.0.4",
+	"publisher": "scmlab",
+	"version": "0.0.5",
+	"repository": "https://github.com/scmlab/gcl-vscode",
 	"engines": {
 		"vscode": "^1.41.0"
 	},
@@ -29,7 +31,7 @@
 		"webpack-cli": "^3.3.12"
 	},
 	"dependencies": {
-		"@glennsl/bs-json": "^5.0.1",
+		"@glennsl/bs-json": "github:banacorn/bs-json#0c900d3",
 		"bs-vscode": "github:banacorn/bs-vscode#v0.0.2",
 		"agda-mode-vscode": "github:banacorn/agda-mode-vscode#759355",
 		"bs-platform": "^7.2",
