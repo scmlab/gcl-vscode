@@ -91,9 +91,36 @@ let destroy = state => {
   state->disconnect;
 };
 
-let make = (extentionPath, editor) => {
+let make = (extentionPath, disposables, editor) => {
   // view initialization
   let view = View.make(extentionPath, editor);
+
+  // registering LSP features
+  let docSelector = [|
+    VSCode.DocumentFilterOrString.documentFilter(
+      VSCode.DocumentFilter.{
+        language: Some("gcl"),
+        pattern: None,
+        scheme: None,
+      },
+    ),
+  |];
+  let codeLensProvider =
+    VSCode.CodeLensProvider.{
+      onDidChangeCodeLenses: None,
+      resolveCodeLens: (_, _) => {
+        Js.log("codeLensProvider.resolveCodeLens invoked");
+        None;
+      },
+      provideCodeLenses: (_, _) => {
+        Js.log("codeLensProvider.provideCodeLenses invoked");
+        None;
+      },
+    };
+  Js.log("registering");
+  VSCode.Languages.registerCodeLensProvider(docSelector, codeLensProvider)
+  ->Js.Array.push(disposables)
+  ->ignore;
 
   let state = {
     editor,

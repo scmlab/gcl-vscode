@@ -76,7 +76,7 @@ let activate = context => {
     switch (Registry.get(fileName)) {
     | None =>
       // not in the Registry, instantiate one new
-      let state = State.make(extensionPath, editor);
+      let state = State.make(extensionPath, disposables, editor);
       let taskRunner = TaskRunner.make(state);
       // remove it from the Registry if it got destroyed
       state
