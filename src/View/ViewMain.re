@@ -9,7 +9,7 @@ let vscode = Api.acquireVsCodeApi();
 // relay VSCode.Api.onMessage => onRequest;
 let onRequest = AgdaModeVscode.Event.make();
 Api.onMessage(stringifiedJSON => {
-  let request = Js.Json.parseExn(stringifiedJSON) |> View.Request.decode;
+  let request = Js.Json.parseExn(stringifiedJSON) -> View.Request.decode;
   onRequest.emit(request);
 });
 
@@ -23,7 +23,7 @@ onResponse.on(response => {
 Webapi.Dom.Document.getElementById("root", Webapi.Dom.document)
 ->Option.forEach(element => {
     ReactDOMRe.render(
-      <Panel editorType=API.VsCode onRequest onResponse />,
+      <Panel onRequest onResponse />,
       element,
     )
   });

@@ -37,24 +37,29 @@ let activate = context => {
 
   // on editor activation, reveal the corresponding Panel (if any)
   let previous = ref(Window.activeTextEditor);
-  Window.onDidChangeActiveTextEditor(next =>
-    if (next
-        ->Option.map(TextEditor.document)
-        ->Option.map(TextDocument.fileName)
-        != (previous^)
-           ->Option.map(TextEditor.document)
-           ->Option.map(TextDocument.fileName)) {
+  Window.onDidChangeActiveTextEditor(next => {
+    let nextFileName =
+      next
+      ->Option.map(TextEditor.document)
+      ->Option.map(TextDocument.fileName);
+    let prevFileName =
       (previous^)
-      ->Option.flatMap(Registry.getByEditor)
+      ->Option.map(TextEditor.document)
+      ->Option.map(TextDocument.fileName);
+    // see if the active text editor changed;
+    let changed = nextFileName != prevFileName;
+    if (changed) {
+      prevFileName
+      ->Option.flatMap(Registry.get)
       ->Option.forEach(((state, _)) => State.hide(state));
 
-      next
-      ->Option.flatMap(Registry.getByEditor)
+      nextFileName
+      ->Option.flatMap(Registry.get)
       ->Option.forEach(((state, _)) => State.show(state));
 
       previous := next;
-    }
-  )
+    };
+  })
   ->Js.Array.push(disposables)
   ->ignore;
 
@@ -81,7 +86,7 @@ let activate = context => {
       Registry.add(fileName, (state, taskRunner));
 
       state.view
-      ->ViewController.recv(response => {
+      ->View.recv(response => {
           TaskRunner.addTask(taskRunner, ViewResponse(response))
         })
       ->Js.Array.push(disposables)

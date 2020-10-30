@@ -1,13 +1,14 @@
 [@react.component]
 let make =
     (
-      ~editorType: API.editorType,
       ~onRequest: AgdaModeVscode.Event.t(View.Request.t),
       ~onResponse: AgdaModeVscode.Event.t(View.Response.t),
     ) => {
   // let (reqID, setReqID) = React.useState(() => None);
-  let (header, setHeader) = React.useState(() => View.Request.Header.Loading);
-  let (body, setBody) = React.useState(() => View.Request.Body.Nothing);
+  let (header, setHeader) =
+    React.useState(() => View.Request.Header.Loading);
+  let (body, setBody) =
+    React.useState(() => View.Request.Body.Nothing);
   let (mode, setMode) = React.useState(_ => GCL.WP1);
   let (hidden, setHidden) = React.useState(_ => false);
   let onClickLink = React.useRef(AgdaModeVscode.Event.make());
@@ -31,7 +32,7 @@ let make =
       let destructor =
         onRequest.on(req => {
           switch (req) {
-          | Display(header, body) =>
+          | View.Request.Display(header, body) =>
             setHeader(_ => header);
             setBody(_ => body);
           | Substitute(i, expr) =>
@@ -81,7 +82,7 @@ let make =
   <Subst.Provider value={onSubstitute.current}>
     <Link.Provider value={onClickLink.current}>
       <section className tabIndex=(-1)>
-        <Header header editorType mode onChangeMode />
+        <Header header mode onChangeMode />
         <Body body />
       </section>
     </Link.Provider>

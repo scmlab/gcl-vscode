@@ -15,7 +15,7 @@ module Config = {
 
 type t = {
   editor: TextEditor.t,
-  view: ViewController.t,
+  view: View.t,
   mutable mode: GCL.mode,
   mutable decorations: array(TextEditorDecorationType.t),
   mutable specifications: array(Response.Specification.t),
@@ -84,7 +84,7 @@ let sendRequest = (state, request) => {
 //
 
 let destroy = state => {
-  state.view->ViewController.destroy;
+  state.view->View.destroy;
   state.onDestroyEventEmitter.emit();
   state.onDestroyEventEmitter.destroy();
   state.decorations->Array.forEach(Editor.Decoration.destroy);
@@ -93,7 +93,7 @@ let destroy = state => {
 
 let make = (extentionPath, editor) => {
   // view initialization
-  let view = ViewController.make(extentionPath, editor);
+  let view = View.make(extentionPath, editor);
 
   let state = {
     editor,
@@ -112,10 +112,10 @@ let make = (extentionPath, editor) => {
 // View-related
 //
 
-let show = state => state.view->ViewController.show;
-let hide = state => state.view->ViewController.hide;
+let show = state => state.view->View.show;
+let hide = state => state.view->View.hide;
 let sendRequestToView = (state, request) => {
-  ViewController.send(state.view, request);
+  View.send(state.view, request);
 };
 let display = (state, header, body) => {
   sendRequestToView(state, View.Request.Display(header, body));

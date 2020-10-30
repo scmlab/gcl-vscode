@@ -6,9 +6,6 @@ let dict: Js.Dict.t((State.t, TaskRunner.t)) = Js.Dict.empty();
 
 let get = fileName => dict->Js.Dict.get(fileName);
 
-let getByEditor = (editor: VSCode.TextEditor.t) =>
-  editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName->get
-
 // do nothing if the state already exists
 let add = (fileName, dispatcher) => {
   switch (get(fileName)) {
