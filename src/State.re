@@ -91,6 +91,45 @@ let destroy = state => {
   state->disconnect;
 };
 
+// https://code.visualstudio.com/api/references/vscode-api#Command
+module Command = {
+  type t('a) = {
+    arguments: option(array('a)),
+    command: string,
+    title: string,
+    tooltip: option(string),
+  };
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#CodeLens
+module CodeLens = {
+  type t;
+  // constructors
+  [@bs.module "vscode"] [@bs.new]
+  external make: VSCode.Range.t => t = "CodeLens";
+  [@bs.module "vscode"] [@bs.new]
+  external makeWithCommand: (VSCode.Range.t, Command.t('a)) => t = "CodeLens";
+  // properties
+  [@bs.get] external command: t => option(Command.t('a)) = "command";
+  [@bs.get] external isResolved: t => bool = "isResolved";
+  [@bs.get] external range: t => VSCode.Range.t = "range";
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#CodeLensProvider
+module CodeLensProvider = {
+  type t('a) = {
+    onDidChangeCodeLenses: option((unit => unit) => Disposable.t),
+    resolveCodeLens: ('a, CancellationToken.t) => ProviderResult.t('a),
+    provideCodeLenses:
+      (TextDocument.t, CancellationToken.t) => ProviderResult.t(array('a)),
+  };
+};
+
+[@bs.module "vscode"] [@bs.scope "languages"]
+external registerCodeLensProvider:
+  (DocumentSelector.t, CodeLensProvider.t('a)) => Disposable.t =
+  "registerCodeLensProvider";
+
 let make = (extentionPath, disposables, editor) => {
   // view initialization
   let view = View.make(extentionPath, editor);
@@ -106,19 +145,58 @@ let make = (extentionPath, disposables, editor) => {
     ),
   |];
   let codeLensProvider =
-    VSCode.CodeLensProvider.{
+    CodeLensProvider.{
       onDidChangeCodeLenses: None,
-      resolveCodeLens: (_, _) => {
+      resolveCodeLens: (lens, _) => {
+        Js.log(lens);
         Js.log("codeLensProvider.resolveCodeLens invoked");
-        None;
+        Some(Promise.resolved(lens));
       },
       provideCodeLenses: (_, _) => {
         Js.log("codeLensProvider.provideCodeLenses invoked");
-        None;
+        let lenses = [|
+          CodeLens.makeWithCommand(
+            VSCode.Range.make(
+              VSCode.Position.make(0, 0),
+              VSCode.Position.make(0, 0),
+            ),
+            Command.{
+              arguments: None,
+              command: "guacamole.reload",
+              title: "title",
+              tooltip: Some("tooltip"),
+            },
+          ),
+          CodeLens.makeWithCommand(
+            VSCode.Range.make(
+              VSCode.Position.make(0, 0),
+              VSCode.Position.make(0, 0),
+            ),
+            Command.{
+              arguments: None,
+              command: "guacamole.reload",
+              title: "title 2",
+              tooltip: Some("tooltip"),
+            },
+          ),
+          CodeLens.makeWithCommand(
+            VSCode.Range.make(
+              VSCode.Position.make(0, 10),
+              VSCode.Position.make(0, 10),
+            ),
+            Command.{
+              arguments: None,
+              command: "guacamole.reload",
+              title: "title 2",
+              tooltip: Some("tooltip"),
+            },
+          ),
+        |];
+        Some(Promise.resolved(lenses));
       },
     };
   Js.log("registering");
-  VSCode.Languages.registerCodeLensProvider(docSelector, codeLensProvider)
+  registerCodeLensProvider(docSelector, codeLensProvider)
   ->Js.Array.push(disposables)
   ->ignore;
 
