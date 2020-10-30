@@ -158,7 +158,7 @@ module Spec = {
     let start =
       TextDocument.lineAt(doc, startingLine)->TextLine.range->Range.start;
     let end_ =
-      TextDocument.lineAt(doc, startingLine)->TextLine.range->Range.end_;
+      TextDocument.lineAt(doc, endingLine)->TextLine.range->Range.end_;
     Range.make(start, end_);
   };
   let getPayload = (doc, spec) => {
