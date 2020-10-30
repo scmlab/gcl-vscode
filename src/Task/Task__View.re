@@ -4,7 +4,8 @@ open VSCode;
 open! Response;
 
 // a dictionary of decorations for <Link>
-let decorationDict: Js.Dict.t(array(TextEditorDecorationType.t)) = Js.Dict.empty();
+let decorationDict: Js.Dict.t(array(TextEditorDecorationType.t)) =
+  Js.Dict.empty();
 let delete_: string => unit = [%raw
   "function (id) {delete decorationDict[id]}"
 ];
@@ -20,7 +21,7 @@ let clearDict = () => {
 // from View response to Tasks
 let handle = (editor, response): list(Task.t) =>
   switch (response) {
-  | View.Response.SetMode(mode) => [
+  | ViewType.Response.SetMode(mode) => [
       Task.WithState(
         state => {
           state.mode = mode;

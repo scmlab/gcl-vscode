@@ -28,12 +28,14 @@ module ProofObligation = {
 
 module GlobalProp = {
   [@react.component]
-  let make = (~payload: GlobalProp.t) => 
-    <li className="gcl-body-item native-key-bindings" tabIndex=(-1)><Expr value=payload /></li>
+  let make = (~payload: GlobalProp.t) =>
+    <li className="gcl-body-item native-key-bindings" tabIndex=(-1)>
+      <Expr value=payload />
+    </li>;
 };
 
 [@react.component]
-let make = (~body: View.Request.Body.t) =>
+let make = (~body: ViewType.Request.Body.t) =>
   switch (body) {
   | Nothing => <> </>
   | ProofObligations(id, pos, globalProps) =>
@@ -43,9 +45,12 @@ let make = (~body: View.Request.Body.t) =>
           <ProofObligation payload key={string_of_int(i)} />
         )
       ->React.array;
-    let globalPropHeader = if (Array.length(globalProps) !== 0) {
-      <h2>{string("Global properties")}</h2>
-    } else {<> </>};
+    let globalPropHeader =
+      if (Array.length(globalProps) !== 0) {
+        <h2> {string("Global properties")} </h2>;
+      } else {
+        <> </>;
+      };
     let globalProps =
       globalProps
       ->Array.mapWithIndex((i, payload) =>

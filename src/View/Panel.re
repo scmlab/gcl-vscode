@@ -1,14 +1,13 @@
 [@react.component]
 let make =
     (
-      ~onRequest: AgdaModeVscode.Event.t(View.Request.t),
-      ~onResponse: AgdaModeVscode.Event.t(View.Response.t),
+      ~onRequest: AgdaModeVscode.Event.t(ViewType.Request.t),
+      ~onResponse: AgdaModeVscode.Event.t(ViewType.Response.t),
     ) => {
   // let (reqID, setReqID) = React.useState(() => None);
   let (header, setHeader) =
-    React.useState(() => View.Request.Header.Loading);
-  let (body, setBody) =
-    React.useState(() => View.Request.Body.Nothing);
+    React.useState(() => ViewType.Request.Header.Loading);
+  let (body, setBody) = React.useState(() => ViewType.Request.Body.Nothing);
   let (mode, setMode) = React.useState(_ => GCL.WP1);
   let (hidden, setHidden) = React.useState(_ => false);
   let onClickLink = React.useRef(AgdaModeVscode.Event.make());
@@ -17,7 +16,7 @@ let make =
   // response with Initialized on mount
   React.useEffect1(
     () => {
-      onResponse.emit(View.Response.Initialized);
+      onResponse.emit(ViewType.Response.Initialized);
       None;
     },
     [||],
@@ -28,11 +27,11 @@ let make =
   // for receiving requests from the extension
   React.useEffect1(
     () => {
-      open View.Request;
+      open ViewType.Request;
       let destructor =
         onRequest.on(req => {
           switch (req) {
-          | View.Request.Display(header, body) =>
+          | ViewType.Request.Display(header, body) =>
             setHeader(_ => header);
             setBody(_ => body);
           | Substitute(i, expr) =>

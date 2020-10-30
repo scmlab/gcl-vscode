@@ -118,7 +118,7 @@ let sendRequestToView = (state, request) => {
   View.send(state.view, request);
 };
 let display = (state, header, body) => {
-  sendRequestToView(state, View.Request.Display(header, body));
+  sendRequestToView(state, ViewType.Request.Display(header, body));
 };
 //
 // Spec-related

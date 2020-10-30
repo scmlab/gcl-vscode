@@ -3,11 +3,11 @@ open React;
 [@react.component]
 let make =
     (
-      ~header: View.Request.Header.t,
+      ~header: ViewType.Request.Header.t,
       ~mode: GCL.mode,
       ~onChangeMode: GCL.mode => unit,
     ) => {
-  open! View.Request.Header;
+  open! ViewType.Request.Header;
 
   let onChange = _ => {
     open GCL;

@@ -1,6 +1,6 @@
 // open Base;
 
-let emitter: AgdaModeVscode.Event.t(View.Response.linkEvent) =
+let emitter: AgdaModeVscode.Event.t(ViewType.Response.linkEvent) =
   AgdaModeVscode.Event.make();
 let eventContext = React.createContext(emitter);
 
