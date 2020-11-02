@@ -1,6 +1,5 @@
 open Belt;
 
-
 // a dictionary of FileName-State entries
 let dict: Js.Dict.t((State.t, TaskRunner.t)) = Js.Dict.empty();
 
@@ -38,9 +37,9 @@ let destroy = fileName => {
   ->Option.mapWithDefault(
       Promise.resolved(),
       ((state, taskRunner)) => {
-        Js.log("[ states ][ destroy ]");
-        State.destroy(state) |> ignore;
-        TaskRunner.destroy(taskRunner);
+        Js.log("[ states ][ destroy ]" ++ fileName);
+        State.destroy(state)
+        ->Promise.flatMap(() => TaskRunner.destroy(taskRunner));
       },
     )
   ->Promise.get(() => remove(fileName));
@@ -48,15 +47,15 @@ let destroy = fileName => {
 
 let contains = fileName => get(fileName)->Option.isSome;
 
-let destroyAll = () => {
-  dict
-  ->Js.Dict.entries
-  ->Array.map(((_, (state, taskRunner))) => {
-      Js.log("[ states ][ destroy ]");
-      State.destroy(state) |> ignore;
-      TaskRunner.destroy(taskRunner);
-    })
-  ->List.fromArray
-  ->Promise.all
-  ->Promise.get(_ => ());
-};
+// let destroyAll = () => {
+//   dict
+//   ->Js.Dict.entries
+//   ->Array.map(((_, (state, taskRunner))) => {
+//       Js.log("[ states ][ destroy all ]");
+//       State.destroy(state) |> ignore;
+//       TaskRunner.destroy(taskRunner);
+//     })
+//   ->List.fromArray
+//   ->Promise.all
+//   ->Promise.get(_ => ());
+// };

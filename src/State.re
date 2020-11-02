@@ -21,6 +21,7 @@ type t = {
   mutable specifications: array(Response.Specification.t),
   mutable connection: option(Connection.t),
   onDestroyEventEmitter: AgdaModeVscode.Event.t(unit),
+  disposables: array(Disposable.t),
 };
 
 //
@@ -88,6 +89,7 @@ let destroy = state => {
   state.onDestroyEventEmitter.emit();
   state.onDestroyEventEmitter.destroy();
   state.decorations->Array.forEach(Editor.Decoration.destroy);
+  state.disposables->Array.forEach(Disposable.dispose);
   state->disconnect;
 };
 
@@ -130,7 +132,8 @@ external registerCodeLensProvider:
   (DocumentSelector.t, CodeLensProvider.t('a)) => Disposable.t =
   "registerCodeLensProvider";
 
-let make = (extentionPath, disposables, editor) => {
+let make = (extentionPath, editor) => {
+  let disposables = [||];
   // view initialization
   let view = View.make(extentionPath, editor);
 
@@ -195,7 +198,6 @@ let make = (extentionPath, disposables, editor) => {
         Some(Promise.resolved(lenses));
       },
     };
-  Js.log("registering");
   registerCodeLensProvider(docSelector, codeLensProvider)
   ->Js.Array.push(disposables)
   ->ignore;
@@ -208,6 +210,7 @@ let make = (extentionPath, disposables, editor) => {
     specifications: [||],
     connection: None,
     onDestroyEventEmitter: AgdaModeVscode.Event.make(),
+    disposables,
   };
 
   state;
