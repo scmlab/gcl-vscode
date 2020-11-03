@@ -140,7 +140,7 @@ module FoldingRange = {
 // https://code.visualstudio.com/api/references/vscode-api#FoldingRangeProvider
 module FoldingRangeProvider = {
   type t = {
-    provideCodeLenses:
+    provideFoldingRanges:
       (TextDocument.t, FoldingContext.t, CancellationToken.t) =>
       ProviderResult.t(array(FoldingRange.t)),
   };
@@ -166,60 +166,74 @@ let make = (extentionPath, editor) => {
       },
     ),
   |];
-  // let codeLensProvider =
-  //   CodeLensProvider.{
-  //     onDidChangeCodeLenses: None,
-  //     resolveCodeLens: (lens, _) => {
-  //       Js.log(lens);
-  //       Js.log("codeLensProvider.resolveCodeLens invoked");
-  //       Some(Promise.resolved(lens));
-  //     },
-  //     provideCodeLenses: (_, _) => {
-  //       Js.log("codeLensProvider.provideCodeLenses invoked");
-  //       let lenses = [|
-  //         CodeLens.makeWithCommand(
-  //           VSCode.Range.make(
-  //             VSCode.Position.make(0, 0),
-  //             VSCode.Position.make(0, 0),
-  //           ),
-  //           Command.{
-  //             arguments: None,
-  //             command: "guacamole.reload",
-  //             title: "title",
-  //             tooltip: Some("tooltip"),
-  //           },
-  //         ),
-  //         CodeLens.makeWithCommand(
-  //           VSCode.Range.make(
-  //             VSCode.Position.make(0, 0),
-  //             VSCode.Position.make(0, 0),
-  //           ),
-  //           Command.{
-  //             arguments: None,
-  //             command: "guacamole.reload",
-  //             title: "title 2",
-  //             tooltip: Some("tooltip"),
-  //           },
-  //         ),
-  //         CodeLens.makeWithCommand(
-  //           VSCode.Range.make(
-  //             VSCode.Position.make(0, 10),
-  //             VSCode.Position.make(0, 10),
-  //           ),
-  //           Command.{
-  //             arguments: None,
-  //             command: "guacamole.reload",
-  //             title: "title 2",
-  //             tooltip: Some("tooltip"),
-  //           },
-  //         ),
-  //       |];
-  //       Some(Promise.resolved(lenses));
-  //     },
-  //   };
-  // registerCodeLensProvider(docSelector, codeLensProvider)
-  // ->Js.Array.push(disposables)
-  // ->ignore;
+
+  module CodeLens = {
+    // let codeLensProvider =
+    //   CodeLensProvider.{
+    //     onDidChangeCodeLenses: None,
+    //     resolveCodeLens: (lens, _) => {
+    //       Js.log(lens);
+    //       Js.log("codeLensProvider.resolveCodeLens invoked");
+    //       Some(Promise.resolved(lens));
+    //     },
+    //     provideCodeLenses: (_, _) => {
+    //       Js.log("codeLensProvider.provideCodeLenses invoked");
+    //       let lenses = [|
+    //         CodeLens.makeWithCommand(
+    //           VSCode.Range.make(
+    //             VSCode.Position.make(0, 0),
+    //             VSCode.Position.make(0, 0),
+    //           ),
+    //           Command.{
+    //             arguments: None,
+    //             command: "guacamole.reload",
+    //             title: "title",
+    //             tooltip: Some("tooltip"),
+    //           },
+    //         ),
+    //         CodeLens.makeWithCommand(
+    //           VSCode.Range.make(
+    //             VSCode.Position.make(0, 0),
+    //             VSCode.Position.make(0, 0),
+    //           ),
+    //           Command.{
+    //             arguments: None,
+    //             command: "guacamole.reload",
+    //             title: "title 2",
+    //             tooltip: Some("tooltip"),
+    //           },
+    //         ),
+    //         CodeLens.makeWithCommand(
+    //           VSCode.Range.make(
+    //             VSCode.Position.make(0, 10),
+    //             VSCode.Position.make(0, 10),
+    //           ),
+    //           Command.{
+    //             arguments: None,
+    //             command: "guacamole.reload",
+    //             title: "title 2",
+    //             tooltip: Some("tooltip"),
+    //           },
+    //         ),
+    //       |];
+    //       Some(Promise.resolved(lenses));
+    //     },
+    //   };
+    // registerCodeLensProvider(docSelector, codeLensProvider)
+    // ->Js.Array.push(disposables)
+    // ->ignore;
+  };
+
+  let foldingRangeProvider =
+    FoldingRangeProvider.{
+      provideFoldingRanges: (_, _, _) => {
+        let foldingRanges = [|FoldingRange.makeWithKind(3, 5, Region)|];
+        Some(Promise.resolved(foldingRanges));
+      },
+    };
+  registerFoldingRangeProvider(docSelector, foldingRangeProvider)
+  ->Js.Array.push(disposables)
+  ->ignore;
 
   let state = {
     editor,
@@ -303,11 +317,12 @@ module Spec = {
         let range = GCL.Loc.toRange(spec.loc);
         let start = Range.start(range);
         // delete text
-        Editor.deleteText(doc, range)
+        Editor.Text.delete(doc, range)
         ->Promise.flatMap(
             fun
             | false => Promise.resolved(false)
-            | true => Editor.insertText(doc, start, Js.String.trim(payload)),
+            | true =>
+              Editor.Text.insert(doc, start, Js.String.trim(payload)),
           )
         ->Promise.get(_ => ());
       });
@@ -319,6 +334,6 @@ module Spec = {
     let point = Position.make(lineNo - 1, 0);
     // insert the assertion
     let doc = TextEditor.document(state.editor);
-    Editor.insertText(doc, point, assertion);
+    Editor.Text.insert(doc, point, assertion);
   };
 };

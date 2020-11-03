@@ -129,60 +129,45 @@ module Decoration = {
   let destroy = TextEditorDecorationType.dispose;
 };
 
-let getTextInRange = (document, range) =>
-  document->TextDocument.getText(Some(range));
-let getText = document => document->TextDocument.getText(None);
-let selectText = (editor, range) => {
-  let start = VSCode.Range.start(range);
-  let end_ = VSCode.Range.end_(range);
-  let selection = Selection.make(start, end_);
-  editor->TextEditor.setSelection(selection);
-};
-let replaceText = (document, range, text) => {
-  let workspaceEdit = WorkspaceEdit.make();
-  workspaceEdit->WorkspaceEdit.replace(
-    document->TextDocument.uri,
-    range,
-    text,
-    None,
-  );
-  Workspace.applyEdit(workspaceEdit);
-};
-let replaceTextBatch = (document, replacements) => {
-  let workspaceEdit = WorkspaceEdit.make();
-  replacements->Array.forEach(((range, text)) =>
+module Text = {
+  let getAll = document => document->TextDocument.getText(None);
+  let get = (document, range) =>
+    document->TextDocument.getText(Some(range));
+  let insert = (document, point, text) => {
+    let workspaceEdit = WorkspaceEdit.make();
+    workspaceEdit->WorkspaceEdit.insert(
+      document->TextDocument.uri,
+      point,
+      text,
+      None,
+    );
+    Workspace.applyEdit(workspaceEdit);
+  };
+
+  let select = (editor, range) => {
+    let start = VSCode.Range.start(range);
+    let end_ = VSCode.Range.end_(range);
+    let selection = Selection.make(start, end_);
+    editor->TextEditor.setSelection(selection);
+  };
+
+  let replace = (document, range, text) => {
+    let workspaceEdit = WorkspaceEdit.make();
     workspaceEdit->WorkspaceEdit.replace(
       document->TextDocument.uri,
       range,
       text,
       None,
-    )
-  );
-  Workspace.applyEdit(workspaceEdit);
-};
-
-let insertText = (document, point, text) => {
-  let workspaceEdit = WorkspaceEdit.make();
-  workspaceEdit->WorkspaceEdit.insert(
-    document->TextDocument.uri,
-    point,
-    text,
-    None,
-  );
-  Workspace.applyEdit(workspaceEdit);
-};
-let insertTexts = (document, points, text) => {
-  let workspaceEdit = WorkspaceEdit.make();
-  let textEdits = points->Array.map(point => TextEdit.insert(point, text));
-  workspaceEdit->WorkspaceEdit.set(document->TextDocument.uri, textEdits);
-  Workspace.applyEdit(workspaceEdit);
-};
-let deleteText = (document, range) => {
-  let workspaceEdit = WorkspaceEdit.make();
-  workspaceEdit->WorkspaceEdit.delete(
-    document->TextDocument.uri,
-    range,
-    None,
-  );
-  Workspace.applyEdit(workspaceEdit);
+    );
+    Workspace.applyEdit(workspaceEdit);
+  };
+  let delete = (document, range) => {
+    let workspaceEdit = WorkspaceEdit.make();
+    workspaceEdit->WorkspaceEdit.delete(
+      document->TextDocument.uri,
+      range,
+      None,
+    );
+    Workspace.applyEdit(workspaceEdit);
+  };
 };

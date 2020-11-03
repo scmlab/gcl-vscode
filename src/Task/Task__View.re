@@ -50,7 +50,7 @@ let handle = (editor, response): list(Task.t) =>
     [];
   | Link(MouseClick(loc)) =>
     let range = GCL.Loc.toRange(loc);
-    editor->Editor.selectText(range);
+    editor->Editor.Text.select(range);
     [];
   | Substitute(i, expr, subst) =>
     clearDict();

@@ -125,7 +125,7 @@ let runTask = (task: Task.t, state: State.t): Promise.t(list(Task.t)) =>
         );
       editor
       ->VSCode.TextEditor.document
-      ->Editor.replaceText(holeRange, holeText)
+      ->Editor.Text.replace(holeRange, holeText)
       ->Promise.map(_ => {
           // set the cursor inside the hole
           let selectionRange =
@@ -133,7 +133,7 @@ let runTask = (task: Task.t, state: State.t): Promise.t(list(Task.t)) =>
               VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
               VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
             );
-          editor->Editor.selectText(selectionRange);
+          editor->Editor.Text.select(selectionRange);
           [];
         });
     };
