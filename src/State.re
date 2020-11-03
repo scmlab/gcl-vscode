@@ -103,34 +103,53 @@ module Command = {
   };
 };
 
-// https://code.visualstudio.com/api/references/vscode-api#CodeLens
-module CodeLens = {
+// https://code.visualstudio.com/api/references/vscode-api#FoldingContext
+module FoldingContext = {
   type t;
-  // constructors
-  [@bs.module "vscode"] [@bs.new]
-  external make: VSCode.Range.t => t = "CodeLens";
-  [@bs.module "vscode"] [@bs.new]
-  external makeWithCommand: (VSCode.Range.t, Command.t('a)) => t = "CodeLens";
-  // properties
-  [@bs.get] external command: t => option(Command.t('a)) = "command";
-  [@bs.get] external isResolved: t => bool = "isResolved";
-  [@bs.get] external range: t => VSCode.Range.t = "range";
 };
 
-// https://code.visualstudio.com/api/references/vscode-api#CodeLensProvider
-module CodeLensProvider = {
-  type t('a) = {
-    onDidChangeCodeLenses: option((unit => unit) => Disposable.t),
-    resolveCodeLens: ('a, CancellationToken.t) => ProviderResult.t('a),
+// https://code.visualstudio.com/api/references/vscode-api#FoldingRangeKind
+module FoldingRangeKind = {
+  type t =
+    | Comment
+    | Imports
+    | Region;
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#FoldingRange
+module FoldingRange = {
+  type t;
+  // constructor
+  [@bs.module "vscode"] [@bs.new]
+  external make: (int, int) => t = "FoldingRange";
+  [@bs.module "vscode"] [@bs.new]
+  external makeWithKind: (int, int, int) => t = "FoldingRange";
+  let makeWithKind = (start, end_, kind: FoldingRangeKind.t) => {
+    switch (kind) {
+    | Comment => makeWithKind(start, end_, 1)
+    | Imports => makeWithKind(start, end_, 2)
+    | Region => makeWithKind(start, end_, 3)
+    };
+  };
+  // properties
+  [@bs.get] external end_: t => int = "end";
+  [@bs.get] external kind: t => option(FoldingRangeKind.t) = "kind";
+  [@bs.get] external start: t => int = "start";
+};
+
+// https://code.visualstudio.com/api/references/vscode-api#FoldingRangeProvider
+module FoldingRangeProvider = {
+  type t = {
     provideCodeLenses:
-      (TextDocument.t, CancellationToken.t) => ProviderResult.t(array('a)),
+      (TextDocument.t, FoldingContext.t, CancellationToken.t) =>
+      ProviderResult.t(array(FoldingRange.t)),
   };
 };
 
 [@bs.module "vscode"] [@bs.scope "languages"]
-external registerCodeLensProvider:
-  (DocumentSelector.t, CodeLensProvider.t('a)) => Disposable.t =
-  "registerCodeLensProvider";
+external registerFoldingRangeProvider:
+  (DocumentSelector.t, FoldingRangeProvider.t) => Disposable.t =
+  "registerFoldingRangeProvider";
 
 let make = (extentionPath, editor) => {
   let disposables = [||];
@@ -147,60 +166,60 @@ let make = (extentionPath, editor) => {
       },
     ),
   |];
-  let codeLensProvider =
-    CodeLensProvider.{
-      onDidChangeCodeLenses: None,
-      resolveCodeLens: (lens, _) => {
-        Js.log(lens);
-        Js.log("codeLensProvider.resolveCodeLens invoked");
-        Some(Promise.resolved(lens));
-      },
-      provideCodeLenses: (_, _) => {
-        Js.log("codeLensProvider.provideCodeLenses invoked");
-        let lenses = [|
-          CodeLens.makeWithCommand(
-            VSCode.Range.make(
-              VSCode.Position.make(0, 0),
-              VSCode.Position.make(0, 0),
-            ),
-            Command.{
-              arguments: None,
-              command: "guacamole.reload",
-              title: "title",
-              tooltip: Some("tooltip"),
-            },
-          ),
-          CodeLens.makeWithCommand(
-            VSCode.Range.make(
-              VSCode.Position.make(0, 0),
-              VSCode.Position.make(0, 0),
-            ),
-            Command.{
-              arguments: None,
-              command: "guacamole.reload",
-              title: "title 2",
-              tooltip: Some("tooltip"),
-            },
-          ),
-          CodeLens.makeWithCommand(
-            VSCode.Range.make(
-              VSCode.Position.make(0, 10),
-              VSCode.Position.make(0, 10),
-            ),
-            Command.{
-              arguments: None,
-              command: "guacamole.reload",
-              title: "title 2",
-              tooltip: Some("tooltip"),
-            },
-          ),
-        |];
-        Some(Promise.resolved(lenses));
-      },
-    };
-  registerCodeLensProvider(docSelector, codeLensProvider)
-  ->Js.Array.push(disposables)
-  ->ignore;
+  // let codeLensProvider =
+  //   CodeLensProvider.{
+  //     onDidChangeCodeLenses: None,
+  //     resolveCodeLens: (lens, _) => {
+  //       Js.log(lens);
+  //       Js.log("codeLensProvider.resolveCodeLens invoked");
+  //       Some(Promise.resolved(lens));
+  //     },
+  //     provideCodeLenses: (_, _) => {
+  //       Js.log("codeLensProvider.provideCodeLenses invoked");
+  //       let lenses = [|
+  //         CodeLens.makeWithCommand(
+  //           VSCode.Range.make(
+  //             VSCode.Position.make(0, 0),
+  //             VSCode.Position.make(0, 0),
+  //           ),
+  //           Command.{
+  //             arguments: None,
+  //             command: "guacamole.reload",
+  //             title: "title",
+  //             tooltip: Some("tooltip"),
+  //           },
+  //         ),
+  //         CodeLens.makeWithCommand(
+  //           VSCode.Range.make(
+  //             VSCode.Position.make(0, 0),
+  //             VSCode.Position.make(0, 0),
+  //           ),
+  //           Command.{
+  //             arguments: None,
+  //             command: "guacamole.reload",
+  //             title: "title 2",
+  //             tooltip: Some("tooltip"),
+  //           },
+  //         ),
+  //         CodeLens.makeWithCommand(
+  //           VSCode.Range.make(
+  //             VSCode.Position.make(0, 10),
+  //             VSCode.Position.make(0, 10),
+  //           ),
+  //           Command.{
+  //             arguments: None,
+  //             command: "guacamole.reload",
+  //             title: "title 2",
+  //             tooltip: Some("tooltip"),
+  //           },
+  //         ),
+  //       |];
+  //       Some(Promise.resolved(lenses));
+  //     },
+  //   };
+  // registerCodeLensProvider(docSelector, codeLensProvider)
+  // ->Js.Array.push(disposables)
+  // ->ignore;
 
   let state = {
     editor,
