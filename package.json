@@ -31,7 +31,7 @@
 	"dependencies": {
 		"@glennsl/bs-json": "github:banacorn/bs-json#0c900d3",
 		"bs-vscode": "github:banacorn/bs-vscode#v0.0.3",
-		"agda-mode-vscode": "github:banacorn/agda-mode-vscode#7fdf0e2",
+		"agda-mode-vscode": "github:banacorn/agda-mode-vscode#53f011c",
 		"bs-platform": "^8.3.2",
 		"bs-webapi": "^0.19.1",
 		"reason-promise": "^1.0.1",

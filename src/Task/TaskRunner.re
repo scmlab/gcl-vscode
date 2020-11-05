@@ -39,7 +39,7 @@ let runTask = (task: Task.t, state: State.t): Promise.t(list(Task.t)) =>
       );
     let decorations =
       state.editor
-      ->Editor.Decoration.highlightBackground(
+      ->AgdaModeVscode.Editor.Decoration.highlightBackground(
           "inputValidation.errorBackground",
           [|range|],
         );
@@ -76,24 +76,24 @@ let runTask = (task: Task.t, state: State.t): Promise.t(list(Task.t)) =>
     // see if the Spec's precondition and the post-condition look the same (i.e. the Q_Q case)
     let isQQ = preCondText == postCondText;
     let decorations = [|
-      Editor.Decoration.overlayText(
+      AgdaModeVscode.Editor.Decoration.overlayText(
         state.editor,
         "descriptionForeground",
         isQQ ? "" : preCondText,
         startRange,
       ),
-      Editor.Decoration.overlayText(
+      AgdaModeVscode.Editor.Decoration.overlayText(
         state.editor,
         "descriptionForeground",
         postCondText,
         endRange,
       ),
-      Editor.Decoration.highlightBackground(
+      AgdaModeVscode.Editor.Decoration.highlightBackground(
         state.editor,
         "editor.wordHighlightStrongBackground",
         [|startRange|],
       ),
-      Editor.Decoration.highlightBackground(
+      AgdaModeVscode.Editor.Decoration.highlightBackground(
         state.editor,
         "editor.wordHighlightStrongBackground",
         [|endRange|],
@@ -125,7 +125,7 @@ let runTask = (task: Task.t, state: State.t): Promise.t(list(Task.t)) =>
         );
       editor
       ->VSCode.TextEditor.document
-      ->Editor.Text.replace(holeRange, holeText)
+      ->AgdaModeVscode.Editor.Text.replace(holeRange, holeText)
       ->Promise.map(_ => {
           // set the cursor inside the hole
           let selectionRange =
@@ -133,13 +133,14 @@ let runTask = (task: Task.t, state: State.t): Promise.t(list(Task.t)) =>
               VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
               VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
             );
-          editor->Editor.Text.select(selectionRange);
+          AgdaModeVscode.Editor.Selection.set(editor, selectionRange);
           [];
         });
     };
     digHole(state.editor, range);
   | RemoveDecorations =>
-    state.decorations->Array.forEach(Editor.Decoration.destroy);
+    state.decorations
+    ->Array.forEach(AgdaModeVscode.Editor.Decoration.destroy);
     Promise.resolved([]);
 
   | DispatchCommand(command) =>

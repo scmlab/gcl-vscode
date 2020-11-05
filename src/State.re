@@ -1,5 +1,6 @@
-open Belt;
 open VSCode;
+module VSRange = Range;
+open Belt;
 
 //
 // Editor Configuration
@@ -88,7 +89,7 @@ let destroy = state => {
   state.view->View.destroy;
   state.onDestroyEventEmitter.emit();
   state.onDestroyEventEmitter.destroy();
-  state.decorations->Array.forEach(Editor.Decoration.destroy);
+  state.decorations->Array.forEach(AgdaModeVscode.Editor.Decoration.destroy);
   state.disposables->Array.forEach(Disposable.dispose);
   state->disconnect;
 };
@@ -274,13 +275,13 @@ module Spec = {
     state.specifications
     ->Array.keep(spec => {
         let range = GCL.Loc.toRange(spec.loc);
-        Range.contains(range, cursor);
+        VSRange.contains(range, cursor);
       })
     ->Array.forEach(spec =>
         switch (smallestHole^) {
         | None => smallestHole := Some(spec)
         | Some(spec') =>
-          if (Range.containsRange(
+          if (VSRange.containsRange(
                 GCL.Loc.toRange(spec.loc),
                 GCL.Loc.toRange(spec'.loc),
               )) {
@@ -293,14 +294,14 @@ module Spec = {
 
   let getPayloadRange = (doc, spec: Response.Specification.t) => {
     let range = GCL.Loc.toRange(spec.loc);
-    let startingLine = Position.line(Range.start(range)) + 1;
-    let endingLine = Position.line(Range.end_(range)) - 1;
+    let startingLine = Position.line(VSRange.start(range)) + 1;
+    let endingLine = Position.line(VSRange.end_(range)) - 1;
 
     let start =
-      TextDocument.lineAt(doc, startingLine)->TextLine.range->Range.start;
+      TextDocument.lineAt(doc, startingLine)->TextLine.range->VSRange.start;
     let end_ =
-      TextDocument.lineAt(doc, endingLine)->TextLine.range->Range.end_;
-    Range.make(start, end_);
+      TextDocument.lineAt(doc, endingLine)->TextLine.range->VSRange.end_;
+    VSRange.make(start, end_);
   };
   let getPayload = (doc, spec) => {
     // return the text in the targeted hole
@@ -315,14 +316,18 @@ module Spec = {
         let doc = TextEditor.document(state.editor);
         let payload = getPayload(doc, spec);
         let range = GCL.Loc.toRange(spec.loc);
-        let start = Range.start(range);
+        let start = VSRange.start(range);
         // delete text
-        Editor.Text.delete(doc, range)
+        AgdaModeVscode.Editor.Text.delete(doc, range)
         ->Promise.flatMap(
             fun
             | false => Promise.resolved(false)
             | true =>
-              Editor.Text.insert(doc, start, Js.String.trim(payload)),
+              AgdaModeVscode.Editor.Text.insert(
+                doc,
+                start,
+                Js.String.trim(payload),
+              ),
           )
         ->Promise.get(_ => ());
       });
@@ -334,6 +339,6 @@ module Spec = {
     let point = Position.make(lineNo - 1, 0);
     // insert the assertion
     let doc = TextEditor.document(state.editor);
-    Editor.Text.insert(doc, point, assertion);
+    AgdaModeVscode.Editor.Text.insert(doc, point, assertion);
   };
 };

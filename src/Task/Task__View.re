@@ -14,7 +14,7 @@ let clearDict = () => {
   Js.Dict.entries(decorationDict)
   ->Array.forEach(((key, decos)) => {
       delete_(key);
-      decos->Array.forEach(Editor.Decoration.destroy);
+      decos->Array.forEach(AgdaModeVscode.Editor.Decoration.destroy);
     });
 };
 
@@ -33,7 +33,7 @@ let handle = (editor, response): list(Task.t) =>
     let key = GCL.Loc.toString(loc);
     let range = GCL.Loc.toRange(loc);
     let decoration =
-      Editor.Decoration.highlightBackground(
+      AgdaModeVscode.Editor.Decoration.highlightBackground(
         editor,
         "editor.symbolHighlightBackground",
         [|range|],
@@ -44,13 +44,13 @@ let handle = (editor, response): list(Task.t) =>
     let key = GCL.Loc.toString(loc);
     Js.Dict.get(decorationDict, key)
     ->Option.forEach(decos =>
-        decos->Array.forEach(Editor.Decoration.destroy)
+        decos->Array.forEach(AgdaModeVscode.Editor.Decoration.destroy)
       );
     delete_(key);
     [];
   | Link(MouseClick(loc)) =>
     let range = GCL.Loc.toRange(loc);
-    editor->Editor.Text.select(range);
+    AgdaModeVscode.Editor.Selection.set(editor, range);
     [];
   | Substitute(i, expr, subst) =>
     clearDict();
