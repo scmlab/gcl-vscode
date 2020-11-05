@@ -1,6 +1,6 @@
 open Belt;
 
-open AgdaModeVscode.VSCode;
+open VSCode;
 
 // As this so called "WebView" is isolated and independent from the Extension
 // this is the only way to send messages back to the extension
