@@ -23,7 +23,6 @@ module Transport = {
     | IPC
     | Pipe
     | Socket(int);
-  };
 };
 
 // https://github.com/microsoft/vscode-languageserver-node/blob/875bf6c1a4313a5245691c063607e5f031e35308/client/src/node/main.ts#L85-L97
@@ -36,42 +35,29 @@ module NodeModule = {
       execArgv: array(string),
     };
   };
-  type t;
-  //  = {
-  //   [@bs.as "module"]
-  //   module_: string,
-  //   transport: option(Transport.t),
-  //   args: array(string),
-  //   runtime: option(string),
-  //   options: option(ForkOptions.t),
-  // };
-  let make =
-      (
-        path,
-        ~transport: option(Transport.t),
-        ~args,
-        ~runtime,
-        ~options: option(ForkOptions.t),
-        (),
-      )
-      : t => {
-    transport->Belt.Option.map(
-      fun
-      | StdIO => {
-          "module": path,
-          "transport": 1,
-          "args": args,
-          "runtime": runtime,
-          "options": options,
-        }
-      | IPC => {
-          "module": path,
-          "transport": 2,
-          "args": args,
-          "runtime": runtime,
-          "options": options,
-        },
-    );
+
+  [@unboxed]
+  type transport =
+    | Any('a): transport;
+
+  type t = {
+    [@bs.as "module"]
+    module_: string,
+    transport: option(transport),
+    args: option(array(string)),
+    runtime: option(string),
+    options: option(ForkOptions.t),
+  };
+  let make = (path, ~transport=?, ~args=?, ~runtime=?, ~options=?, ()): t => {
+    let transport =
+      transport->Belt.Option.map(
+        fun
+        | Transport.StdIO => [%raw "1"]
+        | IPC => [%raw "2"]
+        | Pipe => [%raw "3"]
+        | Socket(n) => [%raw "{ kind: 4 , port: n }"],
+      );
+    {module_: path, transport, args, runtime, options};
   };
 };
 
@@ -95,14 +81,14 @@ module ChildProcessInfo = {
 // https://github.com/microsoft/vscode-languageserver-node/blob/875bf6c1a4313a5245691c063607e5f031e35308/client/src/node/main.ts#L124
 module ServerOptions = {
   // DOTO: MessageTransport
-  type t =
-    | RunExecutable(Executable.t)
-    | RunAndDebugExecutable(Executable.t, Executable.t)
-    | RunNodeModule(NodeModule.t)
-    | RunAndDebugNodeModule(NodeModule.t, NodeModule.t)
-    | ChildProcess(unit => Promise.t(NodeJs.ChildProcess.t))
-    | StreamInfo(unit => Promise.t(StreamInfo.t))
-    | ChildProcessInfo(unit => Promise.t(ChildProcessInfo.t));
+  type t = NodeModule.t;
+  // | RunExecutable(Executable.t)
+  // | RunAndDebugExecutable(Executable.t, Executable.t)
+  // | RunNodeModule(NodeModule.t)
+  // | RunAndDebugNodeModule(NodeModule.t, NodeModule.t)
+  // | ChildProcess(unit => Promise.t(NodeJs.ChildProcess.t))
+  // | StreamInfo(unit => Promise.t(StreamInfo.t))
+  // | ChildProcessInfo(unit => Promise.t(ChildProcessInfo.t));
 };
 
 // https://github.com/microsoft/vscode-languageserver-node/blob/875bf6c1a4313a5245691c063607e5f031e35308/client/src/common/client.ts#L506
@@ -144,6 +130,7 @@ module LanguageClient = {
   external make:
     (string, string, ServerOptions.t, LSP__Client.LanguageClientOptions.t) => t =
     "LanguageClient";
+
   // methods
   [@bs.send] external stop: t => unit = "stop";
   [@bs.send] external start: t => VSCode.Disposable.t = "start";

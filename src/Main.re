@@ -127,14 +127,16 @@ let activate = context => {
 
   Js.log("[ language server ] " ++ serverPath);
 
-  let serverOptions =
-    LSP.ServerOptions.RunNodeModule({
-      module_: serverPath,
-      transport: Some(LSP.Transport.IPC),
-      args: [||],
-      runtime: None,
-      options: None,
-    });
+  let serverOptions = [%raw
+    "{ run : { module: serverPath, transport: 2 },
+      debug: {
+      module: serverPath,
+      transport: 2,
+      options: { execArgv: ['--nolazy', '--inspect=6009'] }
+      }
+    }"
+  ];
+  // LSP.NodeModule.make(serverPath, ~transport=LSP.Transport.IPC, ());
   let documentSelector = [|
     VSCode.DocumentFilterOrString.documentFilter({
       language: Some("Guacamole"),
@@ -142,9 +144,30 @@ let activate = context => {
       scheme: Some("file"),
     }),
   |];
-  // let synchronize = {fileEvents: Some([||]) option(array(VSCode.FileSystemWatcher.t))};
+  let synchronize =
+    LSP__Client.SynchronizeOptions.{
+      fileEvents:
+        Some([|
+          VSCode.Workspace.createFileSystemWatcher(
+            [%raw "'**/.clientrc'"],
+            ~ignoreCreateEvents=false,
+            ~ignoreChangeEvents=false,
+            ~ignoreDeleteEvents=false,
+          ),
+        |]),
+    };
+  // option(array(VSCode.FileSystemWatcher.t))};
   let clientOptions =
-    LSP__Client.LanguageClientOptions.t(~documentSelector, ());
+    LSP__Client.LanguageClientOptions.t(~documentSelector, ~synchronize, ());
+
+  // let clientOptions = [%raw
+  //   "{
+  //   documentSelector: [{ scheme: 'file', language: 'guacamole' }],
+  //   synchronize: {
+  //     fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
+  //   }}
+  //   "
+  // ];
 
   let client =
     LSP.LanguageClient.make(
