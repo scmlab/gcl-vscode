@@ -24,6 +24,7 @@
     "bs-webapi",
     "reason-promise",
     "reason-react",
+    "reason-nodejs",
     "reason-react-update"
   ],
   "ppx-flags": [],

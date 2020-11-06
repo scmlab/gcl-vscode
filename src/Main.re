@@ -3,6 +3,8 @@ open VSCode;
 
 let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
+let clientHandle = ref(None);
+
 let activate = context => {
   let disposables = context->ExtensionContext.subscriptions;
   let extensionPath = context->ExtensionContext.extensionPath;
@@ -116,4 +118,49 @@ let activate = context => {
     ->Js.Array.push(disposables)
     ->ignore
   });
+  // language server/client
+  let serverPath =
+    ExtensionContext.asAbsolutePath(
+      context,
+      Node.Path.join([|"server.js"|]),
+    );
+
+  Js.log("[ language server ] " ++ serverPath);
+
+  let serverOptions =
+    LSP.ServerOptions.RunNodeModule({
+      module_: serverPath,
+      transport: Some(LSP.Transport.IPC),
+      args: [||],
+      runtime: None,
+      options: None,
+    });
+  let documentSelector = [|
+    VSCode.DocumentFilterOrString.documentFilter({
+      language: Some("Guacamole"),
+      pattern: None,
+      scheme: Some("file"),
+    }),
+  |];
+  // let synchronize = {fileEvents: Some([||]) option(array(VSCode.FileSystemWatcher.t))};
+  let clientOptions =
+    LSP__Client.LanguageClientOptions.t(~documentSelector, ());
+
+  let client =
+    LSP.LanguageClient.make(
+      "id-gua",
+      "Guacamole client",
+      serverOptions,
+      clientOptions,
+    );
+  LSP.LanguageClient.start(client);
+
+  clientHandle := Some(client);
+
+  ();
+};
+
+let deactivate = () => {
+  (clientHandle^)
+  ->Option.forEach(client => {LSP.LanguageClient.stop(client)});
 };
