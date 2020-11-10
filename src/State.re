@@ -21,6 +21,7 @@ type t = {
   mutable decorations: array(TextEditorDecorationType.t),
   mutable specifications: array(Response.Specification.t),
   mutable connection: option(Connection.t),
+  client: Client.LanguageClient.t,
   onDestroyEventEmitter: AgdaModeVscode.Event.t(unit),
   disposables: array(Disposable.t),
 };
@@ -152,7 +153,7 @@ external registerFoldingRangeProvider:
   (DocumentSelector.t, FoldingRangeProvider.t) => Disposable.t =
   "registerFoldingRangeProvider";
 
-let make = (extentionPath, editor) => {
+let make = (extentionPath, editor, client) => {
   let disposables = [||];
   // view initialization
   let view = View.make(extentionPath, editor);
@@ -242,6 +243,7 @@ let make = (extentionPath, editor) => {
     mode: GCL.WP1,
     decorations: [||],
     specifications: [||],
+    client,
     connection: None,
     onDestroyEventEmitter: AgdaModeVscode.Event.make(),
     disposables,
