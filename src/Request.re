@@ -41,4 +41,4 @@ module Encode = {
     | Debug => object_([("tag", string("ReqDebug"))]);
 };
 
-let encode: t => string = x => x->Encode.request->Json.stringify;
+let encode: t => Js.Json.t = x => x->Encode.request;

@@ -40,7 +40,8 @@ module LanguageClient = {
   [@bs.send]
   external sendNotification: (t, string, 'a) => unit = "sendNotification";
   [@bs.send]
-  external sendRequest: (t, string, 'a) => Promise.t('r) = "sendRequest";
+  external sendRequest: (t, string, Js.Json.t) => Promise.t('r) =
+    "sendRequest";
 };
 
 let make = fileName => {
