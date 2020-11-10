@@ -39,24 +39,6 @@ let onDestroy = (state, callback) => {
   state.onDestroyEventEmitter.on(callback)->Disposable.make;
 };
 
-//
-// GCL connection/disconnection
-//
-
-// connect if not connected yet
-// let connect = state =>
-//   switch (state.connection) {
-//   | None =>
-//     Connection.make(Config.getGCLPath, Config.setGCLPath)
-//     ->Promise.mapError(e => Error.Connection(e))
-//     ->Promise.tapOk(conn => state.connection = Some(conn))
-//   | Some(connection) => Promise.resolved(Ok(connection))
-//   };
-// let disconnect = state =>
-//   switch (state.connection) {
-//   | None => Promise.resolved()
-//   | Some(connection) => Connection.disconnect(connection)
-//   };
 let sendRequest = (state, request) => {
   let value = Request.encode(request);
   Js.log2("<<<", value);
@@ -78,25 +60,6 @@ let sendRequest = (state, request) => {
         Promise.resolved(Error(Error.Decode(msg, result)))
       };
     });
-  // ->Promise.get(result => {Js.log(result)});
-  // state
-  // ->connect
-  // ->Promise.flatMapOk(conn => {
-  //     Connection.send(value, conn)
-  //     ->Promise.mapError(e => Error.Connection(e))
-  //   })
-  // ->Promise.flatMapOk(result => {
-  //     Js.log2(
-  //       ">>>",
-  //       Js.String.substring(~from=0, ~to_=200, Js.Json.stringify(result)),
-  //     );
-  //     // catching exceptions occured when decoding JSON values
-  //     switch (result |> Response.decode) {
-  //     | value => Promise.resolved(Ok(value))
-  //     | exception (Json.Decode.DecodeError(msg)) =>
-  //       Promise.resolved(Error(Error.Decode(msg, result)))
-  //     };
-  //   });
 };
 
 //
@@ -110,7 +73,6 @@ let destroy = state => {
   state.decorations->Array.forEach(AgdaModeVscode.Editor.Decoration.destroy);
   state.disposables->Array.forEach(Disposable.dispose);
   state.client->Client.LanguageClient.stop;
-  // state->disconnect;
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#Command
