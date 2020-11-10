@@ -3,7 +3,7 @@ open VSCode;
 
 let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
-let clientHandle = ref(None);
+// let clientHandle = ref(None);
 
 let activate = context => {
   let disposables = context->ExtensionContext.subscriptions;
@@ -118,72 +118,9 @@ let activate = context => {
     ->Js.Array.push(disposables)
     ->ignore
   });
-  // language server/client
-  let serverPath =
-    ExtensionContext.asAbsolutePath(
-      context,
-      Node.Path.join([|"server.js"|]),
-    );
-
-  Js.log("[ language server ] " ++ serverPath);
-
-  let serverOptions = [%raw
-    "{ run : { module: serverPath, transport: 2 },
-      debug: {
-      module: serverPath,
-      transport: 2,
-      options: { execArgv: ['--nolazy', '--inspect=6009'] }
-      }
-    }"
-  ];
-  // LSP.NodeModule.make(serverPath, ~transport=LSP.Transport.IPC, ());
-  let documentSelector = [|
-    VSCode.DocumentFilterOrString.documentFilter({
-      language: Some("Guacamole"),
-      pattern: None,
-      scheme: Some("file"),
-    }),
-  |];
-  let synchronize =
-    LSP__Client.SynchronizeOptions.{
-      fileEvents:
-        Some([|
-          VSCode.Workspace.createFileSystemWatcher(
-            [%raw "'**/.clientrc'"],
-            ~ignoreCreateEvents=false,
-            ~ignoreChangeEvents=false,
-            ~ignoreDeleteEvents=false,
-          ),
-        |]),
-    };
-  // option(array(VSCode.FileSystemWatcher.t))};
-  let clientOptions =
-    LSP__Client.LanguageClientOptions.t(~documentSelector, ~synchronize, ());
-
-  // let clientOptions = [%raw
-  //   "{
-  //   documentSelector: [{ scheme: 'file', language: 'guacamole' }],
-  //   synchronize: {
-  //     fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
-  //   }}
-  //   "
-  // ];
-
-  let client =
-    LSP.LanguageClient.make(
-      "id-gua",
-      "Guacamole client",
-      serverOptions,
-      clientOptions,
-    );
-  LSP.LanguageClient.start(client);
-
-  clientHandle := Some(client);
-
-  ();
 };
 
-let deactivate = () => {
-  (clientHandle^)
-  ->Option.forEach(client => {LSP.LanguageClient.stop(client)});
-};
+// let deactivate = () => {
+//   (clientHandle^)
+//   ->Option.forEach(client => {LSP.LanguageClient.stop(client)});
+// };
