@@ -17,19 +17,19 @@ let runTask = (task: Task.t, state: State.t): Promise.t(list(Task.t)) =>
   switch (task) {
   | Task.WithState(callback) => callback(state)
   // ->Promise.flatMap(tasks => run(tasks, state))
-  | Connect =>
-    state
-    ->State.connect
-    ->Promise.map(
-        fun
-        | Error(e) => {
-            let (header, body) = Error.toString(e);
-            [Task.Display(Error(header), Plain(body))];
-          }
-        | Ok(_c) => {
-            TaskCommand.dispatch(Command.Reload);
-          },
-      )
+  | Connect => Promise.resolved(TaskCommand.dispatch(Command.Reload))
+  // state
+  // ->State.connect
+  // ->Promise.map(
+  //     fun
+  //     | Error(e) => {
+  //         let (header, body) = Error.toString(e);
+  //         [Task.Display(Error(header), Plain(body))];
+  //       }
+  //     | Ok(_c) => {
+  //         TaskCommand.dispatch(Command.Reload);
+  //       },
+  //   )
   | MarkError(site) =>
     let range =
       Response.Error.Site.toRange(

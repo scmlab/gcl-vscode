@@ -20,7 +20,7 @@ type t = {
   mutable mode: GCL.mode,
   mutable decorations: array(TextEditorDecorationType.t),
   mutable specifications: array(Response.Specification.t),
-  mutable connection: option(Connection.t),
+  // mutable connection: option(Connection.t),
   client: Client.LanguageClient.t,
   onDestroyEventEmitter: AgdaModeVscode.Event.t(unit),
   disposables: array(Disposable.t),
@@ -44,35 +44,33 @@ let onDestroy = (state, callback) => {
 //
 
 // connect if not connected yet
-let connect = state =>
-  switch (state.connection) {
-  | None =>
-    Connection.make(Config.getGCLPath, Config.setGCLPath)
-    ->Promise.mapError(e => Error.Connection(e))
-    ->Promise.tapOk(conn => state.connection = Some(conn))
-  | Some(connection) => Promise.resolved(Ok(connection))
-  };
-let disconnect = state =>
-  switch (state.connection) {
-  | None => Promise.resolved()
-  | Some(connection) => Connection.disconnect(connection)
-  };
+// let connect = state =>
+//   switch (state.connection) {
+//   | None =>
+//     Connection.make(Config.getGCLPath, Config.setGCLPath)
+//     ->Promise.mapError(e => Error.Connection(e))
+//     ->Promise.tapOk(conn => state.connection = Some(conn))
+//   | Some(connection) => Promise.resolved(Ok(connection))
+//   };
+// let disconnect = state =>
+//   switch (state.connection) {
+//   | None => Promise.resolved()
+//   | Some(connection) => Connection.disconnect(connection)
+//   };
 let sendRequest = (state, request) => {
   let value = Request.encode(request);
   Js.log2("<<<", value);
 
-  state
-  ->connect
-  ->Promise.flatMapOk(conn => {
-      Connection.send(value, conn)
-      ->Promise.mapError(e => Error.Connection(e))
+  state.client
+  ->Client.LanguageClient.onReady
+  ->Promise.flatMap(() => {
+      state.client->Client.LanguageClient.sendRequest("guacamole", value)
     })
-  ->Promise.flatMapOk(result => {
+  ->Promise.flatMap(result => {
       Js.log2(
         ">>>",
         Js.String.substring(~from=0, ~to_=200, Js.Json.stringify(result)),
       );
-
       // catching exceptions occured when decoding JSON values
       switch (result |> Response.decode) {
       | value => Promise.resolved(Ok(value))
@@ -80,6 +78,25 @@ let sendRequest = (state, request) => {
         Promise.resolved(Error(Error.Decode(msg, result)))
       };
     });
+  // ->Promise.get(result => {Js.log(result)});
+  // state
+  // ->connect
+  // ->Promise.flatMapOk(conn => {
+  //     Connection.send(value, conn)
+  //     ->Promise.mapError(e => Error.Connection(e))
+  //   })
+  // ->Promise.flatMapOk(result => {
+  //     Js.log2(
+  //       ">>>",
+  //       Js.String.substring(~from=0, ~to_=200, Js.Json.stringify(result)),
+  //     );
+  //     // catching exceptions occured when decoding JSON values
+  //     switch (result |> Response.decode) {
+  //     | value => Promise.resolved(Ok(value))
+  //     | exception (Json.Decode.DecodeError(msg)) =>
+  //       Promise.resolved(Error(Error.Decode(msg, result)))
+  //     };
+  //   });
 };
 
 //
@@ -92,7 +109,8 @@ let destroy = state => {
   state.onDestroyEventEmitter.destroy();
   state.decorations->Array.forEach(AgdaModeVscode.Editor.Decoration.destroy);
   state.disposables->Array.forEach(Disposable.dispose);
-  state->disconnect;
+  state.client->Client.LanguageClient.stop;
+  // state->disconnect;
 };
 
 // https://code.visualstudio.com/api/references/vscode-api#Command
@@ -155,6 +173,8 @@ external registerFoldingRangeProvider:
 
 let make = (extentionPath, editor, client) => {
   let disposables = [||];
+  // start the LSP client
+  client->Client.LanguageClient.start;
   // view initialization
   let view = View.make(extentionPath, editor);
 
@@ -244,7 +264,7 @@ let make = (extentionPath, editor, client) => {
     decorations: [||],
     specifications: [||],
     client,
-    connection: None,
+    // connection: None,
     onDestroyEventEmitter: AgdaModeVscode.Event.make(),
     disposables,
   };

@@ -38,8 +38,9 @@ let destroy = fileName => {
       Promise.resolved(),
       ((state, taskRunner)) => {
         Js.log("[ states ][ destroy ]" ++ fileName);
-        State.destroy(state)
-        ->Promise.flatMap(() => TaskRunner.destroy(taskRunner));
+        State.destroy(state);
+        TaskRunner.destroy(taskRunner);
+        // ->Promise.flatMap(() => TaskRunner.destroy(taskRunner));
       },
     )
   ->Promise.get(() => remove(fileName));
