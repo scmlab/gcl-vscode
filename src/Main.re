@@ -1,29 +1,28 @@
 open Belt;
-open VSCode;
 
 let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
 // let clientHandle = ref(None);
 
 let activate = context => {
-  let disposables = context->ExtensionContext.subscriptions;
-  let extensionPath = context->ExtensionContext.extensionPath;
+  let disposables = context->VSCode.ExtensionContext.subscriptions;
+  let extensionPath = context->VSCode.ExtensionContext.extensionPath;
   // when a TextEditor gets closed, destroy the corresponding State
-  Workspace.onDidCloseTextDocument(textDoc =>
+  VSCode.Workspace.onDidCloseTextDocument(textDoc =>
     textDoc->Option.forEach(textDoc =>
-      Registry.destroy(textDoc->TextDocument.fileName)
+      Registry.destroy(textDoc->VSCode.TextDocument.fileName)
     )
   )
   ->Js.Array.push(disposables)
   ->ignore;
   // when a file got renamed, destroy the corresponding State if it becomes non-GCL
-  Workspace.onDidRenameFiles(event =>
+  VSCode.Workspace.onDidRenameFiles(event =>
     event
-    ->Option.map(FileRenameEvent.files)
+    ->Option.map(VSCode.FileRenameEvent.files)
     ->Option.forEach(files => {
         files->Array.forEach(file => {
-          let oldName = file##oldUri->Uri.path;
-          let newName = file##newUri->Uri.path;
+          let oldName = file##oldUri->VSCode.Uri.path;
+          let newName = file##newUri->VSCode.Uri.path;
           if (Registry.contains(oldName)) {
             if (isGCL(newName)) {
               Registry.rename(oldName, newName);
@@ -38,16 +37,16 @@ let activate = context => {
   ->ignore;
 
   // on editor activation, reveal the corresponding Panel (if any)
-  let previous = ref(Window.activeTextEditor);
-  Window.onDidChangeActiveTextEditor(next => {
+  let previous = ref(VSCode.Window.activeTextEditor);
+  VSCode.Window.onDidChangeActiveTextEditor(next => {
     let nextFileName =
       next
-      ->Option.map(TextEditor.document)
-      ->Option.map(TextDocument.fileName);
+      ->Option.map(VSCode.TextEditor.document)
+      ->Option.map(VSCode.TextDocument.fileName);
     let prevFileName =
       (previous^)
-      ->Option.map(TextEditor.document)
-      ->Option.map(TextDocument.fileName);
+      ->Option.map(VSCode.TextEditor.document)
+      ->Option.map(VSCode.TextDocument.fileName);
     // see if the active text editor changed;
     let changed = nextFileName != prevFileName;
     if (changed) {
@@ -67,9 +66,10 @@ let activate = context => {
 
   // on "toggle activate/deactivate"
   let registerCommand = (name, callback) =>
-    Commands.registerCommand("guacamole." ++ name, () =>
-      Window.activeTextEditor->Option.map(editor => {
-        let fileName = editor->TextEditor.document->TextDocument.fileName;
+    VSCode.Commands.registerCommand("guacamole." ++ name, () =>
+      VSCode.Window.activeTextEditor->Option.map(editor => {
+        let fileName =
+          editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName;
         callback(editor, fileName);
       })
     );

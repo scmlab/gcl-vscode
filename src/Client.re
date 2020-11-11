@@ -1,5 +1,4 @@
 open VSCode;
-open Belt;
 
 // Options to control the language client
 module LanguageClientOptions = {
@@ -44,7 +43,7 @@ module LanguageClient = {
     "sendRequest";
 };
 
-let make = fileName => {
+let make = _fileName => {
   let serverOptions = ServerOptions.makeCommand("gcl");
 
   let clientOptions = {
