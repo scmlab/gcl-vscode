@@ -94,7 +94,6 @@ let activate = context => {
         })
       ->Js.Array.push(disposables)
       ->ignore;
-
       // dispatch "Load"
       taskRunner->TaskRunner.addTask(DispatchCommand(Load));
     | Some((_state, taskRunner)) =>
@@ -120,8 +119,3 @@ let activate = context => {
     ->ignore
   });
 };
-
-// let deactivate = () => {
-//   (clientHandle^)
-//   ->Option.forEach(client => {LSP.LanguageClient.stop(client)});
-// };

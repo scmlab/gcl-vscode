@@ -43,16 +43,17 @@ module LanguageClient = {
     "sendRequest";
 };
 
-let make = _fileName => {
+let make = fileName => {
   let serverOptions = ServerOptions.makeCommand("gcl");
 
   let clientOptions = {
+    let makePattern = [%raw "function(filename) { return fileName }"];
     // Register the server for plain text documents
     let documentSelector: DocumentSelector.t = [|
       DocumentFilterOrString.documentFilter(
         DocumentFilter.{
           scheme: Some("file"),
-          pattern: Some([%raw "fileName"]),
+          pattern: Some(makePattern(fileName)),
           language: Some("guacamole"),
         },
       ),
