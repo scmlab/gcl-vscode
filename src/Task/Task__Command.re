@@ -42,21 +42,12 @@ let dispatch =
                 open VSCode;
                 let doc = TextEditor.document(state.editor);
                 let payload = State.Spec.getPayload(doc, spec);
-                Promise.resolved([SendRequest(Refine(spec.id, payload))]);
+                let fileName = TextDocument.fileName(doc);
+                Promise.resolved([
+                  SendRequest(Refine(fileName, spec.id, payload)),
+                ]);
               },
             )
-        },
-      ),
-    ]
-  | InsertAssertion => [
-      DispatchCommand(Reload),
-      WithState(
-        state => {
-          open VSCode;
-          let cursor = state.editor->TextEditor.selection->Selection.end_;
-          open GCL.Pos;
-          let Pos(_, line, _) = GCL.Pos.fromPoint(cursor, "whatever");
-          Promise.resolved([SendRequest(InsertAssertion(line))]);
         },
       ),
     ]

@@ -1,8 +1,8 @@
+type filepath = string;
 type t =
-  | Load(string)
-  | Refine(int, string)
-  | InsertAssertion(int)
-  | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
+  | Load(filepath)
+  | Refine(filepath, int, string)
+  | Substitute(filepath, int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
   | Debug;
 
 module Encode = {
@@ -14,24 +14,27 @@ module Encode = {
         ("tag", string("ReqLoad")),
         ("contents", filepath |> string),
       ])
-    | Refine(id, payload) =>
+    | Refine(filepath, id, payload) =>
       object_([
         ("tag", string("ReqRefine")),
-        ("contents", (id, payload) |> pair(int, string)),
+        (
+          "contents",
+          (filepath, id, payload) |> tuple3(string, int, string),
+        ),
       ])
-    | Substitute(i, expr, subst) =>
+    | Substitute(filepath, i, expr, subst) =>
       object_([
         ("tag", string("ReqSubstitute")),
         (
           "contents",
-          (i, expr, subst)
-          |> tuple3(int, GCL.Syntax.Expr.encode, GCL.Syntax.Expr.encodeSubst),
+          (filepath, i, expr, subst)
+          |> tuple4(
+               string,
+               int,
+               GCL.Syntax.Expr.encode,
+               GCL.Syntax.Expr.encodeSubst,
+             ),
         ),
-      ])
-    | InsertAssertion(n) =>
-      object_([
-        ("tag", string("ReqInsertAssertion")),
-        ("contents", int(n)),
       ])
     | Debug => object_([("tag", string("ReqDebug"))]);
 };

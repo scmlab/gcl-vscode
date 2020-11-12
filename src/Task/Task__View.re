@@ -46,7 +46,8 @@ let handle = (editor, response): list(Task.t) =>
     [];
   | Substitute(i, expr, subst) =>
     clearDict();
-    [SendRequest(Substitute(i, expr, subst))];
+    let fileName = editor->TextEditor.document->TextDocument.fileName;
+    [SendRequest(Substitute(fileName, i, expr, subst))];
   | Initialized => []
   | Destroyed => [
       WithState(
