@@ -329,7 +329,6 @@ type t =
     )
   | Resolve(int)
   | Substitute(int, Syntax.Expr.t)
-  | InsertAssertion(int, Syntax.Expr.t)
   | UnknownResponse(Js.Json.t);
 
 open Json.Decode;
@@ -355,11 +354,6 @@ let decode: decoder(t) =
       Contents(
         pair(int, Syntax.Expr.decode)
         |> map(((i, expr)) => Substitute(i, expr)),
-      )
-    | "ResInsert" =>
-      Contents(
-        pair(int, Syntax.Expr.decode)
-        |> map(((i, expr)) => InsertAssertion(i, expr)),
       )
     | "ResResolve" => Contents(int |> map(i => Resolve(i)))
     | tag => raise(DecodeError("Unknown constructor: " ++ tag)),

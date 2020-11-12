@@ -76,10 +76,6 @@
 				"title": "Refine"
 			},
 			{
-				"command": "guacamole:insert-assertion",
-				"title": "Insert assertion"
-			},
-			{
 				"command": "guacamole:debug-gcl",
 				"title": "Debug"
 			}
@@ -100,12 +96,6 @@
 				"command": "guacamole.refine",
 				"key": "ctrl+c ctrl+r",
 				"mac": "ctrl+c ctrl+r",
-				"when": "resourceExtname == .gcl"
-			},
-			{
-				"command": "guacamole.insert-assertion",
-				"key": "ctrl+c ctrl+a",
-				"mac": "ctrl+c ctrl+a",
 				"when": "resourceExtname == .gcl"
 			},
 			{
