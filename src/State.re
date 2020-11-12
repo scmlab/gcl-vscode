@@ -17,7 +17,6 @@ module Config = {
 type t = {
   editor: TextEditor.t,
   view: View.t,
-  mutable mode: GCL.mode,
   mutable decorations: array(TextEditorDecorationType.t),
   mutable specifications: array(Response.Specification.t),
   // mutable connection: option(Connection.t),
@@ -222,7 +221,6 @@ let make = (extentionPath, editor, client) => {
   let state = {
     editor,
     view,
-    mode: GCL.WP1,
     decorations: [||],
     specifications: [||],
     client,

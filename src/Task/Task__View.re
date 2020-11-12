@@ -21,15 +21,7 @@ let clearDict = () => {
 // from View response to Tasks
 let handle = (editor, response): list(Task.t) =>
   switch (response) {
-  | ViewType.Response.SetMode(mode) => [
-      Task.WithState(
-        state => {
-          state.mode = mode;
-          Promise.resolved([]);
-        },
-      ),
-    ]
-  | Link(MouseOver(loc)) =>
+  | ViewType.Response.Link(MouseOver(loc)) =>
     let key = GCL.Loc.toString(loc);
     let range = GCL.Loc.toRange(loc);
     let decoration =

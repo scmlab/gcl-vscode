@@ -17,16 +17,7 @@ let dispatch =
           ->TextDocument.save
           ->Promise.map(saveSucceed =>
               if (saveSucceed && fileName != "") {
-                switch (state.mode) {
-                | WP1 => [
-                    RemoveDecorations,
-                    SendRequest(Request.Load(fileName, GCL.WP1)),
-                  ]
-                | WP2 => [
-                    RemoveDecorations,
-                    SendRequest(Request.Load(fileName, GCL.WP2)),
-                  ]
-                };
+                [RemoveDecorations, SendRequest(Request.Load(fileName))];
               } else {
                 [
                   Display(

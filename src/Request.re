@@ -1,5 +1,5 @@
 type t =
-  | Load(string, GCL.mode)
+  | Load(string)
   | Refine(int, string)
   | InsertAssertion(int)
   | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
@@ -9,15 +9,10 @@ module Encode = {
   open Json.Encode;
   let request: encoder(t) =
     fun
-    | Load(filepath, GCL.WP1) =>
+    | Load(filepath) =>
       object_([
         ("tag", string("ReqLoad")),
-        ("contents", (filepath, false) |> pair(string, bool)),
-      ])
-    | Load(filepath, GCL.WP2) =>
-      object_([
-        ("tag", string("ReqLoad")),
-        ("contents", (filepath, true) |> pair(string, bool)),
+        ("contents", filepath |> string),
       ])
     | Refine(id, payload) =>
       object_([

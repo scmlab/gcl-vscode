@@ -8,7 +8,6 @@ let make =
   let (header, setHeader) =
     React.useState(() => ViewType.Request.Header.Loading);
   let (body, setBody) = React.useState(() => ViewType.Request.Body.Nothing);
-  let (mode, setMode) = React.useState(_ => GCL.WP1);
   let (hidden, setHidden) = React.useState(_ => false);
   let onClickLink = React.useRef(AgdaModeVscode.Event.make());
   let onSubstitute = React.useRef(AgdaModeVscode.Event.make());
@@ -21,8 +20,6 @@ let make =
     },
     [||],
   );
-
-  let onChangeMode = mode => setMode(_ => mode);
 
   // for receiving requests from the extension
   React.useEffect1(
@@ -43,15 +40,6 @@ let make =
       Some(destructor);
     },
     [||],
-  );
-
-  // send "SetMode" back to the extension when the "mode" changed
-  React.useEffect1(
-    () => {
-      onResponse.emit(SetMode(mode));
-      None;
-    },
-    [|mode|],
   );
 
   // relay <Link> events to "onResponse"
@@ -81,7 +69,7 @@ let make =
   <Subst.Provider value={onSubstitute.current}>
     <Link.Provider value={onClickLink.current}>
       <section className tabIndex=(-1)>
-        <Header header mode onChangeMode />
+        <Header header />
         <Body body />
       </section>
     </Link.Provider>

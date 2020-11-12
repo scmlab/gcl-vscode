@@ -134,7 +134,6 @@ module Response = {
     | MouseClick(GCL.loc);
 
   type t =
-    | SetMode(GCL.mode)
     | Link(linkEvent)
     | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
     | Initialized
@@ -142,15 +141,6 @@ module Response = {
 
   open Json.Decode;
   open Util.Decode;
-
-  let decodeMode: decoder(GCL.mode) =
-    sum(
-      fun
-      | "WP1" => TagOnly(_ => GCL.WP1)
-      | "WP2" => TagOnly(_ => GCL.WP2)
-      | tag =>
-        raise(DecodeError("[Response.mode] Unknown constructor: " ++ tag)),
-    );
 
   let decodeLinkEvent: decoder(linkEvent) =
     sum(
@@ -169,7 +159,6 @@ module Response = {
       fun
       | "Initialized" => TagOnly(_ => Initialized)
       | "Destroyed" => TagOnly(_ => Destroyed)
-      | "SetMode" => Contents(json => SetMode(decodeMode(json)))
       | "Link" => Contents(json => Link(decodeLinkEvent(json)))
       | "Substitute" =>
         Contents(
@@ -181,11 +170,6 @@ module Response = {
     );
 
   open! Json.Encode;
-
-  let encodeMode: encoder(GCL.mode) =
-    fun
-    | WP1 => object_([("tag", string("WP1"))])
-    | WP2 => object_([("tag", string("WP2"))]);
 
   let encodeLinkEvent: encoder(linkEvent) =
     fun
@@ -219,10 +203,5 @@ module Response = {
           (i, expr, subst)
           |> tuple3(int, GCL.Syntax.Expr.encode, GCL.Syntax.Expr.encodeSubst),
         ),
-      ])
-    | SetMode(mode) =>
-      object_([
-        ("tag", string("SetMode")),
-        ("contents", encodeMode(mode)),
       ]);
 };

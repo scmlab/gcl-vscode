@@ -25,7 +25,7 @@ module Pos = {
         let Pos(_, y, x) = by;
         Pos(path, line + y, column + x);
       };
-    
+
   let translateBy = (y, x) =>
     fun
     | Pos(path, line, column) => Pos(path, line + y, column + x);
@@ -46,18 +46,18 @@ module Loc = {
     | NoLoc
     | Loc(Pos.t, Pos.t);
 
-    let toRange =
-      fun
-      | NoLoc =>
-        VSCode.Range.make(
-          VSCode.Position.make(0, 0),
-          VSCode.Position.make(0, 0),
-        )
-      | Loc(x, Pos(_, line, column)) =>
-        VSCode.Range.make(
-          Pos.toPoint(x),
-          VSCode.Position.make(line - 1, column),
-        );
+  let toRange =
+    fun
+    | NoLoc =>
+      VSCode.Range.make(
+        VSCode.Position.make(0, 0),
+        VSCode.Position.make(0, 0),
+      )
+    | Loc(x, Pos(_, line, column)) =>
+      VSCode.Range.make(
+        Pos.toPoint(x),
+        VSCode.Position.make(line - 1, column),
+      );
   let toString =
     fun
     | NoLoc => "NoLoc"
@@ -107,10 +107,6 @@ module Loc = {
 
 type pos = Pos.t;
 type loc = Loc.t;
-
-type mode =
-  | WP1
-  | WP2;
 
 module Syntax = {
   // for pretty printing
