@@ -32,14 +32,14 @@ module LanguageClient = {
   // methods
   [@bs.send] external start: t => unit = "start";
   [@bs.send] external stop: t => unit = "stop";
-  [@bs.send] external onReady: t => Promise.t(unit) = "onReady";
+  [@bs.send] external onReady: t => Promise.Js.t(unit, _) = "onReady";
   [@bs.send]
   external onNotification: (t, string, 'a => unit) => Disposable.t =
     "onNotification";
   [@bs.send]
   external sendNotification: (t, string, 'a) => unit = "sendNotification";
   [@bs.send]
-  external sendRequest: (t, string, Js.Json.t) => Promise.t('r) =
+  external sendRequest: (t, string, Js.Json.t) => Promise.Js.t('result, _) =
     "sendRequest";
 };
 

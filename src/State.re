@@ -44,21 +44,22 @@ let sendRequest = (state, request) => {
 
   state.client
   ->Client.LanguageClient.onReady
-  ->Promise.flatMap(() => {
-      state.client->Client.LanguageClient.sendRequest("guacamole", value)
+  ->Promise.Js.toResult
+  ->Promise.flatMapOk(() => {
+      state.client
+      ->Client.LanguageClient.sendRequest("guacamole", value)
+      ->Promise.Js.toResult
     })
-  ->Promise.flatMap(result => {
-      Js.log2(
-        ">>>",
-        Js.String.substring(~from=0, ~to_=200, Js.Json.stringify(result)),
-      );
+  ->Promise.flatMapOk(result => {
+      Js.log2(">>>", result);
       // catching exceptions occured when decoding JSON values
       switch (result |> Response.decode) {
       | value => Promise.resolved(Ok(value))
       | exception (Json.Decode.DecodeError(msg)) =>
         Promise.resolved(Error(Error.Decode(msg, result)))
       };
-    });
+    })
+  ->Promise.mapError(error => {Error.LSP(Error.fromJsError(error))});
 };
 
 //
