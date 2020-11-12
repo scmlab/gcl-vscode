@@ -44,6 +44,8 @@ module Marker = {
 };
 
 [@react.component]
+[@warning "-39"]
+// for suppressing warning of `Self.make` shadowing `make`
 let rec make = (~value: t) => {
   module Self = {
     let make = make;
