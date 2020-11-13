@@ -4,8 +4,7 @@ let make = () => {
   let setupLSPClient = () => {
     open LSP;
     open VSCode;
-    let serverOptions = ServerOptions.makeCommand("lsp-demo-reactor-server");
-    // let serverOptions = ServerOptions.makeCommand("gcl");
+    let serverOptions = ServerOptions.makeCommand("gcl");
 
     let clientOptions = {
       // let makePattern = [%raw "function(filename) { return fileName }"];
@@ -41,6 +40,26 @@ let make = () => {
   };
   let client = setupLSPClient();
   client->LSP.LanguageClient.start;
+
+  client
+  ->LSP.LanguageClient.onReady
+  ->Promise.Js.toResult
+  ->Promise.getOk(() => {
+      client
+      ->LSP.LanguageClient.onNotification("guacamole/pos", result => {
+          Js.log2("pos >>>", result);
+
+          // catching exceptions occured when decoding JSON values
+          switch (Response.ProofObligation.decode(result)) {
+          | value => Js.log(value)
+          | exception (Json.Decode.DecodeError(msg)) => Js.log(msg)
+          // Promise.resolved(Error(Error.Decode(msg, result)))
+          };
+          ();
+        })
+      ->ignore
+    });
+
   {client: client};
 };
 

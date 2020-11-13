@@ -37,6 +37,12 @@ module Handler = {
         };
       });
   };
+
+  let onSelect = event => {
+    event
+    ->VSCode.TextEditorSelectionChangeEvent.selections
+    ->Array.forEach(_selection => ());
+  };
 };
 
 let activate = (context: VSCode.ExtensionContext.t) => {
@@ -50,7 +56,9 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   VSCode.Workspace.onDidCloseTextDocument(. Handler.onClose)->subscribe;
   VSCode.Workspace.onDidDeleteFiles(. Handler.onDelete)->subscribe;
   // on rename
-  VSCode.Workspace.onDidRenameFiles(. Handler.onRename);
+  VSCode.Workspace.onDidRenameFiles(. Handler.onRename)->subscribe;
+  // on change selection
+  VSCode.Window.onDidChangeTextEditorSelection(Handler.onSelect)->subscribe;
 };
 
 let deactivate = () => {
