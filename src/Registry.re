@@ -1,15 +1,15 @@
 open Belt;
 
 // a dictionary of FileName-State entries
-let dict: Js.Dict.t((State.t, TaskRunner.t)) = Js.Dict.empty();
+let dict: Js.Dict.t(State.t) = Js.Dict.empty();
 
 let get = fileName => dict->Js.Dict.get(fileName);
 
 // do nothing if the state already exists
-let add = (fileName, dispatcher) => {
+let add = (fileName, state) => {
   switch (get(fileName)) {
   | Some(_) => ()
-  | None => dict->Js.Dict.set(fileName, dispatcher)
+  | None => dict->Js.Dict.set(fileName, state)
   };
 };
 
@@ -19,7 +19,6 @@ let rename = (oldName, newName) => {
   ];
   get(oldName)
   ->Option.forEach(state => {
-      Js.log3("[ states ][ rename ]", oldName, newName);
       delete_(dict, oldName);
       add(newName, state);
     });
@@ -33,30 +32,8 @@ let remove = fileName => {
   delete_(dict, fileName);
 };
 let destroy = fileName => {
-  get(fileName)
-  ->Option.mapWithDefault(
-      Promise.resolved(),
-      ((state, taskRunner)) => {
-        Js.log("[ states ][ destroy ]" ++ fileName);
-        State.destroy(state);
-        TaskRunner.destroy(taskRunner);
-        // ->Promise.flatMap(() => TaskRunner.destroy(taskRunner));
-      },
-    )
-  ->Promise.get(() => remove(fileName));
+  get(fileName)->Option.forEach(State.destroy);
+  remove(fileName);
 };
 
 let contains = fileName => get(fileName)->Option.isSome;
-
-// let destroyAll = () => {
-//   dict
-//   ->Js.Dict.entries
-//   ->Array.map(((_, (state, taskRunner))) => {
-//       Js.log("[ states ][ destroy all ]");
-//       State.destroy(state) |> ignore;
-//       TaskRunner.destroy(taskRunner);
-//     })
-//   ->List.fromArray
-//   ->Promise.all
-//   ->Promise.get(_ => ());
-// };
