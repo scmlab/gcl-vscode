@@ -1,9 +1,14 @@
+open Belt;
+
 type t = {
   client: LSP.LanguageClient.t,
+  editor: VSCode.TextEditor.t,
+  document: VSCode.TextDocument.t,
+  mutable view: option(View.t),
   mutable pos: array(Response.ProofObligation.t),
 };
 
-let make = () => {
+let make = editor => {
   let setupLSPClient = () => {
     open LSP;
     open VSCode;
@@ -42,8 +47,11 @@ let make = () => {
     );
   };
   let client = setupLSPClient();
-  let state = {client, pos: [||]};
+  // start the LSP client
   client->LSP.LanguageClient.start;
+
+  let document = VSCode.TextEditor.document(editor);
+  let state = {client, editor, document, view: None, pos: [||]};
 
   client
   ->LSP.LanguageClient.onReady
@@ -56,7 +64,19 @@ let make = () => {
           switch (result |> Response.decode) {
           | OK(_, pos, _, _) =>
             // persist Proof Obligations
-            state.pos = pos
+            state.pos = pos;
+
+            state.view
+            ->Option.forEach(view => {
+                View.send(
+                  view,
+                  ViewType.Request.Display(
+                    Plain("Proof Obligations"),
+                    ProofObligations(0, state.pos, [||]),
+                  ),
+                )
+                ->ignore
+              });
           | others => Js.log(others)
           | exception (Json.Decode.DecodeError(msg)) => Js.log(msg)
           // Promise.resolved(Error(Error.Decode(msg, result)))

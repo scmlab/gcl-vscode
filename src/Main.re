@@ -2,14 +2,37 @@ open Belt;
 
 module Handler = {
   let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
-  let onOpen = doc => {
+  let onOpen = (context, doc) => {
     let fileName = VSCode.TextDocument.fileName(doc);
     // filter out ".gcl.git" files
     if (isGCL(fileName)) {
-      Js.log("GCL " ++ fileName);
+      VSCode.Window.activeTextEditor
+      ->Option.map(editor => {
+          let state = State.make(editor);
 
-      let state = State.make();
-      Registry.add(fileName, state);
+          VSCode.Commands.registerCommand("guacamole.toggle", () => {
+            // view initialization
+            let extensionPath = context->VSCode.ExtensionContext.extensionPath;
+
+            state.view = Some(View.make(extensionPath, editor));
+
+            state.view
+            ->Option.forEach(view => {
+                View.send(
+                  view,
+                  ViewType.Request.Display(
+                    Plain("Proof Obligations"),
+                    ProofObligations(0, state.pos, [||]),
+                  ),
+                )
+                ->ignore
+              });
+
+            Registry.add(fileName, state);
+          })
+          ->ignore;
+        })
+      ->ignore;
     };
   };
   let onClose = doc => {
@@ -50,8 +73,9 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore;
 
   // on open
-  VSCode.Workspace.onDidOpenTextDocument(. Handler.onOpen)->subscribe;
-  VSCode.Workspace.textDocuments->Array.forEach(Handler.onOpen);
+  VSCode.Workspace.onDidOpenTextDocument(. Handler.onOpen(context))
+  ->subscribe;
+  VSCode.Workspace.textDocuments->Array.forEach(Handler.onOpen(context));
   // on close
   VSCode.Workspace.onDidCloseTextDocument(. Handler.onClose)->subscribe;
   VSCode.Workspace.onDidDeleteFiles(. Handler.onDelete)->subscribe;

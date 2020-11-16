@@ -65,7 +65,7 @@
 		"commands": [
 			{
 				"command": "guacamole.toggle",
-				"title": "Toggle activate/deactivate"
+				"title": "Toggle view activate/deactivate"
 			},
 			{
 				"command": "guacamole.refine",

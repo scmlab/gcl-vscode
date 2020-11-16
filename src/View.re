@@ -117,11 +117,11 @@ let make = (extentionPath, editor) => {
     panel;
   };
 
-  let moveToBottom = () => {
+  let moveToRight = () => {
     VSCode.Commands.(
       executeCommand(
         `setEditorLayout({
-          orientation: 1,
+          orientation: 0,
           groups:
             Layout.(
               [|
@@ -136,7 +136,7 @@ let make = (extentionPath, editor) => {
 
   // intantiate the panel
   let panel = createPanel(editor);
-  moveToBottom() |> ignore;
+  moveToRight() |> ignore;
 
   // array of Disposable.t
   let disposables = [||];
