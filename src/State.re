@@ -1,4 +1,7 @@
-type t = {client: LSP.LanguageClient.t};
+type t = {
+  client: LSP.LanguageClient.t,
+  mutable pos: array(Response.ProofObligation.t),
+};
 
 let make = () => {
   let setupLSPClient = () => {
@@ -39,6 +42,7 @@ let make = () => {
     );
   };
   let client = setupLSPClient();
+  let state = {client, pos: [||]};
   client->LSP.LanguageClient.start;
 
   client
@@ -48,19 +52,20 @@ let make = () => {
       client
       ->LSP.LanguageClient.onNotification("guacamole/pos", result => {
           Js.log2("pos >>>", result);
-
-          // catching exceptions occured when decoding JSON values
-          switch (Response.ProofObligation.decode(result)) {
-          | value => Js.log(value)
+          // catch exceptions occured from decoding JSON values
+          switch (result |> Response.decode) {
+          | OK(_, pos, _, _) =>
+            // persist Proof Obligations
+            state.pos = pos
+          | others => Js.log(others)
           | exception (Json.Decode.DecodeError(msg)) => Js.log(msg)
           // Promise.resolved(Error(Error.Decode(msg, result)))
           };
-          ();
         })
       ->ignore
     });
 
-  {client: client};
+  state;
 };
 
 let destroy = state => {
