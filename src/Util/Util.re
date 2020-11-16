@@ -58,40 +58,41 @@ module Encode = {
       encodeD(d),
       encodeE(e),
     |]);
-} /* }*/;
+};
 
-// module React = {
-//   open ReasonReact;
+module React = {
+  open ReasonReact;
+  open Belt;
 
-//   let manyIn = (elems, elem) =>
-//     ReactDOMRe.createDOMElementVariadic(
-//       elem,
-//       ~props=ReactDOMRe.domProps(),
-//       elems,
-//     );
+  let manyIn = (elems, elem) =>
+    ReactDOMRe.createDOMElementVariadic(
+      elem,
+      ~props=ReactDOMRe.domProps(),
+      elems,
+    );
 
-//   let manyIn2 = (elems, elem, props) =>
-//     ReactDOMRe.createDOMElementVariadic(elem, ~props, elems);
+  let manyIn2 = (elems, elem, props) =>
+    ReactDOMRe.createDOMElementVariadic(elem, ~props, elems);
 
-//   let sepBy' = (item: list(reactElement), sep: reactElement) =>
-//     switch (item) {
-//     | [] => <> </>
-//     | [x] => x
-//     | [x, ...xs] =>
-//       [x, ...List.map(xs, i => <> sep i </>)]->List.toArray->manyIn("span")
-//     };
-//   let sepBy = (sep: reactElement, xs) => xs->List.fromArray->sepBy'(sep);
+  let sepBy' = (item: list(reactElement), sep: reactElement) =>
+    switch (item) {
+    | [] => <> </>
+    | [x] => x
+    | [x, ...xs] =>
+      [x, ...List.map(xs, i => <> sep i </>)]->List.toArray->manyIn("span")
+    };
+  let sepBy = (sep: reactElement, xs) => xs->List.fromArray->sepBy'(sep);
 
-//   let enclosedBy =
-//       (front: reactElement, back: reactElement, item: reactElement) =>
-//     <> front {string(" ")} item {string(" ")} back </>;
+  let enclosedBy =
+      (front: reactElement, back: reactElement, item: reactElement) =>
+    <> front {string(" ")} item {string(" ")} back </>;
 
-//   let when_ = (p, className) => p ? " " ++ className : "";
-//   let showWhen =
-//     fun
-//     | true => ""
-//     | false => " hidden";
-// };
+  let when_ = (p, className) => p ? " " ++ className : "";
+  let showWhen =
+    fun
+    | true => ""
+    | false => " hidden";
+};
 
 // module JsError = {
 //   let toString = (_e: Js.Exn.t) => {
