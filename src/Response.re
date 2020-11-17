@@ -150,20 +150,22 @@ module GlobalProp = {
 module Error = {
   module Site = {
     type t =
-      | Global(loc)
-      | Local(loc, int);
+      | Source(loc) // the error happened somewhere in the source file
+      | Hole(loc, int) // the error happened somewhere in a hole
+      | Others; // the error happened elsewhere (e.g. when decoding JSON)
 
     let toLoc = (site, specifications): loc => {
       Specification.(
         switch (site) {
-        | Global(loc) => loc
-        | Local(loc, i) =>
+        | Source(loc) => loc
+        | Hole(loc, i) =>
           let specs = specifications->Array.keep(spec => spec.id == i);
 
           specs[0]
           ->Option.mapWithDefault(loc, spec =>
               spec.loc |> Loc.translate(loc) |> Loc.translateBy(1, 0, 1, 0)
             );
+        | Others => NoLoc
         }
       );
     };
@@ -173,9 +175,10 @@ module Error = {
 
     let toString = site => {
       switch (site) {
-      | Global(loc) => "at " ++ Loc.toString(loc)
-      | Local(loc, i) =>
+      | Source(loc) => "at " ++ Loc.toString(loc)
+      | Hole(loc, i) =>
         "at " ++ Loc.toString(loc) ++ " in #" ++ string_of_int(i)
+      | Others => ""
       };
     };
 
@@ -185,9 +188,9 @@ module Error = {
     let decode: decoder(t) =
       sum(
         fun
-        | "Global" => Contents(json => Global(json |> Loc.decode))
+        | "Global" => Contents(json => Source(json |> Loc.decode))
         | "Local" =>
-          Contents(pair(Loc.decode, int) |> map(((r, i)) => Local(r, i)))
+          Contents(pair(Loc.decode, int) |> map(((r, i)) => Hole(r, i)))
         | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
       );
   };
@@ -252,12 +255,16 @@ module Error = {
   };
 
   type kind =
+    // from server, GCL related
     | LexicalError
     | SyntacticError(array(string))
     | StructError(StructError.t)
     | TypeError(TypeError.t)
-    | CannotDecodeRequest(string)
+    // from server
+    | CannotDecodeRequest(string) // the server failed to decode request from the client
     | CannotReadFile(string)
+    // from client
+    | CannotDecodeResponse(string, Js.Json.t) // the client failed to decode response from the server
     | NotLoaded;
 
   open Json.Decode;

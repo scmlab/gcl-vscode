@@ -6,6 +6,7 @@ type t = {
   document: VSCode.TextDocument.t,
   filePath: string,
   mutable view: option(View.t),
+  mutable decorations: array(VSCode.TextEditorDecorationType.t),
 };
 
 let handleResponse = (state: t, response) =>
@@ -23,7 +24,48 @@ let handleResponse = (state: t, response) =>
         )
         ->ignore
       })
-  | Decorate(locs) => Js.log(locs)
+  | Decorate(locs) =>
+    // destroy old decorations
+    state.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose);
+    state.decorations = [||];
+
+    let ranges = locs->Array.map(GCL.Loc.toRange);
+    let rangeBehavior =
+      VSCode.DecorationRangeBehavior.toEnum(
+        VSCode.DecorationRangeBehavior.ClosedClosed,
+      );
+    let rulerColor =
+      VSCode.StringOr.others(
+        VSCode.ThemeColor.make("editorOverviewRuler.warningForeground"),
+      );
+    let overviewRulerLane: VSCode.OverviewRulerLane.raw =
+      VSCode.OverviewRulerLane.Left->VSCode.OverviewRulerLane.toEnum;
+
+    let backgroundColor =
+      VSCode.StringOr.others(
+        VSCode.ThemeColor.make("editorOverviewRuler.warningForeground"),
+      );
+    let after =
+      VSCode.ThemableDecorationAttachmentRenderOptions.t(
+        ~contentText="*",
+        // ~border="dotted 3px",
+        // ~borderColor=backgroundColor,
+        ~color=backgroundColor,
+        (),
+      );
+    let options =
+      VSCode.DecorationRenderOptions.t(
+        ~overviewRulerColor=rulerColor,
+        ~overviewRulerLane,
+        ~after,
+        // ~backgroundColor,
+        // ~isWholeLine=true,
+        ~rangeBehavior,
+        (),
+      );
+    let decoration = VSCode.Window.createTextEditorDecorationType(options);
+    decoration->Js.Array.push(state.decorations)->ignore;
+    state.editor->VSCode.TextEditor.setDecorations(decoration, ranges);
   | _ => ()
   };
 
@@ -32,7 +74,7 @@ let decodeResponse = (json: Js.Json.t): Response.t => {
   switch (Response.decode(json)) {
   | response => response
   | exception (Json.Decode.DecodeError(msg)) =>
-    Error([|Error(Global(NoLoc), CannotDecodeRequest(msg))|])
+    Error([|Error(Others, CannotDecodeResponse(msg, json))|])
   };
 };
 
@@ -46,7 +88,7 @@ let make = editor => {
       // let makePattern = [%raw "function(filename) { return fileName }"];
       // Register the server for plain text documents
       let documentSelector: DocumentSelector.t = [|
-        DocumentFilterOrString.documentFilter(
+        StringOr.others(
           DocumentFilter.{
             scheme: Some("file"),
             pattern: None,
@@ -79,7 +121,14 @@ let make = editor => {
   client->LSP.LanguageClient.start;
   let document = VSCode.TextEditor.document(editor);
   let filePath = VSCode.TextDocument.fileName(document);
-  let state = {client, editor, document, filePath, view: None};
+  let state = {
+    client,
+    editor,
+    document,
+    filePath,
+    view: None,
+    decorations: [||],
+  };
 
   client
   ->LSP.LanguageClient.onReady
