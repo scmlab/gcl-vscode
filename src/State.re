@@ -4,8 +4,8 @@ type t = {
   client: LSP.LanguageClient.t,
   editor: VSCode.TextEditor.t,
   document: VSCode.TextDocument.t,
+  filePath: string,
   mutable view: option(View.t),
-  mutable pos: array(Response.ProofObligation.t),
 };
 
 let make = editor => {
@@ -49,9 +49,9 @@ let make = editor => {
   let client = setupLSPClient();
   // start the LSP client
   client->LSP.LanguageClient.start;
-
   let document = VSCode.TextEditor.document(editor);
-  let state = {client, editor, document, view: None, pos: [||]};
+  let filePath = VSCode.TextDocument.fileName(document);
+  let state = {client, editor, document, filePath, view: None};
 
   client
   ->LSP.LanguageClient.onReady
@@ -63,20 +63,17 @@ let make = editor => {
           // catch exceptions occured from decoding JSON values
           switch (result |> Response.decode) {
           | OK(_, pos, _, _) =>
-            // persist Proof Obligations
-            state.pos = pos;
-
             state.view
             ->Option.forEach(view => {
                 View.send(
                   view,
                   ViewType.Request.Display(
                     Plain("Proof Obligations"),
-                    ProofObligations(0, state.pos, [||]),
+                    ProofObligations(0, pos, [||]),
                   ),
                 )
                 ->ignore
-              });
+              })
           | others => Js.log(others)
           | exception (Json.Decode.DecodeError(msg)) => Js.log(msg)
           // Promise.resolved(Error(Error.Decode(msg, result)))
@@ -86,6 +83,32 @@ let make = editor => {
     });
 
   state;
+};
+
+let sendRequest = (state, request) => {
+  let value = Request.encode(request);
+  Js.log2("<<<", value);
+
+  state.client
+  ->LSP.LanguageClient.onReady
+  ->Promise.Js.toResult
+  ->Promise.flatMapOk(() => {
+      state.client
+      ->LSP.LanguageClient.sendRequest("guacamole", value)
+      ->Promise.Js.toResult
+    })
+  ->Promise.flatMapOk(result => {
+      Js.log2(">>>", result);
+      // catching exceptions occured when decoding JSON values
+      switch (result |> Response.decode) {
+      | value => Promise.resolved(Ok(value))
+      | exception (Json.Decode.DecodeError(msg)) =>
+        Js.log(msg);
+        Promise.resolved(Error());
+      // Promise.resolved(Error(Error.Decode(msg, result)))
+      };
+    });
+  // ->Promise.mapError(error => {Error.LSP(Error.fromJsError(error))});
 };
 
 let destroy = state => {

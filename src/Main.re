@@ -1,7 +1,46 @@
 open Belt;
 
+let handleResponse = (state: State.t, response) =>
+  switch (response) {
+  | Response.Error(error) => Js.log(error)
+  | OK(i, pos, _, props) =>
+    state.view
+    ->Option.forEach(view => {
+        View.send(
+          view,
+          ViewType.Request.Display(
+            Plain("Proof Obligations"),
+            ProofObligations(i, pos, props),
+          ),
+        )
+        ->ignore
+      })
+  | _ => ()
+  };
+
 module Handler = {
   let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
+
+  let onSelect = (state: State.t, event) => {
+    // TODO, there may be multiple selections at once
+    event->VSCode.TextEditorSelectionChangeEvent.selections[0]
+    ->Option.forEach(selection => {
+        let start =
+          VSCode.TextDocument.offsetAt(
+            state.document,
+            VSCode.Selection.start(selection),
+          );
+        let end_ =
+          VSCode.TextDocument.offsetAt(
+            state.document,
+            VSCode.Selection.end_(selection),
+          );
+        state
+        ->State.sendRequest(Request.Inspect(state.filePath, start, end_))
+        ->Promise.getOk(handleResponse(state));
+      });
+  };
+
   let onOpen = (context, doc) => {
     let fileName = VSCode.TextDocument.fileName(doc);
     // filter out ".gcl.git" files
@@ -22,7 +61,7 @@ module Handler = {
                   view,
                   ViewType.Request.Display(
                     Plain("Proof Obligations"),
-                    ProofObligations(0, state.pos, [||]),
+                    ProofObligations(0, [||], [||]),
                   ),
                 )
                 ->ignore
@@ -30,6 +69,10 @@ module Handler = {
 
             Registry.add(fileName, state);
           })
+          ->ignore;
+
+          // on change selection
+          VSCode.Window.onDidChangeTextEditorSelection(onSelect(state))
           ->ignore;
         })
       ->ignore;
@@ -60,12 +103,6 @@ module Handler = {
         };
       });
   };
-
-  let onSelect = event => {
-    event
-    ->VSCode.TextEditorSelectionChangeEvent.selections
-    ->Array.forEach(_selection => ());
-  };
 };
 
 let activate = (context: VSCode.ExtensionContext.t) => {
@@ -81,8 +118,6 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   VSCode.Workspace.onDidDeleteFiles(. Handler.onDelete)->subscribe;
   // on rename
   VSCode.Workspace.onDidRenameFiles(. Handler.onRename)->subscribe;
-  // on change selection
-  VSCode.Window.onDidChangeTextEditorSelection(Handler.onSelect)->subscribe;
 };
 
 let deactivate = () => {
