@@ -8,6 +8,34 @@ type t = {
   mutable view: option(View.t),
 };
 
+let handleResponse = (state: t, response) =>
+  switch (response) {
+  | Response.Error(error) => Js.log(error)
+  | OK(i, pos, _, props) =>
+    state.view
+    ->Option.forEach(view => {
+        View.send(
+          view,
+          ViewType.Request.Display(
+            Plain("Proof Obligations"),
+            ProofObligations(i, pos, props),
+          ),
+        )
+        ->ignore
+      })
+  | Decorate(locs) => Js.log(locs)
+  | _ => ()
+  };
+
+let decodeResponse = (json: Js.Json.t): Response.t => {
+  // catching exceptions occured when decoding JSON values
+  switch (Response.decode(json)) {
+  | response => response
+  | exception (Json.Decode.DecodeError(msg)) =>
+    Error([|Error(Global(NoLoc), CannotDecodeRequest(msg))|])
+  };
+};
+
 let make = editor => {
   let setupLSPClient = () => {
     open LSP;
@@ -58,26 +86,10 @@ let make = editor => {
   ->Promise.Js.toResult
   ->Promise.getOk(() => {
       client
-      ->LSP.LanguageClient.onNotification("guacamole/pos", result => {
-          Js.log2("pos >>>", result);
-          // catch exceptions occured from decoding JSON values
-          switch (result |> Response.decode) {
-          | OK(_, pos, _, _) =>
-            state.view
-            ->Option.forEach(view => {
-                View.send(
-                  view,
-                  ViewType.Request.Display(
-                    Plain("Proof Obligations"),
-                    ProofObligations(0, pos, [||]),
-                  ),
-                )
-                ->ignore
-              })
-          | others => Js.log(others)
-          | exception (Json.Decode.DecodeError(msg)) => Js.log(msg)
-          // Promise.resolved(Error(Error.Decode(msg, result)))
-          };
+      ->LSP.LanguageClient.onNotification("guacamole", json => {
+          Js.log2(">>>", json);
+          let response = decodeResponse(json);
+          handleResponse(state, response);
         })
       ->ignore
     });
@@ -97,16 +109,11 @@ let sendRequest = (state, request) => {
       ->LSP.LanguageClient.sendRequest("guacamole", value)
       ->Promise.Js.toResult
     })
-  ->Promise.flatMapOk(result => {
-      Js.log2(">>>", result);
-      // catching exceptions occured when decoding JSON values
-      switch (result |> Response.decode) {
-      | value => Promise.resolved(Ok(value))
-      | exception (Json.Decode.DecodeError(msg)) =>
-        Js.log(msg);
-        Promise.resolved(Error());
-      // Promise.resolved(Error(Error.Decode(msg, result)))
-      };
+  ->Promise.flatMapOk(json => {
+      Js.log2(">>>", json);
+
+      let response = decodeResponse(json);
+      Promise.resolved(Ok(response));
     });
   // ->Promise.mapError(error => {Error.LSP(Error.fromJsError(error))});
 };

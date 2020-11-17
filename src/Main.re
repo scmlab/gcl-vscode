@@ -1,23 +1,5 @@
 open Belt;
 
-let handleResponse = (state: State.t, response) =>
-  switch (response) {
-  | Response.Error(error) => Js.log(error)
-  | OK(i, pos, _, props) =>
-    state.view
-    ->Option.forEach(view => {
-        View.send(
-          view,
-          ViewType.Request.Display(
-            Plain("Proof Obligations"),
-            ProofObligations(i, pos, props),
-          ),
-        )
-        ->ignore
-      })
-  | _ => ()
-  };
-
 module Handler = {
   let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
@@ -37,7 +19,7 @@ module Handler = {
           );
         state
         ->State.sendRequest(Request.Inspect(state.filePath, start, end_))
-        ->Promise.getOk(handleResponse(state));
+        ->Promise.getOk(State.handleResponse(state));
       });
   };
 

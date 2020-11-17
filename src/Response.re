@@ -251,38 +251,10 @@ module Error = {
       );
   };
 
-  module StructError2 = {
-    type t =
-      | MissingLoopInvariant
-      // | MissingAssertion
-      | MissingBound
-      | MissingPrecondition
-      | MissingPostcondition
-      | PreconditionUnknown
-      | DigHole;
-
-    open Json.Decode;
-    open Util.Decode;
-    let decode: decoder(t) =
-      sum(
-        fun
-        // | "MissingAssertion" => Contents(_ => MissingAssertion)
-        // | "ExcessBound" => Contents(_ => ExcessBound)
-        | "MissingBound" => Contents(_ => MissingBound)
-        | "MissingLoopInvariant" => Contents(_ => MissingLoopInvariant)
-        | "MissingPrecondition" => Contents(_ => MissingPrecondition)
-        | "MissingPostcondition" => Contents(_ => MissingPostcondition)
-        | "PreconditionUnknown" => Contents(_ => PreconditionUnknown)
-        | "DigHole" => Contents(_ => DigHole)
-        | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
-      );
-  };
-
   type kind =
     | LexicalError
     | SyntacticError(array(string))
     | StructError(StructError.t)
-    | StructError2(StructError2.t)
     | TypeError(TypeError.t)
     | CannotDecodeRequest(string)
     | CannotReadFile(string)
@@ -301,8 +273,6 @@ module Error = {
         )
       | "StructError" =>
         Contents(json => StructError(json |> StructError.decode))
-      | "StructError2" =>
-        Contents(json => StructError2(json |> StructError2.decode))
       | "TypeError" => Contents(json => TypeError(json |> TypeError.decode))
       | "CannotDecodeRequest" =>
         Contents(json => CannotDecodeRequest(json |> string))
@@ -320,6 +290,7 @@ module Error = {
 };
 
 type t =
+  | Decorate(array(GCL.Loc.t))
   | Error(array(Error.t))
   | OK(
       int,
@@ -336,6 +307,8 @@ open Util.Decode;
 let decode: decoder(t) =
   sum(
     fun
+    | "ResDecorate" =>
+      Contents(array(GCL.Loc.decode) |> map(locs => Decorate(locs)))
     | "ResError" =>
       Contents(array(Error.decode) |> map(errors => Error(errors)))
     | "ResOK" =>
