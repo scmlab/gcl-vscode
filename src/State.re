@@ -5,7 +5,7 @@ type t = {
   document: VSCode.TextDocument.t,
   filePath: string,
   client: LSP.LanguageClient.t,
-  viewReqChan: Chan.t(ViewType.Request.t),
+  viewReq: Req.t(ViewType.Request.t, bool),
   viewResChan: Chan.t(ViewType.Response.t),
   mutable decorations: array(VSCode.TextEditorDecorationType.t),
   mutable subscriptions: array(VSCode.Disposable.t),
@@ -18,13 +18,14 @@ let handleResponse = (state: t, response) =>
   switch (response) {
   | Response.Error(error) => Js.log(error)
   | OK(i, pos, _, props) =>
-    state.viewReqChan
-    ->Chan.emit(
+    state.viewReq
+    ->Req.send(
         ViewType.Request.Display(
           Plain("Proof Obligations"),
           ProofObligations(i, pos, props),
         ),
       )
+    ->ignore
   | Decorate(locs) =>
     // destroy old decorations
     state.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose);
@@ -127,8 +128,8 @@ let make = editor => {
     editor,
     document,
     filePath,
+    viewReq: Req.make(),
     viewResChan: Chan.make(),
-    viewReqChan: Chan.make(),
     decorations: [||],
     subscriptions: [||],
   };

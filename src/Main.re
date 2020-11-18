@@ -25,7 +25,6 @@ module View2: {
   };
 
   let unwire = () => {
-    handle.reqSubscription->Option.forEach(disposable => disposable());
     handle.resSubscription->Option.forEach(disposable => disposable());
   };
 
@@ -47,9 +46,7 @@ module View2: {
     handle.view
     ->Option.forEach(view => {
         handle.reqSubscription =
-          Some(
-            state.viewReqChan->Chan.on(req => View.send(view, req)->ignore),
-          );
+          Some(state.viewReq->Req.handle(req => View.send(view, req)));
         handle.resSubscription =
           Some(
             view.onResponse
