@@ -218,15 +218,19 @@ module Controller: {
   };
   let handle = {view: None, reqSubscription: None, resSubscription: None};
 
+  let unwire = () => {
+    handle.reqSubscription->Option.forEach(disposable => disposable());
+    handle.resSubscription->Option.forEach(disposable => disposable());
+  };
   let activate = extensionPath => {
     let view = View.make(extensionPath);
     handle.view = Some(view);
     // free the handle when the view has been forcibly destructed
-    View.onceDestroyed(view)->Promise.get(() => {handle.view = None});
-  };
-
-  let unwire = () => {
-    handle.resSubscription->Option.forEach(disposable => disposable());
+    View.onceDestroyed(view)
+    ->Promise.get(() => {
+        handle.view = None;
+        unwire();
+      });
   };
 
   let deactivate = () => {
@@ -246,12 +250,9 @@ module Controller: {
     handle.view
     ->Option.forEach(view => {
         handle.reqSubscription =
-          Some(state.viewReq->Req.handle(req => View.send(view, req)));
+          Some(state.viewReq->Req.handle(View.send(view)));
         handle.resSubscription =
-          Some(
-            view.onResponse
-            ->Chan.on(res => state.viewResChan->Chan.emit(res)),
-          );
+          Some(view.onResponse->Chan.on(Chan.emit(state.viewResChan)));
       });
   };
 };

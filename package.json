@@ -14,7 +14,7 @@
 	"activationEvents": [
 		"onLanguage:guacamole"
 	],
-	"main": "./dist/app.bundle.js",
+	"main": "./lib/js/src/Main.bs.js",
 	"scripts": {
 		"clean": "npx bsb -clean-world",
 		"build": "npx bsb -clean-world && npx bsb -make-world && npx lessc style/style.less dist/style.css && webpack --mode development",
