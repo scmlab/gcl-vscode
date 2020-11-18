@@ -26,7 +26,8 @@ let send = (view, req) =>
 
 let recv = (view, callback) => {
   // Handle messages from the webview
-  view.onResponse.on(callback)
+  view.onResponse
+  ->Chan.on(callback)
   ->VSCode.Disposable.make;
 };
 
@@ -141,7 +142,7 @@ let make = extentionPath => {
   ->VSCode.WebviewPanel.webview
   ->VSCode.Webview.onDidReceiveMessage(json => {
       switch (ViewType.Response.decode(json)) {
-      | result => onResponse.emit(result)
+      | result => onResponse->Chan.emit(result)
       | exception e =>
         Js.log2(
           "[ panic ][ Webview.onDidReceiveMessage JSON decode error ]",
@@ -155,7 +156,7 @@ let make = extentionPath => {
   // on destroy
   panel
   ->VSCode.WebviewPanel.onDidDispose(() =>
-      onResponse.emit(ViewType.Response.Destroyed)
+      onResponse->Chan.emit(ViewType.Response.Destroyed)
     )
   ->Js.Array.push(disposables)
   ->ignore;
@@ -163,18 +164,19 @@ let make = extentionPath => {
   let view = {panel, disposables, onResponse, status: Uninitialized([||])};
 
   // on initizlied
-  view.onResponse.on(
-    fun
-    | Initialized => {
-        switch (view.status) {
-        | Uninitialized(queued) =>
-          view.status = Initialized;
-          queued->Belt.Array.forEach(req => send(view, req)->ignore);
-        | Initialized => ()
-        };
-      }
-    | _ => (),
-  )
+  view.onResponse
+  ->Chan.on(
+      fun
+      | Initialized => {
+          switch (view.status) {
+          | Uninitialized(queued) =>
+            view.status = Initialized;
+            queued->Belt.Array.forEach(req => send(view, req)->ignore);
+          | Initialized => ()
+          };
+        }
+      | _ => (),
+    )
   ->VSCode.Disposable.make
   ->Js.Array.push(disposables)
   ->ignore;
@@ -184,7 +186,7 @@ let make = extentionPath => {
 
 let destroy = view => {
   view.panel->VSCode.WebviewPanel.dispose;
-  view.onResponse.destroy();
+  view.onResponse->Chan.destroy;
 };
 
 // resolves the returned promise once the view has been destroyed
@@ -192,12 +194,13 @@ let onceDestroyed = (view: t): Promise.t(unit) => {
   let (promise, resolve) = Promise.pending();
 
   let disposable =
-    view.onResponse.on(response => {
-      switch (response) {
-      | ViewType.Response.Destroyed => resolve()
-      | _ => ()
-      }
-    });
+    view.onResponse
+    ->Chan.on(response => {
+        switch (response) {
+        | ViewType.Response.Destroyed => resolve()
+        | _ => ()
+        }
+      });
 
   promise->Promise.tap(disposable);
 };

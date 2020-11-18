@@ -18,12 +18,13 @@ let handleResponse = (state: t, response) =>
   switch (response) {
   | Response.Error(error) => Js.log(error)
   | OK(i, pos, _, props) =>
-    state.viewReqChan.emit(
-      ViewType.Request.Display(
-        Plain("Proof Obligations"),
-        ProofObligations(i, pos, props),
-      ),
-    )
+    state.viewReqChan
+    ->Chan.emit(
+        ViewType.Request.Display(
+          Plain("Proof Obligations"),
+          ProofObligations(i, pos, props),
+        ),
+      )
   | Decorate(locs) =>
     // destroy old decorations
     state.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose);

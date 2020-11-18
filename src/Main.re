@@ -46,9 +46,14 @@ module View2: {
     self.view
     ->Option.forEach(view => {
         self.reqSubscription =
-          Some(state.viewReqChan.on(req => View.send(view, req)->ignore));
+          Some(
+            state.viewReqChan->Chan.on(req => View.send(view, req)->ignore),
+          );
         self.resSubscription =
-          Some(view.onResponse.on(res => state.viewResChan.emit(res)));
+          Some(
+            view.onResponse
+            ->Chan.on(res => state.viewResChan->Chan.emit(res)),
+          );
       });
   };
   // destructor

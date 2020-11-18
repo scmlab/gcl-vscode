@@ -8,12 +8,12 @@ let vscode = VSCode.Api.acquireVsCodeApi();
 let onRequest = Chan.make();
 VSCode.Api.onMessage(stringifiedJSON => {
   let request = Js.Json.parseExn(stringifiedJSON)->ViewType.Request.decode;
-  onRequest.emit(request);
+  onRequest->Chan.emit(request);
 });
 
 // relay onResponse => VSCode.Api.postMessage
 let onResponse = Chan.make();
-onResponse.on(response => {
+onResponse->Chan.on(response => {
   vscode->VSCode.Api.postMessage(ViewType.Response.encode(response))
 });
 

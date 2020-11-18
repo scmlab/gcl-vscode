@@ -252,29 +252,28 @@ module EventEmitter3 = {
   [@bs.module "eventemitter3"]
   external oncePromise3: (t, string) => Js.Promise.t(('a, 'b, 'c)) = "once";
 };
-type t('a) = {
-  emitter: EventEmitter3.t,
-  emit: 'a => unit,
-  once: unit => Promise.t('a),
-  on: ('a => unit, unit) => unit,
-  destroy: unit => unit,
+
+module Module: {
+  type t('a);
+  let make: unit => t('a);
+  let emit: (t('a), 'a) => unit;
+  let on: (t('a), 'a => unit, unit) => unit;
+  let once: t('a) => Promise.t('a);
+  let destroy: t('a) => unit;
+} = {
+  type t('a) = EventEmitter3.t;
+  let make = EventEmitter3.make;
+  let emit = (self, x) => self |> EventEmitter3.emit("data", x) |> ignore;
+  let on = (self, callback) => {
+    self |> EventEmitter3.on("data", callback) |> ignore;
+    () => self |> EventEmitter3.removeListener("data", callback) |> ignore;
+  };
+  let once = self => {
+    let (promise, resolve) = Promise.pending();
+    self |> EventEmitter3.once("data", resolve) |> ignore;
+    promise;
+  };
+  let destroy = self => self |> EventEmitter3.removeAllListeners |> ignore;
 };
 
-let make = () => {
-  let emitter = EventEmitter3.make();
-  {
-    emitter,
-    emit: x => emitter |> EventEmitter3.emit("data", x) |> ignore,
-    once: () => {
-      let (promise, resolve) = Promise.pending();
-      emitter |> EventEmitter3.once("data", resolve) |> ignore;
-      promise;
-    },
-    on: callback => {
-      emitter |> EventEmitter3.on("data", callback) |> ignore;
-      () =>
-        emitter |> EventEmitter3.removeListener("data", callback) |> ignore;
-    },
-    destroy: () => EventEmitter3.removeAllListeners(emitter) |> ignore,
-  };
-};
+include Module;

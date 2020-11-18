@@ -15,8 +15,8 @@ module Provider = {
 [@react.component]
 let make = (~loc, ~children) => {
   let link = React.useContext(eventContext);
-  let onMouseOver = _ => link.emit(MouseOver(loc));
-  let onMouseOut = _ => link.emit(MouseOut(loc));
-  let onClick = _ => link.emit(MouseClick(loc));
+  let onMouseOver = _ => link->Chan.emit(MouseOver(loc));
+  let onMouseOut = _ => link->Chan.emit(MouseOut(loc));
+  let onClick = _ => link->Chan.emit(MouseClick(loc));
   <div className="expr-link" onMouseOver onMouseOut onClick> children </div>;
 };

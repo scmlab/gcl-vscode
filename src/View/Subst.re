@@ -40,7 +40,7 @@ let make = (~expr: GCL.Syntax.Expr.t, ~makePrec, ~makePrecProps) => {
     let make = makePrec;
     let makeProps = makePrecProps;
   };
-  let emitter = React.useContext(eventContext);
+  let channel = React.useContext(eventContext);
   let (redux, setRedux) = React.useState(_ => Unreduced(expr));
   // for storing substition ID
   let id = React.useRef(None);
@@ -53,7 +53,7 @@ let make = (~expr: GCL.Syntax.Expr.t, ~makePrec, ~makePrecProps) => {
 
   // initiate substition request
   let onClick = _ => {
-    emitter.emit(Request(counter^, expr, subst));
+    channel->Chan.emit(Request(counter^, expr, subst));
     // store the substition ID
     id.current = Some(counter^);
     // bump the counter
@@ -88,7 +88,7 @@ let make = (~expr: GCL.Syntax.Expr.t, ~makePrec, ~makePrecProps) => {
   React.useEffect1(
     () =>
       Some(
-        emitter.on(
+        channel->Chan.on(
           fun
           | Request(_, _, _) => ()
           | Response(i, expr) =>

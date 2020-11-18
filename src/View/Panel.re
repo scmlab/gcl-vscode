@@ -15,7 +15,7 @@ let make =
   // response with Initialized on mount
   React.useEffect1(
     () => {
-      onResponse.emit(ViewType.Response.Initialized);
+      onResponse->Chan.emit(ViewType.Response.Initialized);
       None;
     },
     [||],
@@ -26,13 +26,13 @@ let make =
     () => {
       open ViewType.Request;
       let destructor =
-        onRequest.on(req => {
+        onRequest->Chan.on(req => {
           switch (req) {
           | ViewType.Request.Display(header, body) =>
             setHeader(_ => header);
             setBody(_ => body);
           | Substitute(i, expr) =>
-            onSubstitute.current.emit(Subst.Response(i, expr))
+            onSubstitute.current->Chan.emit(Subst.Response(i, expr))
           | Hide => setHidden(_ => true)
           | Show => setHidden(_ => false)
           }
@@ -44,7 +44,11 @@ let make =
 
   // relay <Link> events to "onResponse"
   React.useEffect1(
-    () => Some(onClickLink.current.on(ev => {onResponse.emit(Link(ev))})),
+    () =>
+      Some(
+        onClickLink.current
+        ->Chan.on(ev => {onResponse->Chan.emit(Link(ev))}),
+      ),
     [||],
   );
 
@@ -52,13 +56,14 @@ let make =
   React.useEffect1(
     () =>
       Some(
-        onSubstitute.current.on(
-          fun
-          | Subst.Request(i, expr, subst) => {
-              onResponse.emit(Substitute(i, expr, subst));
-            }
-          | Response(_, _) => (),
-        ),
+        onSubstitute.current
+        ->Chan.on(
+            fun
+            | Subst.Request(i, expr, subst) => {
+                onResponse->Chan.emit(Substitute(i, expr, subst));
+              }
+            | Response(_, _) => (),
+          ),
       ),
     [||],
   );
