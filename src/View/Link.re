@@ -1,6 +1,6 @@
 // open Base;
 
-let emitter: Event.t(ViewType.Response.linkEvent) = Event.make();
+let emitter: Chan.t(ViewType.Response.linkEvent) = Chan.make();
 let eventContext = React.createContext(emitter);
 
 module Provider = {

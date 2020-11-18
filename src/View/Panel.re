@@ -1,16 +1,16 @@
 [@react.component]
 let make =
     (
-      ~onRequest: Event.t(ViewType.Request.t),
-      ~onResponse: Event.t(ViewType.Response.t),
+      ~onRequest: Chan.t(ViewType.Request.t),
+      ~onResponse: Chan.t(ViewType.Response.t),
     ) => {
   // let (reqID, setReqID) = React.useState(() => None);
   let (header, setHeader) =
     React.useState(() => ViewType.Request.Header.Loading);
   let (body, setBody) = React.useState(() => ViewType.Request.Body.Nothing);
   let (hidden, setHidden) = React.useState(_ => false);
-  let onClickLink = React.useRef(Event.make());
-  let onSubstitute = React.useRef(Event.make());
+  let onClickLink = React.useRef(Chan.make());
+  let onSubstitute = React.useRef(Chan.make());
 
   // response with Initialized on mount
   React.useEffect1(

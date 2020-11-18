@@ -45,11 +45,10 @@ module View2: {
     // make new connections
     self.view
     ->Option.forEach(view => {
-        let (reqChan, resChan) = state.viewChannels;
         self.reqSubscription =
-          Some(reqChan.on(req => View.send(view, req)->ignore));
+          Some(state.viewReqChan.on(req => View.send(view, req)->ignore));
         self.resSubscription =
-          Some(view.onResponse.on(res => resChan.emit(res)));
+          Some(view.onResponse.on(res => state.viewResChan.emit(res)));
       });
   };
   // destructor

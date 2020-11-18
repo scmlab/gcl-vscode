@@ -5,14 +5,14 @@ open Belt;
 let vscode = VSCode.Api.acquireVsCodeApi();
 
 // relay VSCode.Api.onMessage => onRequest;
-let onRequest = Event.make();
+let onRequest = Chan.make();
 VSCode.Api.onMessage(stringifiedJSON => {
   let request = Js.Json.parseExn(stringifiedJSON)->ViewType.Request.decode;
   onRequest.emit(request);
 });
 
 // relay onResponse => VSCode.Api.postMessage
-let onResponse = Event.make();
+let onResponse = Chan.make();
 onResponse.on(response => {
   vscode->VSCode.Api.postMessage(ViewType.Response.encode(response))
 });

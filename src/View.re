@@ -6,7 +6,7 @@ type status =
 
 type t = {
   panel: VSCode.WebviewPanel.t,
-  onResponse: Event.t(ViewType.Response.t),
+  onResponse: Chan.t(ViewType.Response.t),
   disposables: array(VSCode.Disposable.t),
   mutable status,
 };
@@ -136,7 +136,7 @@ let make = extentionPath => {
   let disposables = [||];
 
   // on message
-  let onResponse = Event.make();
+  let onResponse = Chan.make();
   panel
   ->VSCode.WebviewPanel.webview
   ->VSCode.Webview.onDidReceiveMessage(json => {

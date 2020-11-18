@@ -12,7 +12,7 @@ type event =
   | Request(substID, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
   | Response(substID, GCL.Syntax.Expr.t);
 
-let emitter: Event.t(event) = Event.make();
+let emitter: Chan.t(event) = Chan.make();
 let eventContext = React.createContext(emitter);
 
 module Provider = {
