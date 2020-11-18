@@ -30,7 +30,7 @@ let recv = (view, callback) => {
   ->VSCode.Disposable.make;
 };
 
-let make = (extentionPath, editor) => {
+let make = extentionPath => {
   let html = (distPath, styleUri, scriptUri) => {
     let nonce = {
       let text = ref("");
@@ -84,18 +84,12 @@ let make = (extentionPath, editor) => {
         |j};
   };
 
-  let createPanel = editor => {
+  let createPanel = () => {
     let distPath = Node.Path.join2(extentionPath, "dist");
-    let fileName =
-      Node.Path.basename_ext(
-        editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName,
-        ".gcl",
-      );
-
     let panel =
       VSCode.Window.createWebviewPanel(
         "panel",
-        "GCL [" ++ fileName ++ "]",
+        "Guacamole",
         {preserveFocus: true, viewColumn: 3},
         // None,
         Some(
@@ -135,7 +129,7 @@ let make = (extentionPath, editor) => {
   };
 
   // intantiate the panel
-  let panel = createPanel(editor);
+  let panel = createPanel();
   moveToRight() |> ignore;
 
   // array of Disposable.t
@@ -191,6 +185,21 @@ let make = (extentionPath, editor) => {
 let destroy = view => {
   view.panel->VSCode.WebviewPanel.dispose;
   view.onResponse.destroy();
+};
+
+// resolves the returned promise once the view has been destroyed
+let onceDestroyed = (view: t): Promise.t(unit) => {
+  let (promise, resolve) = Promise.pending();
+
+  let disposable =
+    view.onResponse.on(response => {
+      switch (response) {
+      | ViewType.Response.Destroyed => resolve()
+      | _ => ()
+      }
+    });
+
+  promise->Promise.tap(disposable);
 };
 
 // show/hide
