@@ -37,3 +37,5 @@ let destroy = fileName => {
 };
 
 let contains = fileName => get(fileName)->Option.isSome;
+
+let size = () => Js.Dict.keys(dict)->Array.length;

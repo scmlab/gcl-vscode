@@ -1,29 +1,33 @@
 open Belt;
 
 type t = {
-  client: LSP.LanguageClient.t,
   editor: VSCode.TextEditor.t,
   document: VSCode.TextDocument.t,
   filePath: string,
-  mutable view: option(View.t),
+  client: LSP.LanguageClient.t,
+  // mutable view: option(View.t),
   mutable decorations: array(VSCode.TextEditorDecorationType.t),
+  mutable subscriptions: array(VSCode.Disposable.t),
 };
+
+let subscribe = (disposable, state) =>
+  disposable->Js.Array.push(state.subscriptions)->ignore;
 
 let handleResponse = (state: t, response) =>
   switch (response) {
   | Response.Error(error) => Js.log(error)
-  | OK(i, pos, _, props) =>
-    state.view
-    ->Option.forEach(view => {
-        View.send(
-          view,
-          ViewType.Request.Display(
-            Plain("Proof Obligations"),
-            ProofObligations(i, pos, props),
-          ),
-        )
-        ->ignore
-      })
+  | OK(i, pos, _, props) => ()
+  // state.view
+  // ->Option.forEach(view => {
+  //     View.send(
+  //       view,
+  //       ViewType.Request.Display(
+  //         Plain("Proof Obligations"),
+  //         ProofObligations(i, pos, props),
+  //       ),
+  //     )
+  //     ->ignore
+  //   })
   | Decorate(locs) =>
     // destroy old decorations
     state.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose);
@@ -126,21 +130,20 @@ let make = editor => {
     editor,
     document,
     filePath,
-    view: None,
+    // view: None,
     decorations: [||],
+    subscriptions: [||],
   };
 
   client
   ->LSP.LanguageClient.onReady
   ->Promise.Js.toResult
   ->Promise.getOk(() => {
-      client
-      ->LSP.LanguageClient.onNotification("guacamole", json => {
-          Js.log2(">>>", json);
-          let response = decodeResponse(json);
-          handleResponse(state, response);
-        })
-      ->ignore
+      client->LSP.LanguageClient.onNotification("guacamole", json => {
+        // Js.log2(">>>", json);
+        let response = decodeResponse(json);
+        handleResponse(state, response);
+      })
     });
 
   state;
@@ -148,7 +151,7 @@ let make = editor => {
 
 let sendRequest = (state, request) => {
   let value = Request.encode(request);
-  Js.log2("<<<", value);
+  // Js.log2("<<<", value);
 
   state.client
   ->LSP.LanguageClient.onReady
@@ -159,7 +162,7 @@ let sendRequest = (state, request) => {
       ->Promise.Js.toResult
     })
   ->Promise.flatMapOk(json => {
-      Js.log2(">>>", json);
+      // Js.log2(">>>", json);
 
       let response = decodeResponse(json);
       Promise.resolved(Ok(response));
@@ -169,4 +172,13 @@ let sendRequest = (state, request) => {
 
 let destroy = state => {
   state.client->LSP.LanguageClient.stop;
+  // state.view->Option.forEach(View.destroy);
+  state.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose);
+  state.decorations = [||];
+  state.subscriptions->Array.forEach(VSCode.Disposable.dispose);
+  state.subscriptions = [||];
 };
+
+// view related
+// let show = state => state.view->Option.forEach(View.show);
+// let hide = state => state.view->Option.forEach(View.hide);
