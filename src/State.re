@@ -5,7 +5,10 @@ type t = {
   document: VSCode.TextDocument.t,
   filePath: string,
   client: LSP.LanguageClient.t,
-  // mutable view: option(View.t),
+  mutable viewChannels: (
+    Event.t(ViewType.Request.t),
+    Event.t(ViewType.Response.t),
+  ),
   mutable decorations: array(VSCode.TextEditorDecorationType.t),
   mutable subscriptions: array(VSCode.Disposable.t),
 };
@@ -16,18 +19,13 @@ let subscribe = (disposable, state) =>
 let handleResponse = (state: t, response) =>
   switch (response) {
   | Response.Error(error) => Js.log(error)
-  | OK(i, pos, _, props) => ()
-  // state.view
-  // ->Option.forEach(view => {
-  //     View.send(
-  //       view,
-  //       ViewType.Request.Display(
-  //         Plain("Proof Obligations"),
-  //         ProofObligations(i, pos, props),
-  //       ),
-  //     )
-  //     ->ignore
-  //   })
+  | OK(i, pos, _, props) =>
+    fst(state.viewChannels).emit(
+      ViewType.Request.Display(
+        Plain("Proof Obligations"),
+        ProofObligations(i, pos, props),
+      ),
+    )
   | Decorate(locs) =>
     // destroy old decorations
     state.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose);
@@ -125,12 +123,13 @@ let make = editor => {
   client->LSP.LanguageClient.start;
   let document = VSCode.TextEditor.document(editor);
   let filePath = VSCode.TextDocument.fileName(document);
+  let viewChannels = (Event.make(), Event.make());
   let state = {
     client,
     editor,
     document,
     filePath,
-    // view: None,
+    viewChannels,
     decorations: [||],
     subscriptions: [||],
   };

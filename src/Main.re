@@ -2,9 +2,67 @@ open Belt;
 
 let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
-let viewHandle = ref(None);
+module View2: {
+  type t;
+  // constructor
+  let make: unit => t;
+  // methods
+  let activate: (t, string) => unit;
+  let isActivated: t => bool;
+  let wire: (t, State.t) => unit;
+  // destructor
+  let destroy: t => unit;
+} = {
+  type t = {
+    mutable view: option(View.t),
+    mutable reqSubscription: option(unit => unit),
+    mutable resSubscription: option(unit => unit),
+  };
 
-let updateViewOnOpen = (extensionPath, editor) => {
+  // constructor
+  let make = () => {view: None, reqSubscription: None, resSubscription: None};
+
+  let activate = (self, extensionPath) => {
+    let view = View.make(extensionPath);
+    self.view = Some(view);
+    // free the handle when the view has been forcibly destructed
+    View.onceDestroyed(view)->Promise.get(() => {self.view = None});
+  };
+
+  let isActivated = self => {
+    self.view->Option.isSome;
+  };
+
+  let unwire = self => {
+    self.reqSubscription->Option.forEach(disposable => disposable());
+    self.resSubscription->Option.forEach(disposable => disposable());
+  };
+
+  let wire = (self, state: State.t) => {
+    Js.log("Wire " ++ state.filePath);
+    // sever old connections
+    unwire(self);
+    // make new connections
+    self.view
+    ->Option.forEach(view => {
+        let (reqChan, resChan) = state.viewChannels;
+        self.reqSubscription =
+          Some(reqChan.on(req => View.send(view, req)->ignore));
+        self.resSubscription =
+          Some(view.onResponse.on(res => resChan.emit(res)));
+      });
+  };
+  // destructor
+  let destroy = self => {
+    self.view->Option.forEach(View.destroy);
+    self.view = None;
+    unwire(self);
+  };
+};
+
+let view = View2.make();
+
+let updateViewOnOpen = (extensionPath, state) => {
   // number of visible GCL file in the workplace
   let visibleCount =
     VSCode.Window.visibleTextEditors
@@ -15,31 +73,23 @@ let updateViewOnOpen = (extensionPath, editor) => {
       )
     ->Array.length;
   // should activate the view when there's a visible GCL file
-  let shouldAcitvateView = visibleCount > 0 && (viewHandle^)->Option.isNone;
-  Js.log((visibleCount, (viewHandle^)->Option.isNone));
+  let shouldAcitvateView = visibleCount > 0 && !View2.isActivated(view);
 
   if (shouldAcitvateView) {
-    let view = View.make(extensionPath);
-    View.onceDestroyed(view)
-    ->Promise.get(() => {
-        viewHandle := None;
-        Js.log("FORCED DESTROY");
-      });
-    viewHandle := Some(view);
-    Js.log("open");
+    view->View2.activate(extensionPath);
   };
+
+  state->Option.forEach(View2.wire(view));
 };
 
 let updateViewOnClose = () => {
   // number of GCL States in the Registry
   let openedCount = Registry.size();
   // should deacitvate the view when all GCL States have been destroyed
-  let shouldDeacitvateView = openedCount === 0 && (viewHandle^)->Option.isSome;
+  let shouldDeacitvateView = openedCount === 0 && View2.isActivated(view);
 
   if (shouldDeacitvateView) {
-    (viewHandle^)->Option.forEach(View.destroy);
-    viewHandle := None;
-    Js.log("close");
+    View2.destroy(view);
   };
 };
 
@@ -77,7 +127,6 @@ module Handler = {
       editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName;
     // filter out ".gcl.git" files
     if (isGCL(filePath)) {
-      Js.log("OPEN " ++ filePath);
       switch (Registry.get(filePath)) {
       | None =>
         // state initialization
@@ -89,7 +138,7 @@ module Handler = {
       // update the view
       updateViewOnOpen(
         context->VSCode.ExtensionContext.extensionPath,
-        editor,
+        Registry.get(filePath),
       );
     };
   };
