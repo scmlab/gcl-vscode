@@ -1,38 +1,9 @@
-// status of the view
-type status =
-  | Initialized
-  // Request.t are queued before the view is initialized
-  | Uninitialized(array(ViewType.Request.t));
+open Belt;
 
-type t = {
-  panel: VSCode.WebviewPanel.t,
-  onResponse: Chan.t(ViewType.Response.t),
-  disposables: array(VSCode.Disposable.t),
-  mutable status,
-};
+module Panel = {
+  type t = VSCode.WebviewPanel.t;
 
-// messaging
-let send = (view, req) =>
-  switch (view.status) {
-  | Uninitialized(queued) =>
-    Js.Array.push(req, queued)->ignore;
-    Promise.resolved(false);
-  | Initialized =>
-    let stringified = Js.Json.stringify(ViewType.Request.encode(req));
-    view.panel
-    ->VSCode.WebviewPanel.webview
-    ->VSCode.Webview.postMessage(stringified);
-  };
-
-let recv = (view, callback) => {
-  // Handle messages from the webview
-  view.onResponse
-  ->Chan.on(callback)
-  ->VSCode.Disposable.make;
-};
-
-let make = extentionPath => {
-  let html = (distPath, styleUri, scriptUri) => {
+  let makeHTML = (distPath, styleUri, scriptUri) => {
     let nonce = {
       let text = ref("");
       let charaterSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -85,7 +56,7 @@ let make = extentionPath => {
         |j};
   };
 
-  let createPanel = () => {
+  let make = extentionPath => {
     let distPath = Node.Path.join2(extentionPath, "dist");
     let panel =
       VSCode.Window.createWebviewPanel(
@@ -105,9 +76,8 @@ let make = extentionPath => {
         ),
       );
 
-    panel
-    ->VSCode.WebviewPanel.webview
-    ->VSCode.Webview.setHtml(html(distPath, "style.css", "bundled-view.js"));
+    let html = makeHTML(distPath, "style.css", "bundled-view.js");
+    panel->VSCode.WebviewPanel.webview->VSCode.Webview.setHtml(html);
 
     panel;
   };
@@ -126,87 +96,164 @@ let make = extentionPath => {
             ),
         }),
       )
+      ->ignore
     );
   };
+};
 
-  // intantiate the panel
-  let panel = createPanel();
-  moveToRight() |> ignore;
+module View = {
+  // Request.t are queued before the view is initialized
+  type status =
+    | Initialized
+    | Uninitialized(array(ViewType.Request.t));
 
-  // array of Disposable.t
-  let disposables = [||];
+  type t = {
+    panel: Panel.t,
+    onResponse: Chan.t(ViewType.Response.t),
+    subscriptions: array(VSCode.Disposable.t),
+    mutable status,
+  };
 
-  // on message
-  let onResponse = Chan.make();
-  panel
-  ->VSCode.WebviewPanel.webview
-  ->VSCode.Webview.onDidReceiveMessage(json => {
-      switch (ViewType.Response.decode(json)) {
-      | result => onResponse->Chan.emit(result)
-      | exception e =>
-        Js.log2(
-          "[ panic ][ Webview.onDidReceiveMessage JSON decode error ]",
-          e,
-        )
-      }
-    })
-  ->Js.Array.push(disposables)
-  ->ignore;
+  // messaging
+  let send = (view, req) =>
+    switch (view.status) {
+    | Uninitialized(queued) =>
+      Js.Array.push(req, queued)->ignore;
+      Promise.resolved(false);
+    | Initialized =>
+      let stringified = Js.Json.stringify(ViewType.Request.encode(req));
+      view.panel
+      ->VSCode.WebviewPanel.webview
+      ->VSCode.Webview.postMessage(stringified);
+    };
 
-  // on destroy
-  panel
-  ->VSCode.WebviewPanel.onDidDispose(() =>
-      onResponse->Chan.emit(ViewType.Response.Destroyed)
-    )
-  ->Js.Array.push(disposables)
-  ->ignore;
+  let make = extentionPath => {
+    let view = {
+      panel: Panel.make(extentionPath),
+      subscriptions: [||],
+      onResponse: Chan.make(),
+      status: Uninitialized([||]),
+    };
 
-  let view = {panel, disposables, onResponse, status: Uninitialized([||])};
+    Panel.moveToRight();
 
-  // on initizlied
-  view.onResponse
-  ->Chan.on(
-      fun
-      | Initialized => {
-          switch (view.status) {
-          | Uninitialized(queued) =>
-            view.status = Initialized;
-            queued->Belt.Array.forEach(req => send(view, req)->ignore);
-          | Initialized => ()
-          };
+    // on message
+    view.panel
+    ->VSCode.WebviewPanel.webview
+    ->VSCode.Webview.onDidReceiveMessage(json => {
+        switch (ViewType.Response.decode(json)) {
+        | result => view.onResponse->Chan.emit(result)
+        | exception e =>
+          Js.log2(
+            "[ panic ][ Webview.onDidReceiveMessage JSON decode error ]",
+            e,
+          )
         }
-      | _ => (),
-    )
-  ->VSCode.Disposable.make
-  ->Js.Array.push(disposables)
-  ->ignore;
+      })
+    ->Js.Array.push(view.subscriptions)
+    ->ignore;
 
-  view;
-};
-
-let destroy = view => {
-  view.panel->VSCode.WebviewPanel.dispose;
-  view.onResponse->Chan.destroy;
-};
-
-// resolves the returned promise once the view has been destroyed
-let onceDestroyed = (view: t): Promise.t(unit) => {
-  let (promise, resolve) = Promise.pending();
-
-  let disposable =
+    // on destroy
+    view.panel
+    ->VSCode.WebviewPanel.onDidDispose(() =>
+        view.onResponse->Chan.emit(ViewType.Response.Destroyed)
+      )
+    ->Js.Array.push(view.subscriptions)
+    ->ignore;
+    // on initizlied
     view.onResponse
-    ->Chan.on(response => {
-        switch (response) {
-        | ViewType.Response.Destroyed => resolve()
-        | _ => ()
-        }
-      });
+    ->Chan.on(
+        fun
+        | Initialized => {
+            switch (view.status) {
+            | Uninitialized(queued) =>
+              view.status = Initialized;
+              queued->Belt.Array.forEach(req => send(view, req)->ignore);
+            | Initialized => ()
+            };
+          }
+        | _ => (),
+      )
+    ->VSCode.Disposable.make
+    ->Js.Array.push(view.subscriptions)
+    ->ignore;
 
-  promise->Promise.tap(disposable);
+    view;
+  };
+
+  let destroy = view => {
+    view.panel->VSCode.WebviewPanel.dispose;
+    view.onResponse->Chan.destroy;
+  };
+
+  // resolves the returned promise once the view has been destroyed
+  let onceDestroyed = (view: t): Promise.t(unit) => {
+    let (promise, resolve) = Promise.pending();
+
+    let disposable =
+      view.onResponse
+      ->Chan.on(response => {
+          switch (response) {
+          | ViewType.Response.Destroyed => resolve()
+          | _ => ()
+          }
+        });
+
+    promise->Promise.tap(disposable);
+  };
 };
 
-// show/hide
-let show = view =>
-  view.panel->VSCode.WebviewPanel.reveal(~preserveFocus=true, ());
-let focus = view => view.panel->VSCode.WebviewPanel.reveal();
-let hide = _view => ();
+module Controller: {
+  type t;
+  // methods
+  let activate: string => unit;
+  let deactivate: unit => unit;
+  let isActivated: unit => bool;
+  let wire: State.t => unit;
+} = {
+  type t = {
+    mutable view: option(View.t),
+    mutable reqSubscription: option(unit => unit),
+    mutable resSubscription: option(unit => unit),
+  };
+  let handle = {view: None, reqSubscription: None, resSubscription: None};
+
+  let activate = extensionPath => {
+    let view = View.make(extensionPath);
+    handle.view = Some(view);
+    // free the handle when the view has been forcibly destructed
+    View.onceDestroyed(view)->Promise.get(() => {handle.view = None});
+  };
+
+  let unwire = () => {
+    handle.resSubscription->Option.forEach(disposable => disposable());
+  };
+
+  let deactivate = () => {
+    handle.view->Option.forEach(View.destroy);
+    handle.view = None;
+    unwire();
+  };
+
+  let isActivated = () => {
+    handle.view->Option.isSome;
+  };
+
+  let wire = (state: State.t) => {
+    // sever old connections
+    unwire();
+    // make new connections
+    handle.view
+    ->Option.forEach(view => {
+        handle.reqSubscription =
+          Some(state.viewReq->Req.handle(req => View.send(view, req)));
+        handle.resSubscription =
+          Some(
+            view.onResponse
+            ->Chan.on(res => state.viewResChan->Chan.emit(res)),
+          );
+      });
+  };
+};
+
+include Controller;

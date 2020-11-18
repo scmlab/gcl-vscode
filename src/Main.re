@@ -2,60 +2,6 @@ open Belt;
 
 let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
-module View2: {
-  type t;
-  // methods
-  let activate: string => unit;
-  let deactivate: unit => unit;
-  let isActivated: unit => bool;
-  let wire: State.t => unit;
-} = {
-  type t = {
-    mutable view: option(View.t),
-    mutable reqSubscription: option(unit => unit),
-    mutable resSubscription: option(unit => unit),
-  };
-  let handle = {view: None, reqSubscription: None, resSubscription: None};
-
-  let activate = extensionPath => {
-    let view = View.make(extensionPath);
-    handle.view = Some(view);
-    // free the handle when the view has been forcibly destructed
-    View.onceDestroyed(view)->Promise.get(() => {handle.view = None});
-  };
-
-  let unwire = () => {
-    handle.resSubscription->Option.forEach(disposable => disposable());
-  };
-
-  let deactivate = () => {
-    handle.view->Option.forEach(View.destroy);
-    handle.view = None;
-    unwire();
-  };
-
-  let isActivated = () => {
-    handle.view->Option.isSome;
-  };
-
-  let wire = (state: State.t) => {
-    Js.log("Wire " ++ state.filePath);
-    // sever old connections
-    unwire();
-    // make new connections
-    handle.view
-    ->Option.forEach(view => {
-        handle.reqSubscription =
-          Some(state.viewReq->Req.handle(req => View.send(view, req)));
-        handle.resSubscription =
-          Some(
-            view.onResponse
-            ->Chan.on(res => state.viewResChan->Chan.emit(res)),
-          );
-      });
-  };
-};
-
 let updateViewOnOpen = (extensionPath, state) => {
   // number of visible GCL file in the workplace
   let visibleCount =
@@ -67,23 +13,23 @@ let updateViewOnOpen = (extensionPath, state) => {
       )
     ->Array.length;
   // should activate the view when there's a visible GCL file
-  let shouldAcitvateView = visibleCount > 0 && !View2.isActivated();
+  let shouldAcitvateView = visibleCount > 0 && !View.isActivated();
 
   if (shouldAcitvateView) {
-    View2.activate(extensionPath);
+    View.activate(extensionPath);
   };
 
-  state->Option.forEach(View2.wire);
+  state->Option.forEach(View.wire);
 };
 
 let updateViewOnClose = () => {
   // number of GCL States in the Registry
   let openedCount = Registry.size();
   // should deacitvate the view when all GCL States have been destroyed
-  let shouldDeacitvateView = openedCount === 0 && View2.isActivated();
+  let shouldDeacitvateView = openedCount === 0 && View.isActivated();
 
   if (shouldDeacitvateView) {
-    View2.deactivate();
+    View.deactivate();
   };
 };
 
