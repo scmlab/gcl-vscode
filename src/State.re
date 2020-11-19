@@ -13,9 +13,9 @@ type t = {
 let subscribe = (disposable, state) =>
   disposable->Js.Array.push(state.subscriptions)->ignore;
 
-let handleResponse = (state: t, response) =>
-  switch (response) {
-  | Response.Error(error) => Js.log(error)
+let handleResponseKind = (state: t, kind) =>
+  switch (kind) {
+  | Response.Kind.Error(error) => Js.Console.error(error)
   | OK(i, pos, _, props) =>
     state.viewReq
     ->Req.send(
@@ -68,6 +68,11 @@ let handleResponse = (state: t, response) =>
     decoration->Js.Array.push(state.decorations)->ignore;
     state.editor->VSCode.TextEditor.setDecorations(decoration, ranges);
   | _ => ()
+  };
+
+let handleResponse = (state, response) =>
+  switch (response) {
+  | Response.Res(_filePath, kind) => handleResponseKind(state, kind)
   };
 
 let make = editor => {

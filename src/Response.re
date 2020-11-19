@@ -301,45 +301,55 @@ module Error = {
   };
 };
 
+module Kind = {
+  type t =
+    | Decorate(array(GCL.Loc.t))
+    | Error(array(Error.t))
+    | OK(
+        int,
+        array(ProofObligation.t),
+        array(Specification.t),
+        array(GlobalProp.t),
+      )
+    | Resolve(int)
+    | Substitute(int, Syntax.Expr.t)
+    | UnknownResponse(Js.Json.t);
+
+  open Json.Decode;
+  open Util.Decode;
+  let decode: decoder(t) =
+    sum(
+      fun
+      | "ResDecorate" =>
+        Contents(array(GCL.Loc.decode) |> map(locs => Decorate(locs)))
+      | "ResError" =>
+        Contents(array(Error.decode) |> map(errors => Error(errors)))
+      | "ResOK" =>
+        Contents(
+          tuple4(
+            int,
+            array(ProofObligation.decode),
+            array(Specification.decode),
+            array(GlobalProp.decode),
+          )
+          |> map(((id, obs, specs, globalProps)) =>
+               OK(id, obs, specs, globalProps)
+             ),
+        )
+      | "ResSubstitute" =>
+        Contents(
+          pair(int, Syntax.Expr.decode)
+          |> map(((i, expr)) => Substitute(i, expr)),
+        )
+      | "ResResolve" => Contents(int |> map(i => Resolve(i)))
+      | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
+    );
+};
+
 type t =
-  | Decorate(array(GCL.Loc.t))
-  | Error(array(Error.t))
-  | OK(
-      int,
-      array(ProofObligation.t),
-      array(Specification.t),
-      array(GlobalProp.t),
-    )
-  | Resolve(int)
-  | Substitute(int, Syntax.Expr.t)
-  | UnknownResponse(Js.Json.t);
+  | Res(string, Kind.t);
 
 open Json.Decode;
-open Util.Decode;
 let decode: decoder(t) =
-  sum(
-    fun
-    | "ResDecorate" =>
-      Contents(array(GCL.Loc.decode) |> map(locs => Decorate(locs)))
-    | "ResError" =>
-      Contents(array(Error.decode) |> map(errors => Error(errors)))
-    | "ResOK" =>
-      Contents(
-        tuple4(
-          int,
-          array(ProofObligation.decode),
-          array(Specification.decode),
-          array(GlobalProp.decode),
-        )
-        |> map(((id, obs, specs, globalProps)) =>
-             OK(id, obs, specs, globalProps)
-           ),
-      )
-    | "ResSubstitute" =>
-      Contents(
-        pair(int, Syntax.Expr.decode)
-        |> map(((i, expr)) => Substitute(i, expr)),
-      )
-    | "ResResolve" => Contents(int |> map(i => Resolve(i)))
-    | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
-  );
+  pair(string, Kind.decode)
+  |> map(((filePath, kind)) => Res(filePath, kind));

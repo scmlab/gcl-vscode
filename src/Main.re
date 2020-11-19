@@ -6,8 +6,8 @@ module Client: {
   type t;
   let start: unit => unit;
   let stop: unit => unit;
-  let onNotification: (Response.t => unit) => unit;
-  let sendRequest: Request.t => Promise.t(Response.t);
+  let onNotification: (string, Response.t => unit) => unit;
+  let sendRequest: (string, Request.t) => Promise.t(Response.t);
 } = {
   type t = LSP.LanguageClient.t;
   let make = () => {
@@ -54,59 +54,54 @@ module Client: {
   // stop the LSP client
   let stop = () => (client^)->LSP.LanguageClient.stop;
 
-  let decodeResponse = (json: Js.Json.t): Response.t => {
+  let decodeResponse = (filePath, json: Js.Json.t): Response.t => {
     // catching exceptions occured when decoding JSON values
     switch (Response.decode(json)) {
     | response => response
     | exception (Json.Decode.DecodeError(msg)) =>
-      Error([|Error(Others, CannotDecodeResponse(msg, json))|])
+      Res(
+        filePath,
+        Error([|Error(Others, CannotDecodeResponse(msg, json))|]),
+      )
     };
   };
 
-  let onNotification = handler => {
+  let onNotification = (filePath, handler) => {
     (client^)
     ->LSP.LanguageClient.onReady
     ->Promise.Js.toResult
     ->Promise.getOk(() => {
         (client^)
         ->LSP.LanguageClient.onNotification("guacamole", json => {
-            // Js.log2(">>>", json);
-            let response = decodeResponse(json);
-            handler(response);
-            // handleResponse(state, response);
+            handler(decodeResponse(filePath, json))
           })
       });
   };
 
-  let sendRequest = request => {
-    let value = Request.encode(request);
-    Js.log2("<<<", value);
-
+  let sendRequest = (filePath, request) => {
     (client^)
     ->LSP.LanguageClient.onReady
     ->Promise.Js.toResult
     ->Promise.flatMapOk(() => {
+        let value = Request.encode(request);
         (client^)
         ->LSP.LanguageClient.sendRequest("guacamole", value)
-        ->Promise.Js.toResult
+        ->Promise.Js.toResult;
       })
     ->Promise.map(
         fun
-        | Ok(json) => {
-            Js.log2(">>>", json);
-            decodeResponse(json);
-          }
-        | Error(error) => {
-            Js.log2(">>> error", error);
-            Error([|
+        | Ok(json) => decodeResponse(filePath, json)
+        | Error(error) =>
+          Response.Res(
+            filePath,
+            Response.Kind.Error([|
               Error(
                 Others,
                 CannotSendRequest(Response.Error.fromJsError(error)),
               ),
-            |]);
-          },
+            |]),
+          ),
       );
-    // ->Promise.mapError(error => {Error.LSP(Error.fromJsError(error))});
   };
 };
 
@@ -134,7 +129,10 @@ module Handler = {
               );
             ();
 
-            Client.sendRequest(Request.Inspect(state.filePath, start, end_))
+            Client.sendRequest(
+              state.filePath,
+              Req(state.filePath, Inspect(start, end_)),
+            )
             ->Promise.get(State.handleResponse(state));
           })
       });
