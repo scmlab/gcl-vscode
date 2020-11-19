@@ -6,7 +6,7 @@ let handleResponse = response =>
   switch (response) {
   | Response.Res(filePath, kind) =>
     Registry.get(filePath)
-    ->Option.forEach(state => State.handleResponseKind(state, kind))
+    ->Option.forEach(state => {State.handleResponseKind(state, kind)})
   | CannotDecodeRequest(message) => Js.Console.error(message)
   | CannotDecodeResponse(message, json) => Js.Console.error2(message, json)
   };
@@ -184,7 +184,14 @@ module Handler = {
         let state = State.make(editor);
         View.wire(state);
         Registry.add(filePath, state);
-      | Some(state) => View.wire(state)
+      | Some(state) =>
+        // after switching tabs, the old editor would be "_disposed"
+        // we need to replace it with this new one
+        state.editor = editor;
+        state.document = editor->VSCode.TextEditor.document;
+        state.filePath = state.document->VSCode.TextDocument.fileName;
+
+        View.wire(state);
       };
 
       onActivateExtension(() => {

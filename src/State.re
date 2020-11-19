@@ -1,9 +1,9 @@
 open Belt;
 
 type t = {
-  editor: VSCode.TextEditor.t,
-  document: VSCode.TextDocument.t,
-  filePath: string,
+  mutable editor: VSCode.TextEditor.t,
+  mutable document: VSCode.TextDocument.t,
+  mutable filePath: string,
   viewReq: Req.t(ViewType.Request.t, bool),
   viewResChan: Chan.t(ViewType.Response.t),
   mutable decorations: array(VSCode.TextEditorDecorationType.t),
