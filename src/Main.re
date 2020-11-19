@@ -2,11 +2,20 @@ open Belt;
 
 let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
+let handleResponse = response =>
+  switch (response) {
+  | Response.Res(filePath, kind) =>
+    Registry.get(filePath)
+    ->Option.forEach(state => State.handleResponseKind(state, kind))
+  | CannotDecodeRequest(message) => Js.Console.error(message)
+  | CannotDecodeResponse(message, json) => Js.Console.error2(message, json)
+  };
+
 module Client: {
   type t;
   let start: unit => unit;
   let stop: unit => unit;
-  let onNotification: (string, Response.t => unit) => unit;
+  let onNotification: (Response.t => unit) => unit;
   let sendRequest: (string, Request.t) => Promise.t(Response.t);
 } = {
   type t = LSP.LanguageClient.t;
@@ -54,26 +63,23 @@ module Client: {
   // stop the LSP client
   let stop = () => (client^)->LSP.LanguageClient.stop;
 
-  let decodeResponse = (filePath, json: Js.Json.t): Response.t => {
+  let decodeResponse = (json: Js.Json.t): Response.t => {
     // catching exceptions occured when decoding JSON values
     switch (Response.decode(json)) {
     | response => response
     | exception (Json.Decode.DecodeError(msg)) =>
-      Res(
-        filePath,
-        Error([|Error(Others, CannotDecodeResponse(msg, json))|]),
-      )
+      CannotDecodeResponse(msg, json)
     };
   };
 
-  let onNotification = (filePath, handler) => {
+  let onNotification = handler => {
     (client^)
     ->LSP.LanguageClient.onReady
     ->Promise.Js.toResult
     ->Promise.getOk(() => {
         (client^)
         ->LSP.LanguageClient.onNotification("guacamole", json => {
-            handler(decodeResponse(filePath, json))
+            handler(decodeResponse(json))
           })
       });
   };
@@ -90,7 +96,7 @@ module Client: {
       })
     ->Promise.map(
         fun
-        | Ok(json) => decodeResponse(filePath, json)
+        | Ok(json) => decodeResponse(json)
         | Error(error) =>
           Response.Res(
             filePath,
@@ -133,7 +139,7 @@ module Handler = {
               state.filePath,
               Req(state.filePath, Inspect(start, end_)),
             )
-            ->Promise.get(State.handleResponse(state));
+            ->Promise.get(handleResponse);
           })
       });
   };
@@ -199,6 +205,8 @@ module Handler = {
       });
     };
   };
+
+  let onNotification = handleResponse;
 };
 
 let activate = (context: VSCode.ExtensionContext.t) => {
@@ -219,6 +227,8 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // on change selection
   VSCode.Window.onDidChangeTextEditorSelection(Handler.onSelect)->subscribe;
+  // on notification from the server
+  Client.onNotification(Handler.onNotification);
 };
 
 let deactivate = () => {

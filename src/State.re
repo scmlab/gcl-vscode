@@ -70,12 +70,6 @@ let handleResponseKind = (state: t, kind) =>
   | _ => ()
   };
 
-let handleResponse = (state, response) =>
-  switch (response) {
-  | Response.Res(_filePath, kind) => handleResponseKind(state, kind)
-  | Response.CannotDecodeRequest(message) => Js.Console.error(message)
-  };
-
 let make = editor => {
   let document = VSCode.TextEditor.document(editor);
   let filePath = VSCode.TextDocument.fileName(document);

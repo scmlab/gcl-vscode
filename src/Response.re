@@ -261,10 +261,10 @@ module Error = {
     | StructError(StructError.t)
     | TypeError(TypeError.t)
     // from server
-    | CannotDecodeRequest(string) // the server failed to decode request from the client
+    // | CannotDecodeRequest(string) // the server failed to decode request from the client
     | CannotReadFile(string)
     // from client
-    | CannotDecodeResponse(string, Js.Json.t) // the client failed to decode response from the server
+    // | CannotDecodeResponse(string, Js.Json.t) // the client failed to decode response from the server
     | CannotSendRequest(string)
     | NotLoaded;
 
@@ -282,8 +282,8 @@ module Error = {
       | "StructError" =>
         Contents(json => StructError(json |> StructError.decode))
       | "TypeError" => Contents(json => TypeError(json |> TypeError.decode))
-      | "CannotDecodeRequest" =>
-        Contents(json => CannotDecodeRequest(json |> string))
+      // | "CannotDecodeRequest" =>
+      //   Contents(json => CannotDecodeRequest(json |> string))
       | "CannotReadFile" => Contents(json => CannotReadFile(json |> string))
       | "NotLoaded" => TagOnly(_ => NotLoaded)
       | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
@@ -348,6 +348,7 @@ module Kind = {
 
 type t =
   | Res(string, Kind.t)
+  | CannotDecodeResponse(string, Js.Json.t)
   | CannotDecodeRequest(string);
 
 open Json.Decode;
