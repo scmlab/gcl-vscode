@@ -265,6 +265,7 @@ module Error = {
     | CannotReadFile(string)
     // from client
     | CannotDecodeResponse(string, Js.Json.t) // the client failed to decode response from the server
+    | CannotSendRequest(string)
     | NotLoaded;
 
   open Json.Decode;
@@ -294,6 +295,10 @@ module Error = {
   let decode: decoder(t) =
     pair(Site.decode, decodeKind)
     |> map(((site, kind)) => Error(site, kind));
+
+  let fromJsError = (error: 'a): string => {
+    [%raw "function (e) {return e.toString()}"](error);
+  };
 };
 
 type t =

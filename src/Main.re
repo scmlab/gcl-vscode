@@ -2,34 +2,111 @@ open Belt;
 
 let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
-let updateViewOnOpen = (extensionPath, state) => {
-  // number of visible GCL file in the workplace
-  let visibleCount =
-    VSCode.Window.visibleTextEditors
-    ->Array.keep(editor =>
-        isGCL(
-          editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName,
-        )
-      )
-    ->Array.length;
-  // should activate the view when there's a visible GCL file
-  let shouldAcitvateView = visibleCount > 0 && !View.isActivated();
+module Client: {
+  type t;
+  let start: unit => unit;
+  let stop: unit => unit;
+  let onNotification: (Response.t => unit) => unit;
+  let sendRequest: Request.t => Promise.t(Response.t);
+} = {
+  type t = LSP.LanguageClient.t;
+  let make = () => {
+    open LSP;
+    open VSCode;
+    let serverOptions = ServerOptions.makeCommand("gcl");
 
-  if (shouldAcitvateView) {
-    View.activate(extensionPath);
+    let clientOptions = {
+      // let makePattern = [%raw "function(filename) { return fileName }"];
+      // Register the server for plain text documents
+      let documentSelector: DocumentSelector.t = [|
+        StringOr.others(
+          DocumentFilter.{
+            scheme: Some("file"),
+            pattern: None,
+            // Some(makePattern(fileName)),
+            language: Some("guacamole"),
+          },
+        ),
+      |];
+
+      // Notify the server about file changes to '.clientrc files contained in the workspace
+      let synchronize: FileSystemWatcher.t =
+        Workspace.createFileSystemWatcher(
+          [%raw "'**/.clientrc'"],
+          ~ignoreCreateEvents=false,
+          ~ignoreChangeEvents=false,
+          ~ignoreDeleteEvents=false,
+        );
+      LanguageClientOptions.make(documentSelector, synchronize);
+    };
+    // Create the language client
+    LanguageClient.make(
+      "guacamoleLanguageServer",
+      "Guacamole Language Server",
+      serverOptions,
+      clientOptions,
+    );
+  };
+  let client = ref(make());
+
+  // start the LSP client
+  let start = () => (client^)->LSP.LanguageClient.start;
+  // stop the LSP client
+  let stop = () => (client^)->LSP.LanguageClient.stop;
+
+  let decodeResponse = (json: Js.Json.t): Response.t => {
+    // catching exceptions occured when decoding JSON values
+    switch (Response.decode(json)) {
+    | response => response
+    | exception (Json.Decode.DecodeError(msg)) =>
+      Error([|Error(Others, CannotDecodeResponse(msg, json))|])
+    };
   };
 
-  state->Option.forEach(View.wire);
-};
+  let onNotification = handler => {
+    (client^)
+    ->LSP.LanguageClient.onReady
+    ->Promise.Js.toResult
+    ->Promise.getOk(() => {
+        (client^)
+        ->LSP.LanguageClient.onNotification("guacamole", json => {
+            // Js.log2(">>>", json);
+            let response = decodeResponse(json);
+            handler(response);
+            // handleResponse(state, response);
+          })
+      });
+  };
 
-let updateViewOnClose = () => {
-  // number of GCL States in the Registry
-  let openedCount = Registry.size();
-  // should deacitvate the view when all GCL States have been destroyed
-  let shouldDeacitvateView = openedCount === 0 && View.isActivated();
+  let sendRequest = request => {
+    let value = Request.encode(request);
+    Js.log2("<<<", value);
 
-  if (shouldDeacitvateView) {
-    View.deactivate();
+    (client^)
+    ->LSP.LanguageClient.onReady
+    ->Promise.Js.toResult
+    ->Promise.flatMapOk(() => {
+        (client^)
+        ->LSP.LanguageClient.sendRequest("guacamole", value)
+        ->Promise.Js.toResult
+      })
+    ->Promise.map(
+        fun
+        | Ok(json) => {
+            Js.log2(">>>", json);
+            decodeResponse(json);
+          }
+        | Error(error) => {
+            Js.log2(">>> error", error);
+            Error([|
+              Error(
+                Others,
+                CannotSendRequest(Response.Error.fromJsError(error)),
+              ),
+            |]);
+          },
+      );
+    // ->Promise.mapError(error => {Error.LSP(Error.fromJsError(error))});
   };
 };
 
@@ -55,14 +132,44 @@ module Handler = {
                 state.document,
                 VSCode.Selection.end_(selection),
               );
-            state
-            ->State.sendRequest(Request.Inspect(state.filePath, start, end_))
-            ->Promise.getOk(State.handleResponse(state));
+            ();
+
+            Client.sendRequest(Request.Inspect(state.filePath, start, end_))
+            ->Promise.get(State.handleResponse(state));
           })
       });
   };
 
-  let onOpen = (context, editor) => {
+  let onActivateExtension = callback => {
+    // number of visible GCL file in the workplace
+    let visibleCount =
+      VSCode.Window.visibleTextEditors
+      ->Array.keep(editor =>
+          isGCL(
+            editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName,
+          )
+        )
+      ->Array.length;
+    // should activate the view when there's a visible GCL file
+    let shouldAcitvateView = visibleCount > 0 && !View.isActivated();
+
+    if (shouldAcitvateView) {
+      callback();
+    };
+  };
+
+  let onDeactivateExtension = callback => {
+    // number of GCL States in the Registry
+    let openedCount = Registry.size();
+    // should deacitvate the view when all GCL States have been destroyed
+    let shouldDeacitvateView = openedCount === 0 && View.isActivated();
+
+    if (shouldDeacitvateView) {
+      callback();
+    };
+  };
+
+  let onOpenEditor = (context, editor) => {
     let filePath =
       editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName;
     // filter out ".gcl.git" files
@@ -71,25 +178,27 @@ module Handler = {
       | None =>
         // state initialization
         let state = State.make(editor);
+        View.wire(state);
         Registry.add(filePath, state);
-      | Some(_) => ()
+      | Some(state) => View.wire(state)
       };
 
-      // update the view
-      updateViewOnOpen(
-        context->VSCode.ExtensionContext.extensionPath,
-        Registry.get(filePath),
-      );
+      onActivateExtension(() => {
+        View.activate(context->VSCode.ExtensionContext.extensionPath);
+        Registry.get(filePath)->Option.forEach(View.wire);
+        Client.start();
+      });
     };
   };
 
-  let onClose = doc => {
+  let onCloseEditor = doc => {
     let filePath = VSCode.TextDocument.fileName(doc);
     if (isGCL(filePath)) {
-      Js.log("CLOSE " ++ filePath);
       Registry.destroy(filePath);
-      // update the view
-      updateViewOnClose();
+      onDeactivateExtension(() => {
+        View.deactivate();
+        Client.stop();
+      });
     };
   };
 };
@@ -99,41 +208,19 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore;
 
   // on open
-  VSCode.Window.activeTextEditor->Option.forEach(Handler.onOpen(context));
+  VSCode.Window.activeTextEditor->Option.forEach(
+    Handler.onOpenEditor(context),
+  );
   VSCode.Window.onDidChangeActiveTextEditor(next =>
-    next->Option.forEach(Handler.onOpen(context))
+    next->Option.forEach(Handler.onOpenEditor(context))
   )
   ->subscribe;
 
   // on close
-  VSCode.Workspace.onDidCloseTextDocument(. Handler.onClose)->subscribe;
+  VSCode.Workspace.onDidCloseTextDocument(. Handler.onCloseEditor)->subscribe;
 
   // on change selection
   VSCode.Window.onDidChangeTextEditorSelection(Handler.onSelect)->subscribe;
-
-  ();
-  // registerCommand("toggle", editor => {
-  //   // state initialization
-  //   let state = State.make(editor);
-  //   // view initialization
-  //   let extensionPath = context->VSCode.ExtensionContext.extensionPath;
-  //   state.view = Some(View.make(extensionPath, editor));
-  //   state.view
-  //   ->Option.forEach(view => {
-  //       View.send(
-  //         view,
-  //         ViewType.Request.Display(
-  //           Plain("Proof Obligations"),
-  //           ProofObligations(0, [||], [||]),
-  //         ),
-  //       )
-  //       ->ignore
-  //     });
-  //   let filePath =
-  //     editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName;
-  //   Registry.add(filePath, state);
-  // })
-  // ->subscribe;
 };
 
 let deactivate = () => {

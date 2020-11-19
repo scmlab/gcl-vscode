@@ -4,7 +4,6 @@ type t = {
   editor: VSCode.TextEditor.t,
   document: VSCode.TextDocument.t,
   filePath: string,
-  client: LSP.LanguageClient.t,
   viewReq: Req.t(ViewType.Request.t, bool),
   viewResChan: Chan.t(ViewType.Response.t),
   mutable decorations: array(VSCode.TextEditorDecorationType.t),
@@ -71,60 +70,10 @@ let handleResponse = (state: t, response) =>
   | _ => ()
   };
 
-let decodeResponse = (json: Js.Json.t): Response.t => {
-  // catching exceptions occured when decoding JSON values
-  switch (Response.decode(json)) {
-  | response => response
-  | exception (Json.Decode.DecodeError(msg)) =>
-    Error([|Error(Others, CannotDecodeResponse(msg, json))|])
-  };
-};
-
 let make = editor => {
-  let setupLSPClient = () => {
-    open LSP;
-    open VSCode;
-    let serverOptions = ServerOptions.makeCommand("gcl");
-
-    let clientOptions = {
-      // let makePattern = [%raw "function(filename) { return fileName }"];
-      // Register the server for plain text documents
-      let documentSelector: DocumentSelector.t = [|
-        StringOr.others(
-          DocumentFilter.{
-            scheme: Some("file"),
-            pattern: None,
-            // Some(makePattern(fileName)),
-            language: Some("guacamole"),
-          },
-        ),
-      |];
-
-      // Notify the server about file changes to '.clientrc files contained in the workspace
-      let synchronize: FileSystemWatcher.t =
-        Workspace.createFileSystemWatcher(
-          [%raw "'**/.clientrc'"],
-          ~ignoreCreateEvents=false,
-          ~ignoreChangeEvents=false,
-          ~ignoreDeleteEvents=false,
-        );
-      LanguageClientOptions.make(documentSelector, synchronize);
-    };
-    // Create the language client
-    LanguageClient.make(
-      "guacamoleLanguageServer",
-      "Guacamole Language Server",
-      serverOptions,
-      clientOptions,
-    );
-  };
-  let client = setupLSPClient();
-  // start the LSP client
-  client->LSP.LanguageClient.start;
   let document = VSCode.TextEditor.document(editor);
   let filePath = VSCode.TextDocument.fileName(document);
   let state = {
-    client,
     editor,
     document,
     filePath,
@@ -134,43 +83,32 @@ let make = editor => {
     subscriptions: [||],
   };
 
-  client
-  ->LSP.LanguageClient.onReady
-  ->Promise.Js.toResult
-  ->Promise.getOk(() => {
-      client->LSP.LanguageClient.onNotification("guacamole", json => {
-        // Js.log2(">>>", json);
-        let response = decodeResponse(json);
-        handleResponse(state, response);
-      })
-    });
-
   state;
 };
 
-let sendRequest = (state, request) => {
-  let value = Request.encode(request);
-  // Js.log2("<<<", value);
+// let sendRequest = (state, request) => {
+//   let value = Request.encode(request);
+//   // Js.log2("<<<", value);
 
-  state.client
-  ->LSP.LanguageClient.onReady
-  ->Promise.Js.toResult
-  ->Promise.flatMapOk(() => {
-      state.client
-      ->LSP.LanguageClient.sendRequest("guacamole", value)
-      ->Promise.Js.toResult
-    })
-  ->Promise.flatMapOk(json => {
-      // Js.log2(">>>", json);
+//   state.client
+//   ->LSP.LanguageClient.onReady
+//   ->Promise.Js.toResult
+//   ->Promise.flatMapOk(() => {
+//       state.client
+//       ->LSP.LanguageClient.sendRequest("guacamole", value)
+//       ->Promise.Js.toResult
+//     })
+//   ->Promise.flatMapOk(json => {
+//       // Js.log2(">>>", json);
 
-      let response = decodeResponse(json);
-      Promise.resolved(Ok(response));
-    });
-  // ->Promise.mapError(error => {Error.LSP(Error.fromJsError(error))});
-};
+//       let response = decodeResponse(json);
+//       Promise.resolved(Ok(response));
+//     });
+//   // ->Promise.mapError(error => {Error.LSP(Error.fromJsError(error))});
+// };
 
 let destroy = state => {
-  state.client->LSP.LanguageClient.stop;
+  // state.client->LSP.LanguageClient.stop;
   // state.view->Option.forEach(View.destroy);
   state.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose);
   state.decorations = [||];
