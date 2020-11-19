@@ -73,6 +73,7 @@ let handleResponseKind = (state: t, kind) =>
 let handleResponse = (state, response) =>
   switch (response) {
   | Response.Res(_filePath, kind) => handleResponseKind(state, kind)
+  | Response.CannotDecodeRequest(message) => Js.Console.error(message)
   };
 
 let make = editor => {

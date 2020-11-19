@@ -347,9 +347,20 @@ module Kind = {
 };
 
 type t =
-  | Res(string, Kind.t);
+  | Res(string, Kind.t)
+  | CannotDecodeRequest(string);
 
 open Json.Decode;
+open Util.Decode;
 let decode: decoder(t) =
-  pair(string, Kind.decode)
-  |> map(((filePath, kind)) => Res(filePath, kind));
+  sum(
+    fun
+    | "Res" =>
+      Contents(
+        pair(string, Kind.decode)
+        |> map(((filePath, kind)) => Res(filePath, kind)),
+      )
+    | "CannotDecodeRequest" =>
+      Contents(string |> map(msg => CannotDecodeRequest(msg)))
+    | tag => raise(DecodeError("Unknown constructor: " ++ tag)),
+  );
