@@ -349,7 +349,8 @@ module Kind = {
 type t =
   | Res(string, Kind.t)
   | CannotDecodeResponse(string, Js.Json.t)
-  | CannotDecodeRequest(string);
+  | CannotDecodeRequest(string)
+  | CannotSendRequest(string);
 
 open Json.Decode;
 open Util.Decode;

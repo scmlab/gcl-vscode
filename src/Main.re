@@ -7,8 +7,12 @@ let handleResponse = response =>
   | Response.Res(filePath, kind) =>
     Registry.get(filePath)
     ->Option.forEach(state => {State.handleResponseKind(state, kind)})
-  | CannotDecodeRequest(message) => Js.Console.error(message)
-  | CannotDecodeResponse(message, json) => Js.Console.error2(message, json)
+  | CannotSendRequest(message) =>
+    Js.Console.error2("CannotSendRequest", message)
+  | CannotDecodeRequest(message) =>
+    Js.Console.error2("CannotDecodeRequest", message)
+  | CannotDecodeResponse(message, json) =>
+    Js.Console.error3("CannotDecodeResponse", message, json)
   };
 
 module Client: {
@@ -16,7 +20,7 @@ module Client: {
   let start: unit => unit;
   let stop: unit => unit;
   let onNotification: (Response.t => unit) => unit;
-  let sendRequest: (string, Request.t) => Promise.t(Response.t);
+  let sendRequest: Request.t => Promise.t(Response.t);
 } = {
   type t = LSP.LanguageClient.t;
   let make = () => {
@@ -84,7 +88,7 @@ module Client: {
       });
   };
 
-  let sendRequest = (filePath, request) => {
+  let sendRequest = request => {
     (client^)
     ->LSP.LanguageClient.onReady
     ->Promise.Js.toResult
@@ -98,15 +102,7 @@ module Client: {
         fun
         | Ok(json) => decodeResponse(json)
         | Error(error) =>
-          Response.Res(
-            filePath,
-            Response.Kind.Error([|
-              Error(
-                Others,
-                CannotSendRequest(Response.Error.fromJsError(error)),
-              ),
-            |]),
-          ),
+          Response.CannotSendRequest(Response.Error.fromJsError(error)),
       );
   };
 };
@@ -135,10 +131,7 @@ module Handler = {
               );
             ();
 
-            Client.sendRequest(
-              state.filePath,
-              Req(state.filePath, Inspect(start, end_)),
-            )
+            Client.sendRequest(Req(state.filePath, Inspect(start, end_)))
             ->Promise.get(handleResponse);
           })
       });
@@ -178,21 +171,25 @@ module Handler = {
       editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName;
     // filter out ".gcl.git" files
     if (isGCL(filePath)) {
-      switch (Registry.get(filePath)) {
-      | None =>
-        // state initialization
-        let state = State.make(editor);
-        View.wire(state);
-        Registry.add(filePath, state);
-      | Some(state) =>
-        // after switching tabs, the old editor would be "_disposed"
-        // we need to replace it with this new one
-        state.editor = editor;
-        state.document = editor->VSCode.TextEditor.document;
-        state.filePath = state.document->VSCode.TextDocument.fileName;
+      let state =
+        switch (Registry.get(filePath)) {
+        | None =>
+          // state initialization
+          let state = State.make(editor);
+          Registry.add(filePath, state);
+          state;
+        | Some(state) =>
+          // after switching tabs, the old editor would be "_disposed"
+          // we need to replace it with this new one
+          state.editor = editor;
+          state.document = editor->VSCode.TextEditor.document;
+          state.filePath = state.document->VSCode.TextDocument.fileName;
+          state;
+        };
 
-        View.wire(state);
-      };
+      View.wire(state);
+      Client.sendRequest(Req(state.filePath, Load))
+      ->Promise.get(handleResponse);
 
       onActivateExtension(() => {
         View.activate(context->VSCode.ExtensionContext.extensionPath);
