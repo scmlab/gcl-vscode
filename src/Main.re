@@ -4,9 +4,11 @@ let isGCL = Js.Re.test_([%re "/\\.gcl$/i"]);
 
 let handleResponse = response =>
   switch (response) {
-  | Response.Res(filePath, kind) =>
+  | Response.Res(filePath, kinds) =>
     Registry.get(filePath)
-    ->Option.forEach(state => {State.handleResponseKind(state, kind)})
+    ->Option.forEach(state =>
+        kinds->Array.forEach(State.handleResponseKind(state))
+      )
   | CannotSendRequest(message) =>
     Js.Console.error2("CannotSendRequest", message)
   | CannotDecodeRequest(message) =>

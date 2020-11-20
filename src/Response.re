@@ -347,7 +347,7 @@ module Kind = {
 };
 
 type t =
-  | Res(string, Kind.t)
+  | Res(string, array(Kind.t))
   | CannotDecodeResponse(string, Js.Json.t)
   | CannotDecodeRequest(string)
   | CannotSendRequest(string);
@@ -359,8 +359,8 @@ let decode: decoder(t) =
     fun
     | "Res" =>
       Contents(
-        pair(string, Kind.decode)
-        |> map(((filePath, kind)) => Res(filePath, kind)),
+        pair(string, array(Kind.decode))
+        |> map(((filePath, kinds)) => Res(filePath, kinds)),
       )
     | "CannotDecodeRequest" =>
       Contents(string |> map(msg => CannotDecodeRequest(msg)))
