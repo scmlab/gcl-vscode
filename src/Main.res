@@ -5,12 +5,33 @@ let isGCL = Js.Re.test_(%re("/\\.gcl$/i"))
 let handleResponse = response =>
   switch response {
   | Response.Res(filePath, kinds) =>
-    Registry.get(filePath)->Option.forEach(state =>
-      kinds->Array.forEach(State.handleResponseKind(state))
+    Registry.get(filePath)->Option.mapWithDefault(Promise.resolved(), state =>
+      kinds->Array.map(State.handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())
     )
-  | CannotSendRequest(message) => Js.Console.error2("CannotSendRequest", message)
-  | CannotDecodeRequest(message) => Js.Console.error2("CannotDecodeRequest", message)
-  | CannotDecodeResponse(message, json) => Js.Console.error3("CannotDecodeResponse", message, json)
+  | CannotSendRequest(message) =>
+    Js.Console.error("Client Internal Error\nCannot send request to the server\n" ++ message)
+    Promise.resolved()
+  // state->State.display(
+  //   Error("Client Internal Error"),
+  //   Plain("Cannot send request to the server\n" ++ message),
+  // )
+  | CannotDecodeRequest(message) =>
+    Js.Console.error("Server Internal Error\nCannot decode request from the client\n" ++ message)
+    Promise.resolved()
+  // state->State.display(
+  //   Error("Server Internal Error"),
+  //   Plain("Cannot decode request from the client\n" ++ message),
+  // )
+  | CannotDecodeResponse(message, json) =>
+    Js.Console.error2(
+      "Client Internal Error\nCannot decode response from the server\n" ++ message,
+      json,
+    )
+    Promise.resolved()
+  // state->State.display(
+  //   Error("Client Internal Error"),
+  //   Plain("Cannot decode response from the server\n" ++ message),
+  // )
   }
 
 module Client: {
@@ -121,7 +142,9 @@ module Handler = {
         let end_ = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.end_(selection))
         ()
 
-        Client.sendRequest(Req(state.filePath, Inspect(start, end_)))->Promise.get(handleResponse)
+        Client.sendRequest(Req(state.filePath, Inspect(start, end_)))
+        ->Promise.flatMap(handleResponse)
+        ->ignore
       })
     )
   }
@@ -173,7 +196,7 @@ module Handler = {
       }
 
       View.wire(state)
-      Client.sendRequest(Req(state.filePath, Load))->Promise.get(handleResponse)
+      Client.sendRequest(Req(state.filePath, Load))->Promise.flatMap(handleResponse)->ignore
 
       onActivateExtension(() => {
         View.activate(context->VSCode.ExtensionContext.extensionPath)
@@ -194,7 +217,7 @@ module Handler = {
     }
   }
 
-  let onNotification = handleResponse
+  let onNotification = response => handleResponse(response)->ignore
 }
 
 let activate = (context: VSCode.ExtensionContext.t) => {

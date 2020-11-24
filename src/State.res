@@ -12,15 +12,86 @@ type t = {
 
 let subscribe = (disposable, state) => disposable->Js.Array.push(state.subscriptions)->ignore
 
+let display = (state, header, body) =>
+  state.viewReq->Req.send(ViewType.Request.Display(header, body))->Promise.map(_ => ())
+
+let handleStructError = (state: t, error) =>
+  switch error {
+  | Response.Error.StructError.MissingBound =>
+    state->display(
+      Error("Bound Missing"),
+      Plain("Bound missing at the end of the assertion before the DO construct \" , bnd : ... }\""),
+    )
+  | MissingAssertion =>
+    state->display(
+      Error("Assertion Missing"),
+      Plain("Assertion before the DO construct is missing"),
+    )
+  | ExcessBound =>
+    state->display(Error("Excess Bound"), Plain("Unnecessary bound annotation at this assertion"))
+  | MissingPostcondition =>
+    state->display(
+      Error("Postcondition Missing"),
+      Plain("The last statement of the program should be an assertion"),
+    )
+  | DigHole => Promise.resolved()
+  }
+
+let handleTypeError = (state: t, error) =>
+  switch error {
+  | Response.Error.TypeError.NotInScope(name) =>
+    state->display(Error("Type Error"), Plain("The definition " ++ name ++ " is not in scope"))
+  | UnifyFailed(s, t) =>
+    state->display(
+      Error("Type Error"),
+      Plain(
+        "Cannot unify: " ++
+        GCL.Syntax.Type.toString(s) ++
+        "\nwith        : " ++
+        GCL.Syntax.Type.toString(t),
+      ),
+    )
+  | RecursiveType(var, t) =>
+    state->display(
+      Error("Type Error"),
+      Plain(
+        "Recursive type variable: " ++
+        GCL.Syntax.Type.toString(GCL.Syntax.Type.Var(var)) ++
+        "\n" ++
+        "in type             : " ++
+        GCL.Syntax.Type.toString(t),
+      ),
+    )
+  | NotFunction(t) =>
+    state->display(
+      Error("Type Error"),
+      Plain("The type " ++ GCL.Syntax.Type.toString(t) ++ " is not a function type"),
+    )
+  }
+
+let handleError = (state: t, error: Response.Error.t) => {
+  let Response.Error.Error(site, kind) = error
+  switch kind {
+  | Response.Error.LexicalError =>
+    state->display(Error("Lexical Error"), Plain(Response.Error.Site.toString(site)))
+  | SyntacticError(messages) =>
+    state->display(Error("Parse Error"), Plain(messages->Js.String.concatMany("\n")))
+  | StructError(error) => state->handleStructError(error)
+  | TypeError(error) => state->handleTypeError(error)
+  | CannotReadFile(string) =>
+    state->display(Error("Server Internal Error"), Plain("Cannot read file\n" ++ string))
+  | CannotSendRequest(string) =>
+    state->display(Error("Client Internal Error"), Plain("Cannot send request\n" ++ string))
+  | NotLoaded => state->display(Error("Client Internal Error"), Plain("Client not loaded yet"))
+  }
+}
+
 let handleResponseKind = (state: t, kind) =>
   switch kind {
-  | Response.Kind.Error(error) => Js.Console.error(error)
+  | Response.Kind.Error(errors) =>
+    errors->Array.map(handleError(state))->Util.Promise.oneByOne->Promise.map(_ => ())
   | OK(i, pos, _, props) =>
-    state.viewReq
-    ->Req.send(
-      ViewType.Request.Display(Plain("Proof Obligations"), ProofObligations(i, pos, props)),
-    )
-    ->ignore
+    state->display(Plain("Proof Obligations"), ProofObligations(i, pos, props))
   | Decorate(locs) =>
     // destroy old decorations
     state.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
@@ -58,7 +129,8 @@ let handleResponseKind = (state: t, kind) =>
     let decoration = VSCode.Window.createTextEditorDecorationType(options)
     decoration->Js.Array.push(state.decorations)->ignore
     state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
-  | _ => ()
+    Promise.resolved()
+  | _ => Promise.resolved()
   }
 
 let make = editor => {

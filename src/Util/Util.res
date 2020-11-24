@@ -1,3 +1,16 @@
+module Promise = {
+  open Belt
+  let rec oneByOne' = xs =>
+    switch xs {
+    | list{} => Promise.resolved(list{})
+    | list{x, ...xs} => x->Promise.flatMap(x' => oneByOne'(xs)->Promise.map(xs' => {
+          list{x', ...xs'}
+        }))
+    }
+
+  let oneByOne = xs => xs->List.fromArray->oneByOne'->Promise.map(List.toArray)
+}
+
 module Decode = {
   open Json.Decode
 
