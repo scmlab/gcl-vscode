@@ -28,8 +28,8 @@ module LanguageClient = {
   @bs.module("vscode-languageclient") @bs.new
   external make: (string, string, ServerOptions.t, LanguageClientOptions.t) => t = "LanguageClient"
   // methods
-  @bs.send external start: t => unit = "start"
-  @bs.send external stop: t => unit = "stop"
+  @bs.send external start: t => VSCode.Disposable.t = "start"
+  @bs.send external stop: t => Promise.Js.t<unit, _> = "stop"
   @bs.send external onReady: t => Promise.Js.t<unit, _> = "onReady"
   @bs.send
   external onNotification: (t, string, 'a => unit) => unit = "onNotification"

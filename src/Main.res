@@ -16,7 +16,7 @@ let handleResponse = response =>
 module Client: {
   type t
   let start: unit => unit
-  let stop: unit => unit
+  let stop: unit => Promise.t<unit>
   let onNotification: (Response.t => unit) => unit
   let sendRequest: Request.t => Promise.t<Response.t>
 } = {
@@ -59,11 +59,22 @@ module Client: {
     )
   }
   let client = ref(make())
+  let subscription = ref(None)
 
   // start the LSP client
-  let start = () => client.contents->LSP.LanguageClient.start
+  let start = () =>
+    if subscription.contents->Option.isNone {
+      subscription.contents = Some(client.contents->LSP.LanguageClient.start)
+    }
   // stop the LSP client
-  let stop = () => client.contents->LSP.LanguageClient.stop
+  let stop = () =>
+    switch subscription.contents {
+    | None => Promise.resolved()
+    | Some(subscription') => client.contents->LSP.LanguageClient.stop->Promise.tap(_ => {
+        subscription.contents = None
+        subscription'->VSCode.Disposable.dispose
+      })
+    }
 
   let decodeResponse = (json: Js.Json.t): Response.t =>
     switch // catching exceptions occured when decoding JSON values
@@ -82,7 +93,9 @@ module Client: {
       )
     )
 
-  let sendRequest = request =>
+  let sendRequest = request => {
+    start()
+
     client.contents->LSP.LanguageClient.onReady->Promise.Js.toResult->Promise.flatMapOk(() => {
       let value = Request.encode(request)
       client.contents->LSP.LanguageClient.sendRequest("guacamole", value)->Promise.Js.toResult
@@ -92,6 +105,7 @@ module Client: {
       | Error(error) => Response.CannotSendRequest(Response.Error.fromJsError(error))
       }
     )
+  }
 }
 
 module Handler = {
@@ -175,7 +189,7 @@ module Handler = {
       Registry.destroy(filePath)
       onDeactivateExtension(() => {
         View.deactivate()
-        Client.stop()
+        Client.stop()->ignore
       })
     }
   }
