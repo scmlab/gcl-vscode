@@ -11,27 +11,15 @@ let handleResponse = response =>
   | CannotSendRequest(message) =>
     Js.Console.error("Client Internal Error\nCannot send request to the server\n" ++ message)
     Promise.resolved()
-  // state->State.display(
-  //   Error("Client Internal Error"),
-  //   Plain("Cannot send request to the server\n" ++ message),
-  // )
   | CannotDecodeRequest(message) =>
     Js.Console.error("Server Internal Error\nCannot decode request from the client\n" ++ message)
     Promise.resolved()
-  // state->State.display(
-  //   Error("Server Internal Error"),
-  //   Plain("Cannot decode request from the client\n" ++ message),
-  // )
   | CannotDecodeResponse(message, json) =>
     Js.Console.error2(
       "Client Internal Error\nCannot decode response from the server\n" ++ message,
       json,
     )
     Promise.resolved()
-  // state->State.display(
-  //   Error("Client Internal Error"),
-  //   Plain("Cannot decode response from the server\n" ++ message),
-  // )
   }
 
 module Client: {
