@@ -179,14 +179,16 @@ module View = {
   }
 }
 
-module Controller: {
+module type Controller = {
   type t
   // methods
   let activate: string => unit
   let deactivate: unit => unit
   let isActivated: unit => bool
   let wire: State.t => unit
-} = {
+  let focus: unit => unit
+}
+module Controller: Controller = {
   type t = {
     mutable view: option<View.t>,
     mutable reqSubscription: option<unit => unit>,
@@ -225,6 +227,10 @@ module Controller: {
       handle.resSubscription = Some(view.onResponse->Chan.on(Chan.emit(state.viewResChan)))
     })
   }
+
+  let focus = () => handle.view->Option.forEach(view => {
+      VSCode.WebviewPanel.reveal(view.panel, ())
+    })
 }
 
 include Controller

@@ -15,6 +15,9 @@ let subscribe = (disposable, state) => disposable->Js.Array.push(state.subscript
 let display = (state, header, body) =>
   state.viewReq->Req.send(ViewType.Request.Display(header, body))->Promise.map(_ => ())
 
+let focus = state =>
+  VSCode.Window.showTextDocument(state.document, ~column=VSCode.ViewColumn.Beside, ())->ignore
+
 let handleStructError = (state: t, error) =>
   switch error {
   | Response.Error.StructError.MissingBound =>
@@ -192,6 +195,15 @@ let make = editor => {
     | Link(MouseOut(loc)) =>
       let key = GCL.Loc.toString(loc)
       Decoration.remove(key)
+    | Link(MouseClick(loc)) =>
+      let key = GCL.Loc.toString(loc)
+      let range = GCL.Loc.toRange(loc)
+      // focus on the editor
+      focus(state)
+      // select the source on the editor
+      let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
+      state.editor->VSCode.TextEditor.setSelection(selection)
+      Decoration.remove(key)
     | others => Js.log(others)
     }
   )->VSCode.Disposable.make->Js.Array.push(state.subscriptions)->ignore
@@ -199,34 +211,7 @@ let make = editor => {
   state
 }
 
-// let sendRequest = (state, request) => {
-//   let value = Request.encode(request);
-//   // Js.log2("<<<", value);
-
-//   state.client
-//   ->LSP.LanguageClient.onReady
-//   ->Promise.Js.toResult
-//   ->Promise.flatMapOk(() => {
-//       state.client
-//       ->LSP.LanguageClient.sendRequest("guacamole", value)
-//       ->Promise.Js.toResult
-//     })
-//   ->Promise.flatMapOk(json => {
-//       // Js.log2(">>>", json);
-
-//       let response = decodeResponse(json);
-//       Promise.resolved(Ok(response));
-//     });
-//   // ->Promise.mapError(error => {Error.LSP(Error.fromJsError(error))});
-// };
-
 let destroy = state => {
-  // state.client->LSP.LanguageClient.stop;
-  // state.view->Option.forEach(View.destroy);
   state.subscriptions->Array.forEach(VSCode.Disposable.dispose)
   state.subscriptions = []
 }
-
-// view related
-// let show = state => state.view->Option.forEach(View.show);
-// let hide = state => state.view->Option.forEach(View.hide);
