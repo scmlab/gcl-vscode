@@ -4,10 +4,13 @@ type t = {
   mutable editor: VSCode.TextEditor.t,
   mutable document: VSCode.TextDocument.t,
   mutable filePath: string,
+  // communications
   viewSendRequest: ViewType.Request.t => Promise.t<bool>,
   viewOnResponse: (ViewType.Response.t => unit, unit) => unit,
   lspSendRequest: Request.t => Promise.t<Response.t>,
-  // mutable decorations: array<VSCode.TextEditorDecorationType.t>,
+  // state
+  mutable specifications: array<Response.Specification.t>,
+  // garbage
   mutable subscriptions: array<VSCode.Disposable.t>,
 }
 
@@ -19,7 +22,7 @@ let display = (state, header, body) =>
 let focus = state =>
   VSCode.Window.showTextDocument(state.document, ~column=VSCode.ViewColumn.Beside, ())->ignore
 
-let handleStructError = (state: t, error) =>
+let handleStructError = (state: t, site, error) =>
   switch error {
   | Response.Error.StructError.MissingBound =>
     state->display(
@@ -38,7 +41,27 @@ let handleStructError = (state: t, error) =>
       Error("Postcondition Missing"),
       Plain("The last statement of the program should be an assertion"),
     )
-  | DigHole => Promise.resolved()
+  | DigHole =>
+    let range = Response.Error.Site.toRange(site, state.specifications, GCL.Loc.toRange)
+    // replace the question mark "?" with a hole "{!  !}"
+    let indent = Js.String.repeat(VSCode.Position.character(VSCode.Range.start(range)), " ")
+    let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}"
+    let holeRange = VSCode.Range.make(
+      VSCode.Range.start(range),
+      VSCode.Position.translate(VSCode.Range.start(range), 0, 1),
+    )
+
+    state.document->Editor.Text.replace(holeRange, holeText)->Promise.map(_ => {
+      // set the cursor inside the hole
+      let selectionRange = VSCode.Range.make(
+        VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
+        VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
+      )
+      Editor.Selection.set(state.editor, selectionRange)
+    })->Promise.flatMap(_ => {
+      // save the editor to trigger the server
+      state.document->VSCode.TextDocument.save
+    })->Promise.map(_ => ())
   }
 
 let handleTypeError = (state: t, error) =>
@@ -74,14 +97,13 @@ let handleTypeError = (state: t, error) =>
   }
 
 let handleError = (state: t, error: Response.Error.t) => {
-  let Response.Error.Error(_site, kind) = error
+  let Response.Error.Error(site, kind) = error
   switch kind {
   // | Response.Error.LexicalError => Promise.resolved()
   // // state->display(Error("Lexical Error"), Plain(Response.Error.Site.toString(site)))
   // | SyntacticError(_messages) => Promise.resolved()
   // // state->display(Error("Parse Error"), Plain(messages->Js.String.concatMany("\n")))
-  // | StructError(_error) => Promise.resolved()
-  // // state->handleStructError(error)
+  | StructError(error) => state->handleStructError(site, error)
   // | TypeError(error) => state->handleTypeError(error)
   | CannotReadFile(string) =>
     state->display(Error("Server Internal Error"), Plain("Cannot read file\n" ++ string))
@@ -92,19 +114,81 @@ let handleError = (state: t, error: Response.Error.t) => {
   }
 }
 
+module Spec = {
+  // find the hole containing the cursor
+  let fromCursorPosition = state => {
+    let cursor = state.editor->VSCode.TextEditor.selection->VSCode.Selection.end_
+    // find the smallest hole containing the cursor, as there might be many of them
+    let smallestHole = ref(None)
+    state.specifications->Array.keep(spec => {
+      let range = GCL.Loc.toRange(spec.loc)
+      VSCode.Range.contains(range, cursor)
+    })->Array.forEach(spec =>
+      switch smallestHole.contents {
+      | None => smallestHole := Some(spec)
+      | Some(spec') =>
+        if VSCode.Range.containsRange(GCL.Loc.toRange(spec.loc), GCL.Loc.toRange(spec'.loc)) {
+          smallestHole := Some(spec)
+        }
+      }
+    )
+    smallestHole.contents
+  }
+
+  let getPayloadRange = (doc, spec: Response.Specification.t) => {
+    let range = GCL.Loc.toRange(spec.loc)
+    let startingLine = VSCode.Position.line(VSCode.Range.start(range)) + 1
+    let endingLine = VSCode.Position.line(VSCode.Range.end_(range)) - 1
+
+    let start =
+      VSCode.TextDocument.lineAt(doc, startingLine)->VSCode.TextLine.range->VSCode.Range.start
+    let end_ = VSCode.TextDocument.lineAt(doc, endingLine)->VSCode.TextLine.range->VSCode.Range.end_
+    VSCode.Range.make(start, end_)
+  }
+  let getPayload = (doc, spec) => {
+    // return the text in the targeted hole
+    let innerRange = getPayloadRange(doc, spec)
+    VSCode.TextDocument.getText(doc, Some(innerRange))
+  }
+
+  let resolve = (state, i) => {
+    let specs = state.specifications->Array.keep(spec => spec.id == i)
+    specs[0]->Option.forEach(spec => {
+      let payload = getPayload(state.document, spec)
+      let range = GCL.Loc.toRange(spec.loc)
+      let start = VSCode.Range.start(range)
+      // delete text
+      Editor.Text.delete(state.document, range)->Promise.flatMap(result =>
+        switch result {
+        | false => Promise.resolved(false)
+        | true => Editor.Text.insert(state.document, start, Js.String.trim(payload))
+        }
+      )->Promise.get(_ => ())
+    })
+    Promise.resolved()
+  }
+
+  let insert = (state, lineNo, expr) => {
+    let assertion = "{ " ++ GCL.Syntax.Expr.toString(expr) ++ " }\n"
+    let point = VSCode.Position.make(lineNo - 1, 0)
+    // insert the assertion
+    Editor.Text.insert(state.document, point, assertion)
+  }
+}
+
 let handleResponseKind = (state: t, kind) =>
   switch kind {
   | Response.Kind.Error(errors) =>
     errors->Array.map(handleError(state))->Util.Promise.oneByOne->Promise.map(_ => ())
-  | OK(i, pos, _, props) =>
+  | OK(i, pos, specs, props) =>
+    state.specifications = specs
     state->display(Plain("Proof Obligations"), ProofObligations(i, pos, props))
-  | Decorate(_locs) => Promise.resolved()
   | Substitute(id, expr) =>
     state.viewSendRequest(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | _ => Promise.resolved()
   }
 
-let handleResponse = (state, response) =>
+let handleResponseWithState = (state, response) =>
   switch response {
   | Response.Res(_filePath, kinds) =>
     kinds->Array.map(handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())
@@ -167,9 +251,13 @@ let make = (editor, viewSendRequest, viewOnResponse, lspSendRequest) => {
     editor: editor,
     document: document,
     filePath: filePath,
+    // communitations
     viewSendRequest: viewSendRequest,
     viewOnResponse: viewOnResponse,
     lspSendRequest: lspSendRequest,
+    // state
+    specifications: [],
+    // garbage
     subscriptions: [],
   }
 
@@ -182,21 +270,21 @@ let make = (editor, viewSendRequest, viewOnResponse, lspSendRequest) => {
     | Link(MouseOut(loc)) =>
       let key = GCL.Loc.toString(loc)
       Decoration.remove(key)
-    | Link(MouseClick(loc)) =>
-      let key = GCL.Loc.toString(loc)
-      let range = GCL.Loc.toRange(loc)
-      // focus on the editor
-      focus(state)
-      // select the source on the editor
-      let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
-      state.editor->VSCode.TextEditor.setSelection(selection)
-      Decoration.remove(key)
+    | Link(MouseClick(_loc)) => ()
+    // let key = GCL.Loc.toString(loc)
+    // let range = GCL.Loc.toRange(loc)
+    // // focus on the editor
+    // focus(state)
+    // // select the source on the editor
+    // let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
+    // state.editor->VSCode.TextEditor.setSelection(selection)
+    // Decoration.remove(key)
     | Substitute(id, expr, subst) =>
       // remove all decorations
       Decoration.removeAll()
       // send request to the server
       lspSendRequest(Request.Req(state.filePath, Request.Kind.Substitute(id, expr, subst)))
-      ->Promise.flatMap(handleResponse(state))
+      ->Promise.flatMap(handleResponseWithState(state))
       ->ignore
     | _ => ()
     }

@@ -255,18 +255,15 @@ module Error = {
 
 module Kind = {
   type t =
-    | Decorate(array<GCL.Loc.t>)
     | Error(array<Error.t>)
     | OK(int, array<ProofObligation.t>, array<Specification.t>, array<GlobalProp.t>)
     | Resolve(int)
     | Substitute(int, Syntax.Expr.t)
-    | UnknownResponse(Js.Json.t)
 
   open Json.Decode
   open Util.Decode
   let decode: decoder<t> = sum(x =>
     switch x {
-    | "ResDecorate" => Contents(array(GCL.Loc.decode) |> map(locs => Decorate(locs)))
     | "ResError" => Contents(array(Error.decode) |> map(errors => Error(errors)))
     | "ResOK" =>
       Contents(

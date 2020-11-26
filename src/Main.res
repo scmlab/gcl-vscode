@@ -126,18 +126,28 @@ module Handler = {
     let editor = event->VSCode.TextEditorSelectionChangeEvent.textEditor
     let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
 
-    Registry.get(filePath)->Option.forEach(state =>
-      // TODO, there may be multiple selections at once
-      selections[0]->Option.forEach(selection => {
-        let start = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.start(selection))
-        let end_ = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.end_(selection))
-        ()
+    // filter selection events out when we are modifying the editor programatically
+    let shouldTrigger = switch event->VSCode.TextEditorSelectionChangeEvent.kind {
+    | Some(VSCode.TextEditorSelectionChangeKind.Mouse)
+    | Some(VSCode.TextEditorSelectionChangeKind.Keyboard) => true
+    | _ => false
+    }
+    if shouldTrigger {
+      Registry.get(filePath)->Option.forEach(state =>
+        // TODO, there may be multiple selections at once
+        selections[0]->Option.forEach(selection => {
+          let start = VSCode.TextDocument.offsetAt(
+            state.document,
+            VSCode.Selection.start(selection),
+          )
+          let end_ = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.end_(selection))
 
-        Client.send(Req(state.filePath, Inspect(start, end_)))
-        ->Promise.flatMap(handleResponse)
-        ->ignore
-      })
-    )
+          Client.send(Req(state.filePath, Inspect(start, end_)))
+          ->Promise.flatMap(handleResponse)
+          ->ignore
+        })
+      )
+    }
   }
 
   let onActivateExtension = callback => {
@@ -191,7 +201,6 @@ module Handler = {
         state.filePath = filePath
         state
       }
-
       Client.send(Req(state.filePath, Load))->Promise.flatMap(handleResponse)->ignore
     }
   }
