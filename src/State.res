@@ -6,6 +6,7 @@ type t = {
   mutable filePath: string,
   viewReq: Req.t<ViewType.Request.t, bool>,
   viewResChan: Chan.t<ViewType.Response.t>,
+  connection: Req.t<Request.t, Response.t>,
   // mutable decorations: array<VSCode.TextEditorDecorationType.t>,
   mutable subscriptions: array<VSCode.Disposable.t>,
 }
@@ -137,11 +138,11 @@ let handleResponseKind = (state: t, kind) =>
   }
 
 module type Decoration = {
-  let addBackground: (t, string, VSCode.Range.t) => unit
+  let addBackground: (t, string, VSCode.Range.t, string) => unit
   let remove: string => unit
   let removeAll: unit => unit
 }
-module Decoration = {
+module Decoration: Decoration = {
   open Js.Dict
   // a dictionary of decorations for <Link>
   let dict: Js.Dict.t<array<VSCode.TextEditorDecorationType.t>> = empty()
@@ -183,6 +184,7 @@ let make = editor => {
     filePath: filePath,
     viewReq: Req.make(),
     viewResChan: Chan.make(),
+    connection: Req.make(),
     subscriptions: [],
   }
 
@@ -204,7 +206,14 @@ let make = editor => {
       let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
       state.editor->VSCode.TextEditor.setSelection(selection)
       Decoration.remove(key)
-    | others => Js.log(others)
+    | Substitute(id, expr, subst) =>
+      // remove all decorations
+      Decoration.removeAll()
+      // send request to the server
+      state.connection
+      ->Req.send(Request.Req(state.filePath, Request.Kind.Substitute(id, expr, subst)))
+      ->Promise.get(Js.log2("SUBST!!"))
+    | _ => ()
     }
   )->VSCode.Disposable.make->Js.Array.push(state.subscriptions)->ignore
 

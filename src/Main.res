@@ -22,14 +22,20 @@ let handleResponse = response =>
     Promise.resolved()
   }
 
-module Client: {
+module type Client = {
   type t
   let start: unit => unit
   let stop: unit => Promise.t<unit>
   let onNotification: (Response.t => unit) => unit
   let sendRequest: Request.t => Promise.t<Response.t>
-} = {
-  type t = LSP.LanguageClient.t
+  let wire: State.t => unit
+}
+module Client: Client = {
+  type t = {
+    mutable client: LSP.LanguageClient.t,
+    mutable stateSubscription: option<VSCode.Disposable.t>,
+    mutable lspSubscription: option<VSCode.Disposable.t>,
+  }
   let make = () => {
     open LSP
     open VSCode
@@ -67,20 +73,19 @@ module Client: {
       clientOptions,
     )
   }
-  let client = ref(make())
-  let subscription = ref(None)
+  let handle = {client: make(), stateSubscription: None, lspSubscription: None}
 
   // start the LSP client
   let start = () =>
-    if subscription.contents->Option.isNone {
-      subscription.contents = Some(client.contents->LSP.LanguageClient.start)
+    if handle.lspSubscription->Option.isNone {
+      handle.lspSubscription = Some(handle.client->LSP.LanguageClient.start)
     }
   // stop the LSP client
   let stop = () =>
-    switch subscription.contents {
+    switch handle.lspSubscription {
     | None => Promise.resolved()
-    | Some(subscription') => client.contents->LSP.LanguageClient.stop->Promise.tap(_ => {
-        subscription.contents = None
+    | Some(subscription') => handle.client->LSP.LanguageClient.stop->Promise.tap(_ => {
+        handle.lspSubscription = None
         subscription'->VSCode.Disposable.dispose
       })
     }
@@ -93,11 +98,11 @@ module Client: {
     }
 
   let onNotification = handler =>
-    client.contents
+    handle.client
     ->LSP.LanguageClient.onReady
     ->Promise.Js.toResult
     ->Promise.getOk(() =>
-      client.contents->LSP.LanguageClient.onNotification("guacamole", json =>
+      handle.client->LSP.LanguageClient.onNotification("guacamole", json =>
         handler(decodeResponse(json))
       )
     )
@@ -105,14 +110,28 @@ module Client: {
   let sendRequest = request => {
     start()
 
-    client.contents->LSP.LanguageClient.onReady->Promise.Js.toResult->Promise.flatMapOk(() => {
+    handle.client->LSP.LanguageClient.onReady->Promise.Js.toResult->Promise.flatMapOk(() => {
       let value = Request.encode(request)
-      client.contents->LSP.LanguageClient.sendRequest("guacamole", value)->Promise.Js.toResult
+      handle.client->LSP.LanguageClient.sendRequest("guacamole", value)->Promise.Js.toResult
     })->Promise.map(x =>
       switch x {
       | Ok(json) => decodeResponse(json)
       | Error(error) => Response.CannotSendRequest(Response.Error.fromJsError(error))
       }
+    )
+  }
+
+  let unwire = () => {
+    handle.stateSubscription->Option.forEach(VSCode.Disposable.dispose)
+  }
+
+  let wire = (state: State.t) => {
+    // sever old connections
+    unwire()
+
+    // make new connections
+    handle.stateSubscription = Some(
+      state.connection->Req.handle(sendRequest)->VSCode.Disposable.make,
     )
   }
 }
@@ -179,16 +198,20 @@ module Handler = {
         // we need to replace it with this new one
         state.editor = editor
         state.document = editor->VSCode.TextEditor.document
-        state.filePath = state.document->VSCode.TextDocument.fileName
+        state.filePath = filePath
         state
       }
 
       View.wire(state)
+      Client.wire(state)
       Client.sendRequest(Req(state.filePath, Load))->Promise.flatMap(handleResponse)->ignore
 
       onActivateExtension(() => {
         View.activate(context->VSCode.ExtensionContext.extensionPath)
-        Registry.get(filePath)->Option.forEach(View.wire)
+        Registry.get(filePath)->Option.forEach(state => {
+          View.wire(state)
+          Client.wire(state)
+        })
         Client.start()
       })
     }
