@@ -235,6 +235,21 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   VSCode.Window.onDidChangeTextEditorSelection(Handler.onSelect)->subscribe
   // on notification from the server
   Client.on(Handler.onNotification)
+
+  // on command
+  VSCode.Commands.registerCommand("guacamole.refine", () =>
+    VSCode.Window.activeTextEditor->Option.map(editor => {
+      let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
+      Registry.get(filePath)->Option.mapWithDefault(Promise.resolved(), state => {
+        state->State.Spec.fromCursorPosition->Option.mapWithDefault(Promise.resolved(), spec => {
+          let payload = State.Spec.getPayload(state.document, spec)
+          state.lspSendRequest(Req(filePath, Refine(spec.id, payload)))->Promise.flatMap(
+            State.handleResponseWithState(state),
+          )
+        })
+      })
+    })
+  )->subscribe
 }
 
 let deactivate = () => ()

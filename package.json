@@ -64,34 +64,15 @@
 		],
 		"commands": [
 			{
-				"command": "guacamole.toggle",
-				"title": "Toggle view activate/deactivate"
-			},
-			{
 				"command": "guacamole.refine",
 				"title": "Refine"
-			},
-			{
-				"command": "guacamole:debug-gcl",
-				"title": "Debug"
 			}
 		],
 		"keybindings": [
 			{
-				"command": "guacamole.toggle",
-				"key": "ctrl+c ctrl+x",
-				"mac": "ctrl+c ctrl+x"
-			},
-			{
 				"command": "guacamole.refine",
 				"key": "ctrl+c ctrl+r",
 				"mac": "ctrl+c ctrl+r",
-				"when": "resourceExtname == .gcl"
-			},
-			{
-				"command": "guacamole.debug-gcl",
-				"key": "ctrl+c ctrl+[",
-				"mac": "ctrl+c ctrl+[",
 				"when": "resourceExtname == .gcl"
 			}
 		],

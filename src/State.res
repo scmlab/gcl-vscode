@@ -185,7 +185,11 @@ let handleResponseKind = (state: t, kind) =>
     state->display(Plain("Proof Obligations"), ProofObligations(i, pos, props))
   | Substitute(id, expr) =>
     state.viewSendRequest(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
-  | _ => Promise.resolved()
+  | Resolve(i) =>
+    state
+    ->Spec.resolve(i)
+    ->Promise.flatMap(_ => state.document->VSCode.TextDocument.save)
+    ->Promise.map(_ => ())
   }
 
 let handleResponseWithState = (state, response) =>
