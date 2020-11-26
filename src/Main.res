@@ -26,15 +26,13 @@ module type Client = {
   type t
   let start: unit => unit
   let stop: unit => Promise.t<unit>
-  let onNotification: (Response.t => unit) => unit
-  let sendRequest: Request.t => Promise.t<Response.t>
-  let wire: State.t => unit
+  let on: (Response.t => unit) => unit
+  let send: Request.t => Promise.t<Response.t>
 }
 module Client: Client = {
   type t = {
     mutable client: LSP.LanguageClient.t,
-    mutable stateSubscription: option<VSCode.Disposable.t>,
-    mutable lspSubscription: option<VSCode.Disposable.t>,
+    mutable subscription: option<VSCode.Disposable.t>,
   }
   let make = () => {
     open LSP
@@ -73,19 +71,19 @@ module Client: Client = {
       clientOptions,
     )
   }
-  let handle = {client: make(), stateSubscription: None, lspSubscription: None}
+  let handle = {client: make(), subscription: None}
 
   // start the LSP client
   let start = () =>
-    if handle.lspSubscription->Option.isNone {
-      handle.lspSubscription = Some(handle.client->LSP.LanguageClient.start)
+    if handle.subscription->Option.isNone {
+      handle.subscription = Some(handle.client->LSP.LanguageClient.start)
     }
   // stop the LSP client
   let stop = () =>
-    switch handle.lspSubscription {
+    switch handle.subscription {
     | None => Promise.resolved()
     | Some(subscription') => handle.client->LSP.LanguageClient.stop->Promise.tap(_ => {
-        handle.lspSubscription = None
+        handle.subscription = None
         subscription'->VSCode.Disposable.dispose
       })
     }
@@ -97,7 +95,7 @@ module Client: Client = {
     | exception Json.Decode.DecodeError(msg) => CannotDecodeResponse(msg, json)
     }
 
-  let onNotification = handler =>
+  let on = handler =>
     handle.client
     ->LSP.LanguageClient.onReady
     ->Promise.Js.toResult
@@ -107,7 +105,7 @@ module Client: Client = {
       )
     )
 
-  let sendRequest = request => {
+  let send = request => {
     start()
 
     handle.client->LSP.LanguageClient.onReady->Promise.Js.toResult->Promise.flatMapOk(() => {
@@ -118,20 +116,6 @@ module Client: Client = {
       | Ok(json) => decodeResponse(json)
       | Error(error) => Response.CannotSendRequest(Response.Error.fromJsError(error))
       }
-    )
-  }
-
-  let unwire = () => {
-    handle.stateSubscription->Option.forEach(VSCode.Disposable.dispose)
-  }
-
-  let wire = (state: State.t) => {
-    // sever old connections
-    unwire()
-
-    // make new connections
-    handle.stateSubscription = Some(
-      state.connection->Req.handle(sendRequest)->VSCode.Disposable.make,
     )
   }
 }
@@ -149,7 +133,7 @@ module Handler = {
         let end_ = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.end_(selection))
         ()
 
-        Client.sendRequest(Req(state.filePath, Inspect(start, end_)))
+        Client.send(Req(state.filePath, Inspect(start, end_)))
         ->Promise.flatMap(handleResponse)
         ->ignore
       })
@@ -187,10 +171,16 @@ module Handler = {
     let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
     // filter out ".gcl.git" files
     if isGCL(filePath) {
+      // this callback will be invoked when the first editor is opened
+      onActivateExtension(() => {
+        View.activate(context->VSCode.ExtensionContext.extensionPath)
+        Client.start()
+      })
+
       let state = switch Registry.get(filePath) {
       | None =>
         // state initialization
-        let state = State.make(editor)
+        let state = State.make(editor, View.send, View.on, Client.send)
         Registry.add(filePath, state)
         state
       | Some(state) =>
@@ -202,18 +192,7 @@ module Handler = {
         state
       }
 
-      View.wire(state)
-      Client.wire(state)
-      Client.sendRequest(Req(state.filePath, Load))->Promise.flatMap(handleResponse)->ignore
-
-      onActivateExtension(() => {
-        View.activate(context->VSCode.ExtensionContext.extensionPath)
-        Registry.get(filePath)->Option.forEach(state => {
-          View.wire(state)
-          Client.wire(state)
-        })
-        Client.start()
-      })
+      Client.send(Req(state.filePath, Load))->Promise.flatMap(handleResponse)->ignore
     }
   }
 
@@ -246,7 +225,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on change selection
   VSCode.Window.onDidChangeTextEditorSelection(Handler.onSelect)->subscribe
   // on notification from the server
-  Client.onNotification(Handler.onNotification)
+  Client.on(Handler.onNotification)
 }
 
 let deactivate = () => ()

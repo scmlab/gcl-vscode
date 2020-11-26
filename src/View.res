@@ -185,48 +185,42 @@ module type Controller = {
   let activate: string => unit
   let deactivate: unit => unit
   let isActivated: unit => bool
-  let wire: State.t => unit
+  let send: ViewType.Request.t => Promise.t<bool>
+  let on: (ViewType.Response.t => unit, unit) => unit
   let focus: unit => unit
 }
 module Controller: Controller = {
-  type t = {
-    mutable view: option<View.t>,
-    mutable reqSubscription: option<unit => unit>,
-    mutable resSubscription: option<unit => unit>,
+  type t = {mutable view: option<View.t>}
+  let handle = {
+    view: None,
   }
-  let handle = {view: None, reqSubscription: None, resSubscription: None}
 
-  let unwire = () => {
-    handle.reqSubscription->Option.forEach(disposable => disposable())
-    handle.resSubscription->Option.forEach(disposable => disposable())
-  }
+  let send = req =>
+    switch handle.view {
+    | None => Promise.resolved(false)
+    | Some(view) => View.send(view, req)
+    }
+  let on = callback =>
+    switch handle.view {
+    | None => () => ()
+    | Some(view) => view.onResponse->Chan.on(callback)
+    }
+
   let activate = extensionPath => {
     let view = View.make(extensionPath)
     handle.view = Some(view)
     // free the handle when the view has been forcibly destructed
     View.onceDestroyed(view)->Promise.get(() => {
       handle.view = None
-      unwire()
     })
   }
 
   let deactivate = () => {
     handle.view->Option.forEach(View.destroy)
     handle.view = None
-    unwire()
   }
 
   let isActivated = () => handle.view->Option.isSome
-
-  let wire = (state: State.t) => {
-    // sever old connections
-    unwire()
-    // make new connections
-    handle.view->Option.forEach(view => {
-      handle.reqSubscription = Some(state.viewReq->Req.handle(View.send(view)))
-      handle.resSubscription = Some(view.onResponse->Chan.on(Chan.emit(state.viewResChan)))
-    })
-  }
 
   let focus = () => handle.view->Option.forEach(view => {
       VSCode.WebviewPanel.reveal(view.panel, ())

@@ -3,7 +3,7 @@ module Module: {
   type t<'a, 'b>
   let make: unit => t<'a, 'b>
   let send: (t<'a, 'b>, 'a) => Promise.t<'b>
-  let handle: (t<'a, 'b>, 'a => Promise.t<'b>, unit) => unit
+  let recv: (t<'a, 'b>, 'a => Promise.t<'b>, unit) => unit
   let destroy: t<'a, 'b> => unit
 } = {
   type t<'a, 'b> = {
@@ -17,7 +17,7 @@ module Module: {
     self.req->Chan.emit(req)
     promise
   }
-  let handle = (self, handler) =>
+  let recv = (self, handler) =>
     self.req->Chan.on(res => handler(res)->Promise.get(self.res->Chan.emit))
 
   let destroy = self => {

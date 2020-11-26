@@ -4,9 +4,9 @@ type t = {
   mutable editor: VSCode.TextEditor.t,
   mutable document: VSCode.TextDocument.t,
   mutable filePath: string,
-  viewReq: Req.t<ViewType.Request.t, bool>,
-  viewResChan: Chan.t<ViewType.Response.t>,
-  connection: Req.t<Request.t, Response.t>,
+  viewSendRequest: ViewType.Request.t => Promise.t<bool>,
+  viewOnResponse: (ViewType.Response.t => unit, unit) => unit,
+  lspSendRequest: Request.t => Promise.t<Response.t>,
   // mutable decorations: array<VSCode.TextEditorDecorationType.t>,
   mutable subscriptions: array<VSCode.Disposable.t>,
 }
@@ -14,7 +14,7 @@ type t = {
 let subscribe = (disposable, state) => disposable->Js.Array.push(state.subscriptions)->ignore
 
 let display = (state, header, body) =>
-  state.viewReq->Req.send(ViewType.Request.Display(header, body))->Promise.map(_ => ())
+  state.viewSendRequest(ViewType.Request.Display(header, body))->Promise.map(_ => ())
 
 let focus = state =>
   VSCode.Window.showTextDocument(state.document, ~column=VSCode.ViewColumn.Beside, ())->ignore
@@ -98,43 +98,28 @@ let handleResponseKind = (state: t, kind) =>
     errors->Array.map(handleError(state))->Util.Promise.oneByOne->Promise.map(_ => ())
   | OK(i, pos, _, props) =>
     state->display(Plain("Proof Obligations"), ProofObligations(i, pos, props))
-  | Decorate(_locs) =>
-    // destroy old decorations
-    // state.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
-    // state.decorations = []
-
-    // let ranges = locs->Array.map(GCL.Loc.toRange)
-    // let rangeBehavior = VSCode.DecorationRangeBehavior.toEnum(
-    //   VSCode.DecorationRangeBehavior.ClosedClosed,
-    // )
-    // let rulerColor = VSCode.StringOr.others(
-    //   VSCode.ThemeColor.make("editorOverviewRuler.warningForeground"),
-    // )
-    // let overviewRulerLane: VSCode.OverviewRulerLane.raw =
-    //   VSCode.OverviewRulerLane.Left->VSCode.OverviewRulerLane.toEnum
-
-    // let backgroundColor = VSCode.StringOr.others(
-    //   VSCode.ThemeColor.make("editorOverviewRuler.warningForeground"),
-    // )
-    // let after = VSCode.ThemableDecorationAttachmentRenderOptions.t(
-    //   ~contentText="*",
-    //   ~color=backgroundColor,
-    //   (),
-    // )
-    // let options = VSCode.DecorationRenderOptions.t(
-    //   ~overviewRulerColor=rulerColor,
-    //   ~overviewRulerLane,
-    //   ~after,
-    //   // ~backgroundColor,
-    //   // ~isWholeLine=true,
-    //   ~rangeBehavior,
-    //   (),
-    // )
-    // let decoration = VSCode.Window.createTextEditorDecorationType(options)
-    // decoration->Js.Array.push(state.decorations)->ignore
-    // state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
-    Promise.resolved()
+  | Decorate(_locs) => Promise.resolved()
+  | Substitute(id, expr) =>
+    state.viewSendRequest(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | _ => Promise.resolved()
+  }
+
+let handleResponse = (state, response) =>
+  switch response {
+  | Response.Res(_filePath, kinds) =>
+    kinds->Array.map(handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())
+  | CannotSendRequest(message) =>
+    Js.Console.error("Client Internal Error\nCannot send request to the server\n" ++ message)
+    Promise.resolved()
+  | CannotDecodeRequest(message) =>
+    Js.Console.error("Server Internal Error\nCannot decode request from the client\n" ++ message)
+    Promise.resolved()
+  | CannotDecodeResponse(message, json) =>
+    Js.Console.error2(
+      "Client Internal Error\nCannot decode response from the server\n" ++ message,
+      json,
+    )
+    Promise.resolved()
   }
 
 module type Decoration = {
@@ -175,20 +160,20 @@ module Decoration: Decoration = {
     })
 }
 
-let make = editor => {
+let make = (editor, viewSendRequest, viewOnResponse, lspSendRequest) => {
   let document = VSCode.TextEditor.document(editor)
   let filePath = VSCode.TextDocument.fileName(document)
   let state = {
     editor: editor,
     document: document,
     filePath: filePath,
-    viewReq: Req.make(),
-    viewResChan: Chan.make(),
-    connection: Req.make(),
+    viewSendRequest: viewSendRequest,
+    viewOnResponse: viewOnResponse,
+    lspSendRequest: lspSendRequest,
     subscriptions: [],
   }
 
-  state.viewResChan->Chan.on(response =>
+  viewOnResponse(response =>
     switch response {
     | ViewType.Response.Link(MouseOver(loc)) =>
       let key = GCL.Loc.toString(loc)
@@ -210,9 +195,9 @@ let make = editor => {
       // remove all decorations
       Decoration.removeAll()
       // send request to the server
-      state.connection
-      ->Req.send(Request.Req(state.filePath, Request.Kind.Substitute(id, expr, subst)))
-      ->Promise.get(Js.log2("SUBST!!"))
+      lspSendRequest(Request.Req(state.filePath, Request.Kind.Substitute(id, expr, subst)))
+      ->Promise.flatMap(handleResponse(state))
+      ->ignore
     | _ => ()
     }
   )->VSCode.Disposable.make->Js.Array.push(state.subscriptions)->ignore
