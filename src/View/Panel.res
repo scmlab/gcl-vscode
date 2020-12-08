@@ -1,8 +1,8 @@
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   // let (reqID, setReqID) = React.useState(() => None);
-  let (header, setHeader) = React.useState(() => ViewType.Request.Header.Loading)
-  let (body, setBody) = React.useState(() => ViewType.Request.Body.Nothing)
+  // let (header, setHeader) = React.useState(() => ViewType.Request.Header.Loading)
+  let ((id, pos, props), setDisplay) = React.useState(() => (0, [], []))
   let (hidden, setHidden) = React.useState(_ => false)
   let onClickLink = React.useRef(Chan.make())
   let onSubstitute = React.useRef(Chan.make())
@@ -18,9 +18,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     open ViewType.Request
     let destructor = onRequest->Chan.on(req =>
       switch req {
-      | ViewType.Request.Display(header, body) =>
-        setHeader(_ => header)
-        setBody(_ => body)
+      | ViewType.Request.Display(id, pos, props) => setDisplay(_ => (id, pos, props))
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
       | Hide => setHidden(_ => true)
       | Show => setHidden(_ => false)
@@ -48,7 +46,9 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   // <ReqID.Provider value=reqID>
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
-      <section className tabIndex={-1}> <Header header /> <Body body /> </section>
+      <section className tabIndex={-1}>
+        <ProofObligations id pos /> <GlobalProps id props />
+      </section>
     </Link.Provider>
   </Subst.Provider>
   // </ReqID.Provider>;

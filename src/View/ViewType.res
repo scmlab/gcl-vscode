@@ -1,81 +1,9 @@
 module Request = {
-  module Header = {
-    type t =
-      | Loading
-      | Plain(string)
-      | Error(string)
-
-    open Json.Decode
-    open Util.Decode
-
-    let decode: decoder<t> = sum(x =>
-      switch x {
-      | "Loading" => Contents(_ => Loading)
-      | "Plain" => Contents(json => Plain(string(json)))
-      | "Error" => Contents(json => Error(string(json)))
-      | tag => raise(DecodeError("[Request.Header] Unknown constructor: " ++ tag))
-      }
-    )
-
-    open! Json.Encode
-    let encode: encoder<t> = x =>
-      switch x {
-      | Loading => object_(list{("tag", string("Loading"))})
-      | Plain(s) => object_(list{("tag", string("Plain")), ("contents", string(s))})
-      | Error(s) => object_(list{("tag", string("Error")), ("contents", string(s))})
-      }
-  }
-  module Body = {
-    type id = int
-    type t =
-      | Nothing
-      | ProofObligations(id, array<Response.ProofObligation.t>, array<Response.GlobalProp.t>)
-      | Plain(string)
-
-    open Json.Decode
-    open Util.Decode
-
-    let decode: decoder<t> = sum(x =>
-      switch x {
-      | "Nothing" => Contents(_ => Nothing)
-      | "ProofObligations" =>
-        Contents(
-          tuple3(
-            int,
-            array(Response.ProofObligation.decode),
-            array(Response.GlobalProp.decode),
-          ) |> map(((id, xs, ys)) => ProofObligations(id, xs, ys)),
-        )
-      | "Plain" => Contents(json => Plain(string(json)))
-      | tag => raise(DecodeError("[Request.Header] Unknown constructor: " ++ tag))
-      }
-    )
-
-    open! Json.Encode
-    let encode: encoder<t> = x =>
-      switch x {
-      | Nothing => object_(list{("tag", string("Nothing"))})
-      | ProofObligations(id, xs, ys) =>
-        object_(list{
-          ("tag", string("ProofObligations")),
-          (
-            "contents",
-            (id, xs, ys) |> tuple3(
-              int,
-              array(Response.ProofObligation.encode),
-              array(Response.GlobalProp.encode),
-            ),
-          ),
-        })
-      | Plain(x) => object_(list{("tag", string("Plain")), ("contents", string(x))})
-      }
-  }
-
   type t =
     | Show
     | Hide
     | Substitute(int, GCL.Syntax.Expr.t)
-    | Display(Header.t, Body.t)
+    | Display(int, array<Response.ProofObligation.t>, array<Response.GlobalProp.t>)
 
   open Json.Decode
   open Util.Decode
@@ -85,7 +13,14 @@ module Request = {
     | "Hide" => Contents(_ => Hide)
     | "Substitute" =>
       Contents(pair(int, GCL.Syntax.Expr.decode) |> map(((x, y)) => Substitute(x, y)))
-    | "Display" => Contents(pair(Header.decode, Body.decode) |> map(((x, y)) => Display(x, y)))
+    | "Display" =>
+      Contents(
+        tuple3(
+          int,
+          array(Response.ProofObligation.decode),
+          array(Response.GlobalProp.decode),
+        ) |> map(((id, xs, ys)) => Display(id, xs, ys)),
+      )
     | tag => raise(DecodeError("[Request] Unknown constructor: " ++ tag))
     }
   )
@@ -100,10 +35,17 @@ module Request = {
         ("tag", string("Substitute")),
         ("contents", (i, expr) |> pair(int, GCL.Syntax.Expr.encode)),
       })
-    | Display(header, body) =>
+    | Display(id, pos, globalProps) =>
       object_(list{
         ("tag", string("Display")),
-        ("contents", (header, body) |> pair(Header.encode, Body.encode)),
+        (
+          "contents",
+          (id, pos, globalProps) |> tuple3(
+            int,
+            array(Response.ProofObligation.encode),
+            array(Response.GlobalProp.encode),
+          ),
+        ),
       })
     }
 }

@@ -94,28 +94,8 @@
         }
     }
 
-    .gcl-body {
-        // limits the inner height and let scroll if overflow
-        // max-height: 300px;
-        // font-size: 125%;
-
+    .gcl-proof-obligation, .gcl-global-props {
         overflow-y: scroll;
-
-        .gcl-body-item {
-            background   : @background2;
-            padding      : @component-padding;
-            margin-bottom: @component-padding * 2;
-        }
-
-        .gcl-body-item:last-of-type {
-            margin-bottom: 0
-        }
-
-        .gcl-plain-text {
-            p:last-of-type {
-                margin-bottom: 0
-            }
-        }
 
         ul {
             list-style: none;
@@ -129,7 +109,6 @@
                 align-items    : flex-start;
             }
         }
-
 
 
         .gcl-proof-obligation-message {
@@ -154,10 +133,19 @@
             text-align: center;
         }
 
-
     }
 
+    // <li>
 
+    .gcl-list-item {
+        background   : @background2;
+        padding      : @component-padding;
+        margin-bottom: @component-padding * 2;
+    }
+
+    .gcl-list-item:last-of-type {
+        margin-bottom: 0
+    }
 
     .expr {
         color      : @text-color-highlight;

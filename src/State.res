@@ -16,104 +16,106 @@ type t = {
 
 let subscribe = (disposable, state) => disposable->Js.Array.push(state.subscriptions)->ignore
 
-let display = (state, header, body) =>
-  state.viewSendRequest(ViewType.Request.Display(header, body))->Promise.map(_ => ())
+let display = (state, id, pos, props) =>
+  state.viewSendRequest(ViewType.Request.Display(id, pos, props))->Promise.map(_ => ())
 
 let focus = state =>
   VSCode.Window.showTextDocument(state.document, ~column=VSCode.ViewColumn.Beside, ())->ignore
 
-let handleStructError = (state: t, site, error) =>
-  switch error {
-  | Response.Error.StructError.MissingBound =>
-    state->display(
-      Error("Bound Missing"),
-      Plain("Bound missing at the end of the assertion before the DO construct \" , bnd : ... }\""),
-    )
-  | MissingAssertion =>
-    state->display(
-      Error("Assertion Missing"),
-      Plain("Assertion before the DO construct is missing"),
-    )
-  | ExcessBound =>
-    state->display(Error("Excess Bound"), Plain("Unnecessary bound annotation at this assertion"))
-  | MissingPostcondition =>
-    state->display(
-      Error("Postcondition Missing"),
-      Plain("The last statement of the program should be an assertion"),
-    )
-  | DigHole =>
-    let range = Response.Error.Site.toRange(site, state.specifications, GCL.Loc.toRange)
-    // replace the question mark "?" with a hole "{!  !}"
-    let indent = Js.String.repeat(VSCode.Position.character(VSCode.Range.start(range)), " ")
-    let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}"
-    let holeRange = VSCode.Range.make(
-      VSCode.Range.start(range),
-      VSCode.Position.translate(VSCode.Range.start(range), 0, 1),
-    )
+module HandleError = {
+  // let handleStructError = (state: t, site, error) =>
+  //   switch error {
+  //   | Response.Error.StructError.MissingBound =>
+  //     state->display(
+  //       Error("Bound Missing"),
+  //       Plain("Bound missing at the end of the assertion before the DO construct \" , bnd : ... }\""),
+  //     )
+  //   | MissingAssertion =>
+  //     state->display(
+  //       Error("Assertion Missing"),
+  //       Plain("Assertion before the DO construct is missing"),
+  //     )
+  //   | ExcessBound =>
+  //     state->display(Error("Excess Bound"), Plain("Unnecessary bound annotation at this assertion"))
+  //   | MissingPostcondition =>
+  //     state->display(
+  //       Error("Postcondition Missing"),
+  //       Plain("The last statement of the program should be an assertion"),
+  //     )
+  //   | DigHole =>
+  //     let range = Response.Error.Site.toRange(site, state.specifications, GCL.Loc.toRange)
+  //     // replace the question mark "?" with a hole "{!  !}"
+  //     let indent = Js.String.repeat(VSCode.Position.character(VSCode.Range.start(range)), " ")
+  //     let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}"
+  //     let holeRange = VSCode.Range.make(
+  //       VSCode.Range.start(range),
+  //       VSCode.Position.translate(VSCode.Range.start(range), 0, 1),
+  //     )
 
-    state.document->Editor.Text.replace(holeRange, holeText)->Promise.map(_ => {
-      // set the cursor inside the hole
-      let selectionRange = VSCode.Range.make(
-        VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
-        VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
-      )
-      Editor.Selection.set(state.editor, selectionRange)
-    })->Promise.flatMap(_ => {
-      // save the editor to trigger the server
-      state.document->VSCode.TextDocument.save
-    })->Promise.map(_ => ())
-  }
+  //     state.document->Editor.Text.replace(holeRange, holeText)->Promise.map(_ => {
+  //       // set the cursor inside the hole
+  //       let selectionRange = VSCode.Range.make(
+  //         VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
+  //         VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
+  //       )
+  //       Editor.Selection.set(state.editor, selectionRange)
+  //     })->Promise.flatMap(_ => {
+  //       // save the editor to trigger the server
+  //       state.document->VSCode.TextDocument.save
+  //     })->Promise.map(_ => ())
+  //   }
 
-let handleTypeError = (state: t, error) =>
-  switch error {
-  | Response.Error.TypeError.NotInScope(name) =>
-    state->display(Error("Type Error"), Plain("The definition " ++ name ++ " is not in scope"))
-  | UnifyFailed(s, t) =>
-    state->display(
-      Error("Type Error"),
-      Plain(
-        "Cannot unify: " ++
-        GCL.Syntax.Type.toString(s) ++
-        "\nwith        : " ++
-        GCL.Syntax.Type.toString(t),
-      ),
-    )
-  | RecursiveType(var, t) =>
-    state->display(
-      Error("Type Error"),
-      Plain(
-        "Recursive type variable: " ++
-        GCL.Syntax.Type.toString(GCL.Syntax.Type.Var(var)) ++
-        "\n" ++
-        "in type             : " ++
-        GCL.Syntax.Type.toString(t),
-      ),
-    )
-  | NotFunction(t) =>
-    state->display(
-      Error("Type Error"),
-      Plain("The type " ++ GCL.Syntax.Type.toString(t) ++ " is not a function type"),
-    )
-  }
+  // let handleTypeError = (state: t, error) =>
+  //   switch error {
+  //   | Response.Error.TypeError.NotInScope(name) =>
+  //     state->display(Error("Type Error"), Plain("The definition " ++ name ++ " is not in scope"))
+  //   | UnifyFailed(s, t) =>
+  //     state->display(
+  //       Error("Type Error"),
+  //       Plain(
+  //         "Cannot unify: " ++
+  //         GCL.Syntax.Type.toString(s) ++
+  //         "\nwith        : " ++
+  //         GCL.Syntax.Type.toString(t),
+  //       ),
+  //     )
+  //   | RecursiveType(var, t) =>
+  //     state->display(
+  //       Error("Type Error"),
+  //       Plain(
+  //         "Recursive type variable: " ++
+  //         GCL.Syntax.Type.toString(GCL.Syntax.Type.Var(var)) ++
+  //         "\n" ++
+  //         "in type             : " ++
+  //         GCL.Syntax.Type.toString(t),
+  //       ),
+  //     )
+  //   | NotFunction(t) =>
+  //     state->display(
+  //       Error("Type Error"),
+  //       Plain("The type " ++ GCL.Syntax.Type.toString(t) ++ " is not a function type"),
+  //     )
+  //   }
 
-let handleError = (state: t, error: Response.Error.t) => {
-  let Response.Error.Error(site, kind) = error
-  switch kind {
-  // | Response.Error.LexicalError => Promise.resolved()
-  // // state->display(Error("Lexical Error"), Plain(Response.Error.Site.toString(site)))
-  // | SyntacticError(_messages) => Promise.resolved()
-  // // state->display(Error("Parse Error"), Plain(messages->Js.String.concatMany("\n")))
-  | StructError(error) => state->handleStructError(site, error)
-  // | TypeError(error) => state->handleTypeError(error)
-  | CannotReadFile(string) =>
-    state->display(Error("Server Internal Error"), Plain("Cannot read file\n" ++ string))
-  | CannotSendRequest(string) =>
-    state->display(Error("Client Internal Error"), Plain("Cannot send request\n" ++ string))
-  | NotLoaded => state->display(Error("Client Internal Error"), Plain("Client not loaded yet"))
-  | _ => Promise.resolved()
-  }
+  // let handleError = (state: t, error: Response.Error.t) => {
+  //   let Response.Error.Error(site, kind) = error
+  //   switch kind {
+  //   // | Response.Error.LexicalError => Promise.resolved()
+  //   // // state->display(Error("Lexical Error"), Plain(Response.Error.Site.toString(site)))
+  //   // | SyntacticError(_messages) => Promise.resolved()
+  //   // // state->display(Error("Parse Error"), Plain(messages->Js.String.concatMany("\n")))
+  //   | StructError(error) => state->handleStructError(site, error)
+  //   // | TypeError(error) => state->handleTypeError(error)
+  //   | CannotReadFile(string) =>
+  //     state->display(Error("Server Internal Error"), Plain("Cannot read file\n" ++ string))
+  //   | CannotSendRequest(string) =>
+  //     state->display(Error("Client Internal Error"), Plain("Cannot send request\n" ++ string))
+  //   | NotLoaded => state->display(Error("Client Internal Error"), Plain("Client not loaded yet"))
+  //   | _ => Promise.resolved()
+  //   }
+  // }
+
 }
-
 module Spec = {
   // find the hole containing the cursor
   let fromCursorPosition = state => {
@@ -178,11 +180,11 @@ module Spec = {
 
 let handleResponseKind = (state: t, kind) =>
   switch kind {
-  | Response.Kind.Error(errors) =>
-    errors->Array.map(handleError(state))->Util.Promise.oneByOne->Promise.map(_ => ())
+  | Response.Kind.Error(_errors) => Promise.resolved()
+  // errors->Array.map(handleError(state))->Util.Promise.oneByOne->Promise.map(_ => ())
   | OK(i, pos, specs, props) =>
     state.specifications = specs
-    state->display(Plain("Proof Obligations"), ProofObligations(i, pos, props))
+    state->display(i, pos, props)
   | Substitute(id, expr) =>
     state.viewSendRequest(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | Resolve(i) =>
