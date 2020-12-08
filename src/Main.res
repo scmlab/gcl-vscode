@@ -224,7 +224,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // on open
   VSCode.Window.activeTextEditor->Option.forEach(Handler.onOpenEditor(context))
-  VSCode.Window.onDidChangeActiveTextEditor(next =>
+  VSCode.Window.onDidChangeActiveTextEditor(.next =>
     next->Option.forEach(Handler.onOpenEditor(context))
   )->subscribe
 
@@ -232,7 +232,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   VSCode.Workspace.onDidCloseTextDocument(. Handler.onCloseEditor)->subscribe
 
   // on change selection
-  VSCode.Window.onDidChangeTextEditorSelection(Handler.onSelect)->subscribe
+  VSCode.Window.onDidChangeTextEditorSelection(. Handler.onSelect)->subscribe
   // on notification from the server
   Client.on(Handler.onNotification)
 

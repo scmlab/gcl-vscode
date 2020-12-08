@@ -19,15 +19,21 @@ module Panel = {
       text.contents
     }
 
-    let styleUri =
-      VSCode.Uri.file(Node.Path.join2(distPath, styleUri))->VSCode.Uri.with_(
-        VSCode.Uri.makeChange(~scheme="vscode-resource", ()),
-      )
+    let styleUri = VSCode.Uri.file(Node.Path.join2(distPath, styleUri))->VSCode.Uri.with_({
+      "authority": None,
+      "fragment": None,
+      "path": None,
+      "prompt": None,
+      "scheme": Some("vscode-resource"),
+    })
 
-    let scriptUri =
-      VSCode.Uri.file(Node.Path.join2(distPath, scriptUri))->VSCode.Uri.with_(
-        VSCode.Uri.makeChange(~scheme="vscode-resource", ()),
-      )
+    let scriptUri = VSCode.Uri.file(Node.Path.join2(distPath, scriptUri))->VSCode.Uri.with_({
+      "authority": None,
+      "fragment": None,
+      "path": None,
+      "prompt": None,
+      "scheme": Some("vscode-resource"),
+    })
 
     let metaContent =
       "default-src 'none'; img-src vscode-resource: https:; script-src 'nonce-" ++
@@ -59,7 +65,7 @@ module Panel = {
     let panel = VSCode.Window.createWebviewPanel(
       "panel",
       "Guacamole",
-      {preserveFocus: true, viewColumn: 3},
+      {"preserveFocus": true, "viewColumn": 3},
       // None,
       Some(
         VSCode.WebviewAndWebviewPanelOptions.make(
