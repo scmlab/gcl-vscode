@@ -3,7 +3,9 @@ open Belt
 module Panel = {
   type t = VSCode.WebviewPanel.t
 
-  let makeHTML = (distPath, styleUri, scriptUri) => {
+  let makeHTML = (webview, extensionPath) => {
+    let extensionUri = VSCode.Uri.file(extensionPath)
+    // generates gibberish
     let nonce = {
       let text = ref("")
       let charaterSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -19,49 +21,74 @@ module Panel = {
       text.contents
     }
 
-    let styleUri = VSCode.Uri.file(Node.Path.join2(distPath, styleUri))->VSCode.Uri.with_({
-      "authority": None,
-      "fragment": None,
-      "path": None,
-      "prompt": None,
-      "scheme": Some("vscode-resource"),
-    })
+    let scriptUri =
+      VSCode.Webview.asWebviewUri(
+        webview,
+        VSCode.Uri.joinPath(extensionUri, ["dist", "bundled-view.js"]),
+      )->VSCode.Uri.toString
 
-    let scriptUri = VSCode.Uri.file(Node.Path.join2(distPath, scriptUri))->VSCode.Uri.with_({
-      "authority": None,
-      "fragment": None,
-      "path": None,
-      "prompt": None,
-      "scheme": Some("vscode-resource"),
-    })
+    let cspSourceUri = VSCode.Webview.cspSource(webview)
 
-    let metaContent =
-      "default-src 'none'; img-src vscode-resource: https:; script-src 'nonce-" ++
-      (nonce ++
-      "';style-src vscode-resource: 'unsafe-inline' http: https: data:;")
+    let styleUri =
+      VSCode.Webview.asWebviewUri(
+        webview,
+        VSCode.Uri.joinPath(extensionUri, ["dist", "style.css"]),
+      )->VSCode.Uri.toString
+
+    let codiconsUri = VSCode.Webview.asWebviewUri(
+      webview,
+      VSCode.Uri.joinPath(
+        extensionUri,
+        ["dist", "codicon.css"],
+        // ["node_modules", "vscode-codicons", "dist", "codicon.css"],
+      ),
+    )->VSCode.Uri.toString
+
+    let codiconsFontUri = VSCode.Webview.asWebviewUri(
+      webview,
+      VSCode.Uri.joinPath(
+        extensionUri,
+        ["dist", "codicon.ttf"],
+        // ["node_modules", "vscode-codicons", "dist", "codicon.ttf"],
+      ),
+    )->VSCode.Uri.toString
+
+    // Content-Security-Policy
+    let defaultSrc = "default-src 'none'; "
+    let scriptSrc = "script-src 'nonce-" ++ nonce ++ "'; "
+    let styleSrc = "style-src " ++ cspSourceUri ++ " " ++ styleUri ++ " " ++ codiconsUri ++ "; "
+    let fontSrc = "font-src " ++ codiconsFontUri ++ "; "
+    let scp = defaultSrc ++ fontSrc ++ scriptSrc ++ styleSrc
 
     j`
-        <!DOCTYPE html>
-              <html lang="en">
-              <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
-                <meta name="theme-color" content="#000000">
-                <title>React App</title>
-                <link rel="stylesheet" type="text/css" href="$styleUri">
-                <meta http-equiv="Content-Security-Policy" content="$metaContent">
-              </head>
-              <body>
-                <noscript>You need to enable JavaScript to run this app.</noscript>
-                <div id="root"></div>
-                <script nonce="$nonce" src="$scriptUri"></script>
-              </body>
-              </html>
-        `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
+        <meta name="theme-color" content="#000000">
+
+        <!--
+					Use a content security policy to only allow loading images from https or from our extension directory,
+					and only allow scripts that have a specific nonce.
+				-->
+        <meta http-equiv="Content-Security-Policy" content="$scp">
+
+        <title>React App</title>
+        <link href="$styleUri"    rel="stylesheet" type="text/css" >
+        <link href="$codiconsUri" rel="stylesheet" />
+      </head>
+      <body>
+        <noscript>You need to enable JavaScript to run this app.</noscript>
+        <div id="root"></div>
+        <script nonce="$nonce" src="$scriptUri"></script>
+      </body>
+      </html>
+    `
   }
 
-  let make = extentionPath => {
-    let distPath = Node.Path.join2(extentionPath, "dist")
+  let make = extensionPath => {
+    let distPath = Node.Path.join2(extensionPath, "dist")
     let panel = VSCode.Window.createWebviewPanel(
       "panel",
       "Guacamole",
@@ -79,7 +106,7 @@ module Panel = {
       ),
     )
 
-    let html = makeHTML(distPath, "style.css", "bundled-view.js")
+    let html = makeHTML(VSCode.WebviewPanel.webview(panel), extensionPath)
     panel->VSCode.WebviewPanel.webview->VSCode.Webview.setHtml(html)
 
     panel
