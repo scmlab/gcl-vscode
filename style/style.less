@@ -20,6 +20,8 @@
 
 @background  : var(--vscode-editor-background);
 @background2 : var(--vscode-menu-background);
+@background3 : var(--vscode-input-background);
+@background4 : var(--vscode-editor-snippetFinalTabstopHighlightBorder);
 
 // var(--vecode-statusBarItem-remoteBackground);
 
@@ -49,12 +51,13 @@
 
 // <Panel>
 .gcl-panel {
-    font-size: 125%;
-    padding: @component-padding;
-    line-height : 200%;
+    font-size  : 125%;
+    padding    : @component-padding;
+    line-height: 200%;
 
     // vscode: removes focus outline  
-    &:focus, *:focus {
+    &:focus,
+    *:focus {
         outline: none;
     }
 
@@ -74,28 +77,62 @@
 
         display        : flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items    : baseline;
 
-        // WP/WP2 button
-        .gcl-mode-button {
-            font-size : 75%;
-            border    : 0;
-            width     : 3em;
-            outline   : 0;
-            background: @background2;
+    }
 
-            text-align: left;
-            color     : @foreground3;
 
-            &:hover {
-                color : @foreground;
-                cursor: pointer;
-            }
+    // buttons
+    button {
+        border : 0;
+        outline: 0;
+        padding: @component-padding;
+        margin : 0;
+
+        background : @background3;
+        color      : @foreground3;
+        font-weight: bold;
+
+        .icon {
+            font-weight: bold;
+        }
+
+        &:hover {
+            color : @foreground;
+            cursor: pointer;
         }
     }
 
-    .gcl-proof-obligation, .gcl-global-props {
+    // codicons
+    .icon {
+        display    : flex;
+        align-items: center;
+
+        font-size: 1em;
+
+        .codicon {
+            font-size: 100%;
+        }
+
+        .codicon.right {
+            margin-left: 0.5em;
+        }
+
+        .codicon.left {
+            margin-left: 0.5em;
+        }
+
+    }
+
+    .gcl-proof-obligation,
+    .gcl-global-props {
         overflow-y: scroll;
+
+        .gcl-proof-obligation-header {
+            button {
+                float: right;
+            }
+        }
 
         ul {
             list-style: none;
@@ -148,34 +185,34 @@
     }
 
     .expr {
-        color      : @text-color-highlight;
-    
+        color: @text-color-highlight;
+
         * {
-          display: inline;
+            display: inline;
         }
-    
+
         .expr-paren {
-          cursor: zoom-out;
-    
-          &.hovered {
-            color: @text-color-selected
-          }
-    
-          &.collapsed {
-            cursor: zoom-in
-          }
+            cursor: zoom-out;
+
+            &.hovered {
+                color: @text-color-selected
+            }
+
+            &.collapsed {
+                cursor: zoom-in
+            }
         }
-    
+
         .expr-subst {
-          cursor     : ew-resize;
+            cursor: ew-resize;
         }
-    
+
         .expr-link {
-          &:hover {
-            color: @text-color-selected
-          }
+            &:hover {
+                color: @text-color-selected
+            }
         }
-      }
+    }
 
     .marker {
         display       : inline-flex;

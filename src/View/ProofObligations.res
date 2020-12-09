@@ -35,7 +35,12 @@ let make = (~id, ~pos: array<Response.ProofObligation.t>) => {
   <ReqID.Provider value=Some(id)>
     <div className="gcl-proof-obligation">
       <h2 className="gcl-proof-obligation-header">
-        {string("Proof Obligations")} <button> {string("Export")} </button>
+        {string("Proof Obligations")}
+        <button>
+          <div className="icon">
+            {string("export")} <i className="codicon right codicon-export" />
+          </div>
+        </button>
       </h2>
       <ul className="gcl-proof-obligation-list"> pos </ul>
     </div>
