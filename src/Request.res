@@ -6,6 +6,7 @@ module Kind = {
     | Inspect(int, int)
     | Refine(int, string)
     | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
+    | ExportProofObligations
     | Debug
 
   open! Json.Encode
@@ -28,6 +29,7 @@ module Kind = {
         ),
       })
     | Debug => object_(list{("tag", string("ReqDebug"))})
+    | ExportProofObligations => object_(list{("tag", string("ReqExportProofObligations"))})
     }
 }
 

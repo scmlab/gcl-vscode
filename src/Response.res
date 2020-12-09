@@ -259,6 +259,7 @@ module Kind = {
     | OK(int, array<ProofObligation.t>, array<Specification.t>, array<GlobalProp.t>)
     | Resolve(int)
     | Substitute(int, Syntax.Expr.t)
+    | ConsoleLog(string)
 
   open Json.Decode
   open Util.Decode
@@ -277,6 +278,7 @@ module Kind = {
     | "ResSubstitute" =>
       Contents(pair(int, Syntax.Expr.decode) |> map(((i, expr)) => Substitute(i, expr)))
     | "ResResolve" => Contents(int |> map(i => Resolve(i)))
+    | "ResConsoleLog" => Contents(string |> map(i => ConsoleLog(i)))
     | tag => raise(DecodeError("Unknown constructor: " ++ tag))
     }
   )

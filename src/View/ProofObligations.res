@@ -26,17 +26,19 @@ module GlobalProp = {
 }
 
 @react.component
-let make = (~id, ~pos: array<Response.ProofObligation.t>) => {
+let make = (~id, ~pos: array<Response.ProofObligation.t>, ~onExport: unit => unit) => {
   let pos =
     pos
     ->Array.mapWithIndex((i, payload) => <ProofObligation payload key={string_of_int(i)} />)
     ->React.array
 
+  let onClick = _ => onExport()
+
   <ReqID.Provider value=Some(id)>
     <div className="gcl-proof-obligation">
       <h2 className="gcl-proof-obligation-header">
         {string("Proof Obligations")}
-        <button>
+        <button onClick>
           <div className="icon">
             {string("export")} <i className="codicon right codicon-export" />
           </div>

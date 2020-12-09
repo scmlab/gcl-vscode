@@ -181,7 +181,6 @@ module Spec = {
 let handleResponseKind = (state: t, kind) =>
   switch kind {
   | Response.Kind.Error(_errors) => Promise.resolved()
-  // errors->Array.map(handleError(state))->Util.Promise.oneByOne->Promise.map(_ => ())
   | OK(i, pos, specs, props) =>
     state.specifications = specs
     state->display(i, pos, props)
@@ -192,6 +191,9 @@ let handleResponseKind = (state: t, kind) =>
     ->Spec.resolve(i)
     ->Promise.flatMap(_ => state.document->VSCode.TextDocument.save)
     ->Promise.map(_ => ())
+  | ConsoleLog(s) =>
+    Js.log(s)
+    Promise.resolved()
   }
 
 let handleResponseWithState = (state, response) =>
@@ -292,7 +294,12 @@ let make = (editor, viewSendRequest, viewOnResponse, lspSendRequest) => {
       lspSendRequest(Request.Req(state.filePath, Request.Kind.Substitute(id, expr, subst)))
       ->Promise.flatMap(handleResponseWithState(state))
       ->ignore
-    | _ => ()
+    | ExportProofObligations =>
+      lspSendRequest(Request.Req(state.filePath, Request.Kind.ExportProofObligations))
+      ->Promise.flatMap(handleResponseWithState(state))
+      ->ignore
+    | Initialized => ()
+    | Destroyed => ()
     }
   )->VSCode.Disposable.make->Js.Array.push(state.subscriptions)->ignore
 

@@ -41,13 +41,15 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
       }
     )), [])
 
+  let onExport = () => onResponse->Chan.emit(ExportProofObligations)
+
   let className = "gcl-panel native-key-bindings" ++ (hidden ? " hidden" : "")
 
   // <ReqID.Provider value=reqID>
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
       <section className tabIndex={-1}>
-        <ProofObligations id pos /> <GlobalProps id props />
+        <ProofObligations id pos onExport /> <GlobalProps id props />
       </section>
     </Link.Provider>
   </Subst.Provider>

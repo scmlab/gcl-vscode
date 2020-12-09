@@ -58,6 +58,7 @@ module Response = {
 
   type t =
     | Link(linkEvent)
+    | ExportProofObligations
     | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
     | Initialized
     | Destroyed
@@ -77,6 +78,7 @@ module Response = {
   let decode: decoder<t> = sum(x =>
     switch x {
     | "Initialized" => TagOnly(_ => Initialized)
+    | "ExportProofObligations" => TagOnly(_ => ExportProofObligations)
     | "Destroyed" => TagOnly(_ => Destroyed)
     | "Link" => Contents(json => Link(decodeLinkEvent(json)))
     | "Substitute" =>
@@ -106,6 +108,7 @@ module Response = {
     switch x {
     | Initialized => object_(list{("tag", string("Initialized"))})
     | Destroyed => object_(list{("tag", string("Destroyed"))})
+    | ExportProofObligations => object_(list{("tag", string("ExportProofObligations"))})
     | Link(e) => object_(list{("tag", string("Link")), ("contents", encodeLinkEvent(e))})
     | Substitute(i, expr, subst) =>
       object_(list{
