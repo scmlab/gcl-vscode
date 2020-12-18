@@ -34,7 +34,6 @@ module Kind = {
 }
 
 type t = Req(filepath, Kind.t)
-
 open Json.Encode
 let encode: encoder<t> = x =>
   switch x {
