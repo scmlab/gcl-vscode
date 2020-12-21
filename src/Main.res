@@ -24,7 +24,7 @@ let handleResponse = response =>
 
 module type Client = {
   type t
-  let start: unit => unit
+  let start: unit => LSP.LanguageClient.t
   let stop: unit => Promise.t<unit>
   let on: (Response.t => unit) => unit
   let send: Request.t => Promise.t<Response.t>
@@ -32,7 +32,7 @@ module type Client = {
 module Client: Client = {
   type t = {
     mutable client: LSP.LanguageClient.t,
-    mutable subscription: option<VSCode.Disposable.t>,
+    mutable subscription: VSCode.Disposable.t,
   }
   let make = () => {
     open LSP
@@ -71,21 +71,32 @@ module Client: Client = {
       clientOptions,
     )
   }
-  let handle = {client: make(), subscription: None}
 
-  // start the LSP client
+  let handle: ref<option<t>> = ref(None)
+
+  // make and start the LSP client
   let start = () =>
-    if handle.subscription->Option.isNone {
-      handle.subscription = Some(handle.client->LSP.LanguageClient.start)
+    switch handle.contents {
+    | None =>
+      let client = make()
+      let subscription = client->LSP.LanguageClient.start
+      handle := Some({client: client, subscription: subscription})
+      client
+    | Some({client}) =>
+      client
     }
   // stop the LSP client
   let stop = () =>
-    switch handle.subscription {
-    | None => Promise.resolved()
-    | Some(subscription') => handle.client->LSP.LanguageClient.stop->Promise.tap(_ => {
-        handle.subscription = None
-        subscription'->VSCode.Disposable.dispose
-      })
+    switch handle.contents {
+    | None =>
+      Promise.resolved()
+    | Some({client, subscription}) =>
+      handle := None
+      subscription->VSCode.Disposable.dispose->ignore
+      client
+      ->LSP.LanguageClient.stop
+      ->Promise.Js.toResult
+      ->Promise.map(_ => ())
     }
 
   let decodeResponse = (json: Js.Json.t): Response.t =>
@@ -96,22 +107,28 @@ module Client: Client = {
     }
 
   let on = handler =>
-    handle.client
-    ->LSP.LanguageClient.onReady
-    ->Promise.Js.toResult
-    ->Promise.getOk(() =>
-      handle.client->LSP.LanguageClient.onNotification("guacamole", json =>
-        handler(decodeResponse(json))
+    handle.contents->Option.forEach(({client}) => {
+      client
+      ->LSP.LanguageClient.onReady
+      ->Promise.Js.toResult
+      ->Promise.getOk(() =>
+        client->LSP.LanguageClient.onNotification("guacamole", json =>
+          handler(decodeResponse(json))
+        )
       )
-    )
+    })
 
   let send = request => {
-    start()
+    let client = start()
 
-    handle.client->LSP.LanguageClient.onReady->Promise.Js.toResult->Promise.flatMapOk(() => {
+    client
+    ->LSP.LanguageClient.onReady
+    ->Promise.Js.toResult
+    ->Promise.flatMapOk(() => {
       let value = Request.encode(request)
-      handle.client->LSP.LanguageClient.sendRequest("guacamole", value)->Promise.Js.toResult
-    })->Promise.map(x =>
+      client->LSP.LanguageClient.sendRequest("guacamole", value)->Promise.Js.toResult
+    })
+    ->Promise.map(x =>
       switch x {
       | Ok(json) => decodeResponse(json)
       | Error(error) => Response.CannotSendRequest(Response.Error.fromJsError(error))
@@ -184,7 +201,7 @@ module Handler = {
       // this callback will be invoked when the first editor is opened
       onActivateExtension(() => {
         View.activate(context->VSCode.ExtensionContext.extensionPath)
-        Client.start()
+        Client.start()->ignore
       })
 
       let state = switch Registry.get(filePath) {
@@ -241,7 +258,9 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     VSCode.Window.activeTextEditor->Option.map(editor => {
       let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
       Registry.get(filePath)->Option.mapWithDefault(Promise.resolved(), state => {
-        state->State.Spec.fromCursorPosition->Option.mapWithDefault(Promise.resolved(), spec => {
+        state
+        ->State.Spec.fromCursorPosition
+        ->Option.mapWithDefault(Promise.resolved(), spec => {
           let payload = State.Spec.getPayload(state.document, spec)
           state.lspSendRequest(Req(filePath, Refine(spec.id, payload)))->Promise.flatMap(
             State.handleResponseWithState(state),
