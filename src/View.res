@@ -150,9 +150,9 @@ module View = {
       view.panel->VSCode.WebviewPanel.webview->VSCode.Webview.postMessage(stringified)
     }
 
-  let make = extentionPath => {
+  let make = extensionPath => {
     let view = {
-      panel: Panel.make(extentionPath),
+      panel: Panel.make(extensionPath),
       subscriptions: [],
       onResponse: Chan.make(),
       status: Uninitialized([]),

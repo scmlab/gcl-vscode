@@ -82,21 +82,16 @@ module Client: Client = {
       let subscription = client->LSP.LanguageClient.start
       handle := Some({client: client, subscription: subscription})
       client
-    | Some({client}) =>
-      client
+    | Some({client}) => client
     }
   // stop the LSP client
   let stop = () =>
     switch handle.contents {
-    | None =>
-      Promise.resolved()
+    | None => Promise.resolved()
     | Some({client, subscription}) =>
       handle := None
       subscription->VSCode.Disposable.dispose->ignore
-      client
-      ->LSP.LanguageClient.stop
-      ->Promise.Js.toResult
-      ->Promise.map(_ => ())
+      client->LSP.LanguageClient.stop->Promise.Js.toResult->Promise.map(_ => ())
     }
 
   let decodeResponse = (json: Js.Json.t): Response.t =>
@@ -195,12 +190,13 @@ module Handler = {
   }
 
   let onOpenEditor = (context, editor) => {
+
     let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
     // filter out ".gcl.git" files
     if isGCL(filePath) {
       // this callback will be invoked when the first editor is opened
       onActivateExtension(() => {
-        View.activate(context->VSCode.ExtensionContext.extensionPath)
+        // View.activate(context->VSCode.ExtensionContext.extensionPath)
         Client.start()->ignore
       })
 
@@ -209,6 +205,29 @@ module Handler = {
         // state initialization
         let state = State.make(editor, View.send, View.on, Client.send)
         Registry.add(filePath, state)
+
+        // let extensionPath = context->VSCode.ExtensionContext.extensionPath
+        // let distPath = Node.Path.join2(extensionPath, "dist")
+        // let options = {
+        //         VSCode.WebviewOptions.enableCommandUris:  Some(true),
+        //         enableScripts: Some(true),
+        //         // And restrict the webview to only loading content from our extension's `dist` directory.
+        //         localResourceRoots: Some([VSCode.Uri.file(distPath)]),
+        //         portMapping: None
+        //       }
+        // let inset = LSP.WindowExt.createWebviewTextEditorInsetWithOptions(editor, 2, 10, options)
+        // let webview = inset->LSP.WebviewEditorInset.webview
+        // // let html = View.Panel.makeHTML(webview, extensionPath)
+        // let html = "<!DOCTYPE html><html ><head></head><body><p style='height: 2em; width: 3em; background: red'>HEY</p></body></html>"
+        // // let html = "<div style='height: 2em; width: 3em; background: red'>yoo</div>"
+        // webview->VSCode.Webview.setHtml(html)
+
+        let inset = LSP.WindowExt.createWebviewTextEditorInset(editor, 5, 5)
+        let html = "<p>HEY</p>"
+        inset->LSP.WebviewEditorInset.webview->VSCode.Webview.setHtml(html)
+
+
+
         state
       | Some(state) =>
         // after switching tabs, the old editor would be "_disposed"
@@ -241,9 +260,9 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // on open
   VSCode.Window.activeTextEditor->Option.forEach(Handler.onOpenEditor(context))
-  VSCode.Window.onDidChangeActiveTextEditor(.next =>
+  VSCode.Window.onDidChangeActiveTextEditor(.next => {
     next->Option.forEach(Handler.onOpenEditor(context))
-  )->subscribe
+  })->subscribe
 
   // on close
   VSCode.Workspace.onDidCloseTextDocument(. Handler.onCloseEditor)->subscribe

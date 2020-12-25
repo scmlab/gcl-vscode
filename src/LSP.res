@@ -22,6 +22,28 @@ module ServerOptions = {
     }"
   )
 }
+
+
+module WebviewEditorInset = {
+  type t
+  // properties
+  @bs.get external editor: t => VSCode.TextEditor.t = "editor"
+  @bs.get external line: t => int = "line"
+  @bs.get external height: t => int = "height"
+  @bs.get external webview: t => VSCode.Webview.t = "webview"
+  @bs.get external onDidDispose: t => VSCode.Event.t<unit> = "onDidDispose"
+  // methods
+  @bs.send external dispose: (t) => unit = "dispose"
+}
+
+
+module WindowExt = {
+  @bs.module("vscode") @bs.scope("window")
+  external createWebviewTextEditorInset: ( VSCode.TextEditor.t,  int, int) => WebviewEditorInset.t = "createWebviewTextEditorInset"
+  @bs.module("vscode") @bs.scope("window")
+  external createWebviewTextEditorInsetWithOptions: ( VSCode.TextEditor.t,  int, int, VSCode.WebviewOptions.t) => WebviewEditorInset.t = "createWebviewTextEditorInset"
+}
+
 module LanguageClient = {
   type t
   // constructor
