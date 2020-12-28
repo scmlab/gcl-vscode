@@ -20,7 +20,7 @@ let handleResponse = response =>
       json,
     )
     Promise.resolved()
-  }
+  }->ignore
 
 module type Client = {
   type t
@@ -155,8 +155,103 @@ let registerInset = () => {
   ()
 }
 
-module Handler = {
-  let onSelect = event => {
+module Events = {
+
+  let isGCL = editor => Js.Re.test_(%re("/\\.gcl$/i"), editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName)
+  let isGCL' = document => Js.Re.test_(%re("/\\.gcl$/i"), document->VSCode.TextDocument.fileName)
+
+  // callback only gets invoked when:
+  //  1. an editor is opened or reactivated
+  //  1. the opened file extension is "gcl"
+  let onOpenEditor = callback => {
+    let f = editor => 
+      if isGCL(editor) {callback(editor)}
+
+    VSCode.Window.activeTextEditor->Option.forEach(f)
+    VSCode.Window.onDidChangeActiveTextEditor(.next => {
+      next->Option.forEach(f)
+    })
+  }
+  let onCloseEditor = callback => VSCode.Workspace.onDidCloseTextDocument(. document => if isGCL'(document) {callback(document)})
+
+  // callback only gets invoked when:
+  //  1. no GCL files was opened
+  //  2. the view is closed 
+  let onActivateExtension = callback => onOpenEditor(_ => {
+    // number of visible GCL file in the workplace
+    let visibleCount =
+      VSCode.Window.visibleTextEditors
+      ->Array.keep(isGCL)
+      ->Array.length
+    // should activate the view when there's a visible GCL file
+    let shouldAcitvateView = visibleCount > 0 && !View.isActivated()
+
+    if shouldAcitvateView {
+      callback()
+    }
+  })
+
+  // callback only gets invoked when:
+  //  1. no GCL files was opened
+  //  2. the view is opened 
+  let onDeactivateExtension = callback => onCloseEditor(_ => {
+    // number of GCL States in the Registry
+    let openedCount = Registry.size()
+    // should deacitvate the view when all GCL States have been destroyed
+    let shouldDeacitvateView = openedCount === 0 && View.isActivated()
+
+    if shouldDeacitvateView {
+      callback()
+    }
+  })
+
+  let onChangeCursorPosition = callback => VSCode.Window.onDidChangeTextEditorSelection(. callback)
+}
+
+let activate = (context: VSCode.ExtensionContext.t) => {
+  let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
+
+  // on open
+  Events.onOpenEditor(editor => {
+    let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName 
+    let state = switch Registry.get(filePath) {
+    | None =>
+      let state = State.make(editor, View.send, View.on, Client.send)
+      Registry.add(filePath, state)
+      // registerInset()
+      state
+    | Some(state) =>
+      // after switching tabs, the old editor would be "_disposed"
+      // we need to replace it with this new one
+      state.editor = editor
+      state.document = editor->VSCode.TextEditor.document
+      state.filePath = filePath
+      state
+    }
+    Client.send(Req(state.filePath, Load))->Promise.get(handleResponse)
+  })->subscribe
+
+  // on close
+  Events.onCloseEditor(document => {
+    let filePath = VSCode.TextDocument.fileName(document)
+    Registry.destroy(filePath)
+  })->subscribe
+
+  // on extension activation
+  Events.onActivateExtension(() => {
+    View.activate(context->VSCode.ExtensionContext.extensionPath)
+    Client.start()->ignore
+  })->subscribe
+
+  // on extension deactivation
+  Events.onDeactivateExtension(_ => {
+      View.deactivate()
+      Client.stop()->ignore
+  })->subscribe
+
+  // on change cursor position/selection
+  Events.onChangeCursorPosition(
+  event => {
     let selections = event->VSCode.TextEditorSelectionChangeEvent.selections
     let editor = event->VSCode.TextEditorSelectionChangeEvent.textEditor
     let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
@@ -178,102 +273,14 @@ module Handler = {
           let end_ = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.end_(selection))
 
           Client.send(Req(state.filePath, Inspect(start, end_)))
-          ->Promise.flatMap(handleResponse)
-          ->ignore
+          ->Promise.get(handleResponse)
         })
       )
     }
-  }
-
-  let onActivateExtension = callback => {
-    // number of visible GCL file in the workplace
-    let visibleCount =
-      VSCode.Window.visibleTextEditors
-      ->Array.keep(editor =>
-        isGCL(editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName)
-      )
-      ->Array.length
-    // should activate the view when there's a visible GCL file
-    let shouldAcitvateView = visibleCount > 0 && !View.isActivated()
-
-    if shouldAcitvateView {
-      callback()
-    }
-  }
-
-  let onDeactivateExtension = callback => {
-    // number of GCL States in the Registry
-    let openedCount = Registry.size()
-    // should deacitvate the view when all GCL States have been destroyed
-    let shouldDeacitvateView = openedCount === 0 && View.isActivated()
-
-    if shouldDeacitvateView {
-      callback()
-    }
-  }
-
-  let onOpenEditor = (context, editor) => {
-
-    let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
-    // filter out ".gcl.git" files
-    if isGCL(filePath) {
-      // this callback will be invoked when the first editor is opened
-      onActivateExtension(() => {
-        View.activate(context->VSCode.ExtensionContext.extensionPath)
-        Client.start()->ignore
-      })
-
-      let state = switch Registry.get(filePath) {
-      | None =>
-        // state initialization
-        let state = State.make(editor, View.send, View.on, Client.send)
-        Registry.add(filePath, state)
-
-        // registerInset()
-
-        state
-      | Some(state) =>
-        // after switching tabs, the old editor would be "_disposed"
-        // we need to replace it with this new one
-        state.editor = editor
-        state.document = editor->VSCode.TextEditor.document
-        state.filePath = filePath
-        state
-      }
-      Client.send(Req(state.filePath, Load))->Promise.flatMap(handleResponse)->ignore
-    }
-  }
-
-  let onCloseEditor = doc => {
-    let filePath = VSCode.TextDocument.fileName(doc)
-    if isGCL(filePath) {
-      Registry.destroy(filePath)
-      onDeactivateExtension(() => {
-        View.deactivate()
-        Client.stop()->ignore
-      })
-    }
-  }
-
-  let onNotification = response => handleResponse(response)->ignore
-}
-
-let activate = (context: VSCode.ExtensionContext.t) => {
-  let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
-
-  // on open
-  VSCode.Window.activeTextEditor->Option.forEach(Handler.onOpenEditor(context))
-  VSCode.Window.onDidChangeActiveTextEditor(.next => {
-    next->Option.forEach(Handler.onOpenEditor(context))
   })->subscribe
 
-  // on close
-  VSCode.Workspace.onDidCloseTextDocument(. Handler.onCloseEditor)->subscribe
-
-  // on change selection
-  VSCode.Window.onDidChangeTextEditorSelection(. Handler.onSelect)->subscribe
-  // on notification from the server
-  Client.on(Handler.onNotification)
+  // on response/notification from the server
+  Client.on(handleResponse)
 
   // on command
   VSCode.Commands.registerCommand("guacamole.refine", () =>
