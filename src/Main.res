@@ -132,6 +132,29 @@ module Client: Client = {
   }
 }
 
+let registerInset = () => {
+  // let extensionPath = context->VSCode.ExtensionContext.extensionPath
+  // let distPath = Node.Path.join2(extensionPath, "dist")
+  // let options = {
+  //         VSCode.WebviewOptions.enableCommandUris:  Some(true),
+  //         enableScripts: Some(true),
+  //         // And restrict the webview to only loading content from our extension's `dist` directory.
+  //         localResourceRoots: Some([VSCode.Uri.file(distPath)]),
+  //         portMapping: None
+  //       }
+  // let inset = LSP.WindowExt.createWebviewTextEditorInsetWithOptions(editor, 2, 5, options)
+  // let webview = inset->LSP.WebviewEditorInset.webview
+  // let html = View.Panel.makeHTML(webview, extensionPath)
+
+  // Js.log(html)
+  // webview->VSCode.Webview.setHtml(html)
+
+  // let inset = LSP.WindowExt.createWebviewTextEditorInset(editor, 5, 2)
+  // let html = "<p>WEBVIEW INSET HERE !!!</p>"
+  // inset->LSP.WebviewEditorInset.webview->VSCode.Webview.setHtml(html)
+  ()
+}
+
 module Handler = {
   let onSelect = event => {
     let selections = event->VSCode.TextEditorSelectionChangeEvent.selections
@@ -196,7 +219,7 @@ module Handler = {
     if isGCL(filePath) {
       // this callback will be invoked when the first editor is opened
       onActivateExtension(() => {
-        // View.activate(context->VSCode.ExtensionContext.extensionPath)
+        View.activate(context->VSCode.ExtensionContext.extensionPath)
         Client.start()->ignore
       })
 
@@ -206,27 +229,7 @@ module Handler = {
         let state = State.make(editor, View.send, View.on, Client.send)
         Registry.add(filePath, state)
 
-        // let extensionPath = context->VSCode.ExtensionContext.extensionPath
-        // let distPath = Node.Path.join2(extensionPath, "dist")
-        // let options = {
-        //         VSCode.WebviewOptions.enableCommandUris:  Some(true),
-        //         enableScripts: Some(true),
-        //         // And restrict the webview to only loading content from our extension's `dist` directory.
-        //         localResourceRoots: Some([VSCode.Uri.file(distPath)]),
-        //         portMapping: None
-        //       }
-        // let inset = LSP.WindowExt.createWebviewTextEditorInsetWithOptions(editor, 2, 10, options)
-        // let webview = inset->LSP.WebviewEditorInset.webview
-        // // let html = View.Panel.makeHTML(webview, extensionPath)
-        // let html = "<!DOCTYPE html><html ><head></head><body><p style='height: 2em; width: 3em; background: red'>HEY</p></body></html>"
-        // // let html = "<div style='height: 2em; width: 3em; background: red'>yoo</div>"
-        // webview->VSCode.Webview.setHtml(html)
-
-        let inset = LSP.WindowExt.createWebviewTextEditorInset(editor, 5, 5)
-        let html = "<p>HEY</p>"
-        inset->LSP.WebviewEditorInset.webview->VSCode.Webview.setHtml(html)
-
-
+        // registerInset()
 
         state
       | Some(state) =>

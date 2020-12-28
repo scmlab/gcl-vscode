@@ -99,7 +99,7 @@ module Panel = {
           ~enableScripts=true,
           // So that the view don't get wiped out when it's not in the foreground
           ~retainContextWhenHidden=true,
-          // And restrict the webview to only loading content from our extension's `media` directory.
+          // And restrict the webview to only loading content from our extension's `dist` directory.
           ~localResourceRoots=[VSCode.Uri.file(distPath)],
           (),
         ),
@@ -112,18 +112,18 @@ module Panel = {
     panel
   }
 
-  let moveToRight = () => {
-    open VSCode.Commands
-    executeCommand(
-      #setEditorLayout({
-        orientation: 0,
-        groups: {
-          open Layout
-          [sized({groups: [simple], size: 0.5}), sized({groups: [simple], size: 0.5})]
-        },
-      }),
-    )->ignore
-  }
+  // let moveToRight = () => {
+  //   open VSCode.Commands
+  //   executeCommand(
+  //     #setEditorLayout({
+  //       orientation: 0,
+  //       groups: {
+  //         open Layout
+  //         [sized({groups: [simple], size: 0.5}), sized({groups: [simple], size: 0.5})]
+  //       },
+  //     }),
+  //   )->ignore
+  // }
 }
 
 module View = {
@@ -158,7 +158,7 @@ module View = {
       status: Uninitialized([]),
     }
 
-    Panel.moveToRight()
+    // Panel.moveToRight()
 
     // on message
     view.panel->VSCode.WebviewPanel.webview->VSCode.Webview.onDidReceiveMessage(json =>
