@@ -48,7 +48,7 @@
 		"react": "16.9.0",
 		"react-dom": "16.9.0"
 	},
-	"enableProposedApi": true,
+	"enableProposedApi": false,
 	"contributes": {
 		"languages": [
 			{

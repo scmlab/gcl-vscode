@@ -6,7 +6,7 @@ type t = {
   mutable filePath: string,
   // communications
   viewSendRequest: ViewType.Request.t => Promise.t<bool>,
-  lspSendRequest: Request.t => Promise.t<Response.t>,
+  lspSendRequest: Request.Kind.t => Promise.t<Response.t>,
   // state
   mutable specifications: array<Response.Specification.t>,
   // garbage

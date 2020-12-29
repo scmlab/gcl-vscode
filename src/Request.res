@@ -1,4 +1,5 @@
 type filepath = string
+type source = string
 
 module Kind = {
   type t =
@@ -33,9 +34,9 @@ module Kind = {
     }
 }
 
-type t = Req(filepath, Kind.t)
+type t = Req(filepath, source, Kind.t)
 open Json.Encode
 let encode: encoder<t> = x =>
   switch x {
-  | Req(filepath, kind) => (filepath, kind) |> pair(string, Kind.encode)
+  | Req(filepath, source, kind) => (filepath, source, kind) |> tuple3(string, string, Kind.encode)
   }

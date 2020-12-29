@@ -57,12 +57,11 @@ let handleViewResponse = response => getState()->Option.forEach(state => {
       // remove all decorations
       State.Decoration.removeAll()
       // send request to the server
-      state.lspSendRequest(Request.Req(state.filePath, Request.Kind.Substitute(id, expr, subst)))
+      state.lspSendRequest(Request.Kind.Substitute(id, expr, subst))
       ->Promise.flatMap(State.handleResponseWithState(state))
       ->ignore
     | ExportProofObligations =>
-      Js.log("viewOnResponse.ExportProofObligations")
-      state.lspSendRequest(Request.Req(state.filePath, Request.Kind.ExportProofObligations))
+      state.lspSendRequest(Request.Kind.ExportProofObligations)
       ->Promise.flatMap(State.handleResponseWithState(state))
       ->ignore
     | Initialized => ()
@@ -265,9 +264,15 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on open
   Events.onOpenEditor(editor => {
     let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
+    let sendRequest = kind => {
+      let source = editor->VSCode.TextEditor.document->VSCode.TextDocument.getText(None)
+      Client.send(Request.Req(filePath, source, kind))
+    }
+
     let state = switch Registry.get(filePath) {
     | None =>
-      let state = State.make(editor, View.send, Client.send)
+
+      let state = State.make(editor, View.send, sendRequest)
       Registry.add(filePath, state)
 
       // registerInset()
@@ -280,7 +285,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       state.filePath = filePath
       state
     }
-    Client.send(Req(state.filePath, Load))->Promise.get(handleResponse)
+    sendRequest(Load)->Promise.get(handleResponse)
   })->subscribe
 
   // on close
@@ -323,7 +328,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
           )
           let end_ = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.end_(selection))
 
-          Client.send(Req(state.filePath, Inspect(start, end_)))->Promise.get(handleResponse)
+          state.lspSendRequest(Inspect(start, end_))->Promise.get(handleResponse)
         })
       )
     }
@@ -340,7 +345,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
       state->State.Spec.fromCursorPosition->Option.mapWithDefault(Promise.resolved(), spec => {
         let payload = State.Spec.getPayload(state.document, spec)
-        state.lspSendRequest(Req(state.filePath, Refine(spec.id, payload)))->Promise.flatMap(
+        state.lspSendRequest(Refine(spec.id, payload))->Promise.flatMap(
           State.handleResponseWithState(state),
         )
       })
