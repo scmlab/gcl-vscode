@@ -207,9 +207,7 @@ module Error = {
       switch x {
       | "MissingAssertion" => Contents(_ => MissingAssertion)
       | "MissingBound" => Contents(_ => MissingBound)
-      // | "MissingLoopInvariant" => Contents(_ => MissingLoopInvariant)
       | "ExcessBound" => Contents(_ => ExcessBound)
-      // | "MissingPrecondition" => Contents(_ => MissingPrecondition)
       | "MissingPostcondition" => Contents(_ => MissingPostcondition)
       | "DigHole" => Contents(_ => DigHole)
       | tag => raise(DecodeError("Unknown constructor: " ++ tag))
@@ -251,6 +249,12 @@ module Error = {
   let decode: decoder<t> = pair(Site.decode, decodeKind) |> map(((site, kind)) => Error(site, kind))
 
   let fromJsError = (error: 'a): string => %raw("function (e) {return e.toString()}")(error)
+
+  let matchDigHole = error =>
+    switch error {
+    | Error(site, StructError(DigHole)) => Some(site)
+    | _ => None
+    }
 }
 
 module Kind = {

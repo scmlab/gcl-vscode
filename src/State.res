@@ -179,7 +179,32 @@ module Spec = {
 
 let handleResponseKind = (state: t, kind) =>
   switch kind {
-  | Response.Kind.Error(_errors) => Promise.resolved()
+  | Response.Kind.Error(errors) =>
+    let sites = errors->Array.keepMap(Response.Error.matchDigHole)
+    switch sites[0] {
+    | None => Promise.resolved()
+    | Some(site) =>
+      let range = Response.Error.Site.toRange(site, state.specifications, GCL.Loc.toRange)
+      // replace the question mark "?" with a hole "{!  !}"
+      let indent = Js.String.repeat(VSCode.Position.character(VSCode.Range.start(range)), " ")
+      let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}"
+      let holeRange = VSCode.Range.make(
+        VSCode.Range.start(range),
+        VSCode.Position.translate(VSCode.Range.start(range), 0, 1),
+      )
+
+      state.document->Editor.Text.replace(holeRange, holeText)->Promise.map(_ => {
+        // set the cursor inside the hole
+        let selectionRange = VSCode.Range.make(
+          VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
+          VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
+        )
+        Editor.Selection.set(state.editor, selectionRange)
+      })->Promise.flatMap(_ => {
+        // save the editor to trigger the server
+        state.document->VSCode.TextDocument.save
+      })->Promise.map(_ => ())
+    }
   | OK(i, pos, specs, props) =>
     state.specifications = specs
     state->display(i, pos, props)
