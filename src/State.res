@@ -6,7 +6,6 @@ type t = {
   mutable filePath: string,
   // communications
   viewSendRequest: ViewType.Request.t => Promise.t<bool>,
-  viewOnResponse: (ViewType.Response.t => unit, unit) => unit,
   lspSendRequest: Request.t => Promise.t<Response.t>,
   // state
   mutable specifications: array<Response.Specification.t>,
@@ -252,7 +251,7 @@ module Decoration: Decoration = {
     })
 }
 
-let make = (editor, viewSendRequest, viewOnResponse, lspSendRequest) => {
+let make = (editor, viewSendRequest, lspSendRequest) => {
   let document = VSCode.TextEditor.document(editor)
   let filePath = VSCode.TextDocument.fileName(document)
   let state = {
@@ -261,47 +260,13 @@ let make = (editor, viewSendRequest, viewOnResponse, lspSendRequest) => {
     filePath: filePath,
     // communitations
     viewSendRequest: viewSendRequest,
-    viewOnResponse: viewOnResponse,
+    // viewOnResponse: viewOnResponse,
     lspSendRequest: lspSendRequest,
     // state
     specifications: [],
     // garbage
     subscriptions: [],
   }
-
-  viewOnResponse(response =>
-    switch response {
-    | ViewType.Response.Link(MouseOver(loc)) =>
-      let key = GCL.Loc.toString(loc)
-      let range = GCL.Loc.toRange(loc)
-      Decoration.addBackground(state, key, range, "statusBar.debuggingBackground")
-    | Link(MouseOut(loc)) =>
-      let key = GCL.Loc.toString(loc)
-      Decoration.remove(key)
-    | Link(MouseClick(_loc)) => ()
-    // let key = GCL.Loc.toString(loc)
-    // let range = GCL.Loc.toRange(loc)
-    // // focus on the editor
-    // focus(state)
-    // // select the source on the editor
-    // let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
-    // state.editor->VSCode.TextEditor.setSelection(selection)
-    // Decoration.remove(key)
-    | Substitute(id, expr, subst) =>
-      // remove all decorations
-      Decoration.removeAll()
-      // send request to the server
-      lspSendRequest(Request.Req(state.filePath, Request.Kind.Substitute(id, expr, subst)))
-      ->Promise.flatMap(handleResponseWithState(state))
-      ->ignore
-    | ExportProofObligations =>
-      lspSendRequest(Request.Req(state.filePath, Request.Kind.ExportProofObligations))
-      ->Promise.flatMap(handleResponseWithState(state))
-      ->ignore
-    | Initialized => ()
-    | Destroyed => ()
-    }
-  )->VSCode.Disposable.make->Js.Array.push(state.subscriptions)->ignore
 
   state
 }

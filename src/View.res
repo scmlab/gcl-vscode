@@ -219,7 +219,7 @@ module type Controller = {
   let deactivate: unit => unit
   let isActivated: unit => bool
   let send: ViewType.Request.t => Promise.t<bool>
-  let on: (ViewType.Response.t => unit, unit) => unit
+  let on: (ViewType.Response.t => unit) => VSCode.Disposable.t
   let focus: unit => unit
 }
 module Controller: Controller = {
@@ -235,8 +235,8 @@ module Controller: Controller = {
     }
   let on = callback =>
     switch handle.view {
-    | None => () => ()
-    | Some(view) => view.onResponse->Chan.on(callback)
+    | None => VSCode.Disposable.make(() => ())
+    | Some(view) => view.onResponse->Chan.on(callback)->VSCode.Disposable.make
     }
 
   let activate = extensionPath => {

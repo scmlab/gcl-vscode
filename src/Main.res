@@ -9,18 +9,66 @@ let handleResponse = response =>
       kinds->Array.map(State.handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())
     )
   | CannotSendRequest(message) =>
-    Js.Console.error("Client Internal Error\nCannot send request to the server\n" ++ message)
-    Promise.resolved()
+    VSCode.Window.showErrorMessage(
+      "Client Internal Error\nCannot send request to the server\n" ++ message,
+      [],
+    )->Promise.map(_ => ())
   | CannotDecodeRequest(message) =>
-    Js.Console.error("Server Internal Error\nCannot decode request from the client\n" ++ message)
-    Promise.resolved()
+    VSCode.Window.showErrorMessage(
+      "Server Internal Error\nCannot decode request from the client\n" ++ message,
+      [],
+    )->Promise.map(_ => ())
   | CannotDecodeResponse(message, json) =>
-    Js.Console.error2(
-      "Client Internal Error\nCannot decode response from the server\n" ++ message,
-      json,
-    )
-    Promise.resolved()
+    VSCode.Window.showErrorMessage(
+      "Client Internal Error\nCannot decode response from the server\n" ++
+      message ++
+      "\n" ++
+      Js.Json.stringify(json),
+      [],
+    )->Promise.map(_ => ())
   }->ignore
+
+let getState = () =>
+  VSCode.Window.activeTextEditor
+  ->Option.map(VSCode.TextEditor.document)
+  ->Option.map(VSCode.TextDocument.fileName)
+  ->Option.flatMap(Registry.get)
+
+let handleViewResponse = response => getState()->Option.forEach(state => {
+    switch response {
+    | ViewType.Response.Link(MouseOver(loc)) =>
+      Js.log("viewOnResponse.MouseOver")
+      let key = GCL.Loc.toString(loc)
+      let range = GCL.Loc.toRange(loc)
+      State.Decoration.addBackground(state, key, range, "statusBar.debuggingBackground")
+    | Link(MouseOut(loc)) =>
+      let key = GCL.Loc.toString(loc)
+      State.Decoration.remove(key)
+    | Link(MouseClick(_loc)) => ()
+    // let key = GCL.Loc.toString(loc)
+    // let range = GCL.Loc.toRange(loc)
+    // // focus on the editor
+    // focus(state)
+    // // select the source on the editor
+    // let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
+    // state.editor->VSCode.TextEditor.setSelection(selection)
+    // Decoration.remove(key)
+    | Substitute(id, expr, subst) =>
+      // remove all decorations
+      State.Decoration.removeAll()
+      // send request to the server
+      state.lspSendRequest(Request.Req(state.filePath, Request.Kind.Substitute(id, expr, subst)))
+      ->Promise.flatMap(State.handleResponseWithState(state))
+      ->ignore
+    | ExportProofObligations =>
+      Js.log("viewOnResponse.ExportProofObligations")
+      state.lspSendRequest(Request.Req(state.filePath, Request.Kind.ExportProofObligations))
+      ->Promise.flatMap(State.handleResponseWithState(state))
+      ->ignore
+    | Initialized => ()
+    | Destroyed => ()
+    }
+  })
 
 module type Client = {
   type t
@@ -61,7 +109,12 @@ module Client: Client = {
         ~ignoreChangeEvents=false,
         ~ignoreDeleteEvents=false,
       )
-      LanguageClientOptions.make(documentSelector, synchronize)
+
+      LanguageClientOptions.make(
+        documentSelector,
+        synchronize,
+        ErrorHandler.makeDefault("Guacamole", 3),
+      )
     }
     // Create the language client
     LanguageClient.make(
@@ -101,8 +154,7 @@ module Client: Client = {
     | exception Json.Decode.DecodeError(msg) => CannotDecodeResponse(msg, json)
     }
 
-  let on = handler =>
-    handle.contents->Option.forEach(({client}) => {
+  let on = handler => handle.contents->Option.forEach(({client}) => {
       client
       ->LSP.LanguageClient.onReady
       ->Promise.Js.toResult
@@ -116,14 +168,10 @@ module Client: Client = {
   let send = request => {
     let client = start()
 
-    client
-    ->LSP.LanguageClient.onReady
-    ->Promise.Js.toResult
-    ->Promise.flatMapOk(() => {
+    client->LSP.LanguageClient.onReady->Promise.Js.toResult->Promise.flatMapOk(() => {
       let value = Request.encode(request)
       client->LSP.LanguageClient.sendRequest("guacamole", value)->Promise.Js.toResult
-    })
-    ->Promise.map(x =>
+    })->Promise.map(x =>
       switch x {
       | Ok(json) => decodeResponse(json)
       | Error(error) => Response.CannotSendRequest(Response.Error.fromJsError(error))
@@ -156,54 +204,57 @@ let registerInset = () => {
 }
 
 module Events = {
-
-  let isGCL = editor => Js.Re.test_(%re("/\\.gcl$/i"), editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName)
+  let isGCL = editor =>
+    Js.Re.test_(%re("/\\.gcl$/i"), editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName)
   let isGCL' = document => Js.Re.test_(%re("/\\.gcl$/i"), document->VSCode.TextDocument.fileName)
 
   // callback only gets invoked when:
   //  1. an editor is opened or reactivated
   //  1. the opened file extension is "gcl"
   let onOpenEditor = callback => {
-    let f = editor => 
-      if isGCL(editor) {callback(editor)}
+    let f = editor =>
+      if isGCL(editor) {
+        callback(editor)
+      }
 
     VSCode.Window.activeTextEditor->Option.forEach(f)
     VSCode.Window.onDidChangeActiveTextEditor(.next => {
       next->Option.forEach(f)
     })
   }
-  let onCloseEditor = callback => VSCode.Workspace.onDidCloseTextDocument(. document => if isGCL'(document) {callback(document)})
+  let onCloseEditor = callback => VSCode.Workspace.onDidCloseTextDocument(.document =>
+      if isGCL'(document) {
+        callback(document)
+      }
+    )
 
   // callback only gets invoked when:
   //  1. no GCL files was opened
-  //  2. the view is closed 
+  //  2. the view is closed
   let onActivateExtension = callback => onOpenEditor(_ => {
-    // number of visible GCL file in the workplace
-    let visibleCount =
-      VSCode.Window.visibleTextEditors
-      ->Array.keep(isGCL)
-      ->Array.length
-    // should activate the view when there's a visible GCL file
-    let shouldAcitvateView = visibleCount > 0 && !View.isActivated()
+      // number of visible GCL file in the workplace
+      let visibleCount = VSCode.Window.visibleTextEditors->Array.keep(isGCL)->Array.length
+      // should activate the view when there's a visible GCL file
+      let shouldAcitvateView = visibleCount > 0 && !View.isActivated()
 
-    if shouldAcitvateView {
-      callback()
-    }
-  })
+      if shouldAcitvateView {
+        callback()
+      }
+    })
 
   // callback only gets invoked when:
   //  1. no GCL files was opened
-  //  2. the view is opened 
+  //  2. the view is opened
   let onDeactivateExtension = callback => onCloseEditor(_ => {
-    // number of GCL States in the Registry
-    let openedCount = Registry.size()
-    // should deacitvate the view when all GCL States have been destroyed
-    let shouldDeacitvateView = openedCount === 0 && View.isActivated()
+      // number of GCL States in the Registry
+      let openedCount = Registry.size()
+      // should deacitvate the view when all GCL States have been destroyed
+      let shouldDeacitvateView = openedCount === 0 && View.isActivated()
 
-    if shouldDeacitvateView {
-      callback()
-    }
-  })
+      if shouldDeacitvateView {
+        callback()
+      }
+    })
 
   let onChangeCursorPosition = callback => VSCode.Window.onDidChangeTextEditorSelection(. callback)
 }
@@ -213,11 +264,12 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // on open
   Events.onOpenEditor(editor => {
-    let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName 
+    let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
     let state = switch Registry.get(filePath) {
     | None =>
-      let state = State.make(editor, View.send, View.on, Client.send)
+      let state = State.make(editor, View.send, Client.send)
       Registry.add(filePath, state)
+
       // registerInset()
       state
     | Some(state) =>
@@ -245,13 +297,12 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // on extension deactivation
   Events.onDeactivateExtension(_ => {
-      View.deactivate()
-      Client.stop()->ignore
+    View.deactivate()
+    Client.stop()->ignore
   })->subscribe
 
   // on change cursor position/selection
-  Events.onChangeCursorPosition(
-  event => {
+  Events.onChangeCursorPosition(event => {
     let selections = event->VSCode.TextEditorSelectionChangeEvent.selections
     let editor = event->VSCode.TextEditorSelectionChangeEvent.textEditor
     let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
@@ -272,8 +323,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
           )
           let end_ = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.end_(selection))
 
-          Client.send(Req(state.filePath, Inspect(start, end_)))
-          ->Promise.get(handleResponse)
+          Client.send(Req(state.filePath, Inspect(start, end_)))->Promise.get(handleResponse)
         })
       )
     }
@@ -282,19 +332,17 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on response/notification from the server
   Client.on(handleResponse)
 
+  // on events from the view
+  View.on(handleViewResponse)->subscribe
+
   // on command
   VSCode.Commands.registerCommand("guacamole.refine", () =>
-    VSCode.Window.activeTextEditor->Option.map(editor => {
-      let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
-      Registry.get(filePath)->Option.mapWithDefault(Promise.resolved(), state => {
-        state
-        ->State.Spec.fromCursorPosition
-        ->Option.mapWithDefault(Promise.resolved(), spec => {
-          let payload = State.Spec.getPayload(state.document, spec)
-          state.lspSendRequest(Req(filePath, Refine(spec.id, payload)))->Promise.flatMap(
-            State.handleResponseWithState(state),
-          )
-        })
+    getState()->Option.mapWithDefault(Promise.resolved(), state => {
+      state->State.Spec.fromCursorPosition->Option.mapWithDefault(Promise.resolved(), spec => {
+        let payload = State.Spec.getPayload(state.document, spec)
+        state.lspSendRequest(Req(state.filePath, Refine(spec.id, payload)))->Promise.flatMap(
+          State.handleResponseWithState(state),
+        )
       })
     })
   )->subscribe
