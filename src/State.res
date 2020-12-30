@@ -4,9 +4,6 @@ type t = {
   mutable editor: VSCode.TextEditor.t,
   mutable document: VSCode.TextDocument.t,
   mutable filePath: string,
-  // communications
-  viewSendRequest: ViewType.Request.t => Promise.t<bool>,
-  lspSendRequest: Request.Kind.t => Promise.t<Response.t>,
   // state
   mutable specifications: array<Response.Specification.t>,
   // garbage
@@ -15,11 +12,18 @@ type t = {
 
 let subscribe = (disposable, state) => disposable->Js.Array.push(state.subscriptions)->ignore
 
-let display = (state, id, pos, props) =>
-  state.viewSendRequest(ViewType.Request.Display(id, pos, props))->Promise.map(_ => ())
+
+let display = (id, pos, props) =>
+  View.send(ViewType.Request.Display(id, pos, props))->Promise.map(_ => ())
 
 let focus = state =>
   VSCode.Window.showTextDocument(state.document, ~column=VSCode.ViewColumn.Beside, ())->ignore
+
+let sendLSPRequest = (state, kind) => {
+  let source = state.document->VSCode.TextDocument.getText(None)
+  LSP.Client.send(Request.Req(state.filePath, source, kind))
+}
+
 
 module HandleError = {
   // let handleStructError = (state: t, site, error) =>
@@ -207,9 +211,9 @@ let handleResponseKind = (state: t, kind) =>
     }
   | OK(i, pos, specs, props) =>
     state.specifications = specs
-    state->display(i, pos, props)
+    display(i, pos, props)
   | Substitute(id, expr) =>
-    state.viewSendRequest(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
+    View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | Resolve(i) =>
     state
     ->Spec.resolve(i)
@@ -217,24 +221,6 @@ let handleResponseKind = (state: t, kind) =>
     ->Promise.map(_ => ())
   | ConsoleLog(s) =>
     Js.log(s)
-    Promise.resolved()
-  }
-
-let handleResponseWithState = (state, response) =>
-  switch response {
-  | Response.Res(_filePath, kinds) =>
-    kinds->Array.map(handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())
-  | CannotSendRequest(message) =>
-    Js.Console.error("Client Internal Error\nCannot send request to the server\n" ++ message)
-    Promise.resolved()
-  | CannotDecodeRequest(message) =>
-    Js.Console.error("Server Internal Error\nCannot decode request from the client\n" ++ message)
-    Promise.resolved()
-  | CannotDecodeResponse(message, json) =>
-    Js.Console.error2(
-      "Client Internal Error\nCannot decode response from the server\n" ++ message,
-      json,
-    )
     Promise.resolved()
   }
 
@@ -262,6 +248,15 @@ module Decoration: Decoration = {
     Js.Dict.set(dict, key, [decoration])
   }
 
+  // let addSpec = (state, key, range, color) => {
+  //   // "editor.symbolHighlightBackground"
+  //   let backgroundColor = VSCode.StringOr.others(VSCode.ThemeColor.make(color))
+  //   let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ())
+  //   let decoration = VSCode.Window.createTextEditorDecorationType(options)
+  //   state.editor->VSCode.TextEditor.setDecorations(decoration, [range])
+  //   Js.Dict.set(dict, key, [decoration])
+  // }
+
   let remove = key => {
     Js.Dict.get(dict, key)->Option.forEach(decos =>
       decos->Array.forEach(VSCode.TextEditorDecorationType.dispose)
@@ -276,17 +271,13 @@ module Decoration: Decoration = {
     })
 }
 
-let make = (editor, viewSendRequest, lspSendRequest) => {
+let make = (editor) => {
   let document = VSCode.TextEditor.document(editor)
   let filePath = VSCode.TextDocument.fileName(document)
   let state = {
     editor: editor,
     document: document,
     filePath: filePath,
-    // communitations
-    viewSendRequest: viewSendRequest,
-    // viewOnResponse: viewOnResponse,
-    lspSendRequest: lspSendRequest,
     // state
     specifications: [],
     // garbage

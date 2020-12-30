@@ -156,3 +156,114 @@ module LanguageClient = {
   @bs.send
   external sendRequest: (t, string, Js.Json.t) => Promise.Js.t<'result, _> = "sendRequest"
 }
+
+
+
+module type Client = {
+  type t
+  let start: unit => LanguageClient.t
+  let stop: unit => Promise.t<unit>
+  let on: (Response.t => unit) => unit
+  let send: Request.t => Promise.t<Response.t>
+}
+module Client: Client = {
+  type t = {
+    mutable client: LanguageClient.t,
+    mutable subscription: VSCode.Disposable.t,
+  }
+  let make = () => {
+    let serverOptions = ServerOptions.makeCommand("gcl")
+
+    let clientOptions = {
+      // let makePattern = [%raw "function(filename) { return fileName }"];
+      // Register the server for plain text documents
+      let documentSelector: DocumentSelector.t = [
+        StringOr.others({
+          open DocumentFilter
+          {
+            scheme: Some("file"),
+            pattern: None,
+            // Some(makePattern(fileName)),
+            language: Some("guacamole"),
+          }
+        }),
+      ]
+
+      // Notify the server about file changes to '.clientrc files contained in the workspace
+      let synchronize: FileSystemWatcher.t = Workspace.createFileSystemWatcher(
+        %raw("'**/.clientrc'"),
+        ~ignoreCreateEvents=false,
+        ~ignoreChangeEvents=false,
+        ~ignoreDeleteEvents=false,
+      )
+
+      LanguageClientOptions.make(
+        documentSelector,
+        synchronize,
+        ErrorHandler.makeDefault("Guacamole", 3),
+      )
+    }
+    // Create the language client
+    LanguageClient.make(
+      "guacamoleLanguageServer",
+      "Guacamole Language Server",
+      serverOptions,
+      clientOptions,
+    )
+  }
+
+  let handle: ref<option<t>> = ref(None)
+
+  // make and start the LSP client
+  let start = () =>
+    switch handle.contents {
+    | None =>
+      let client = make()
+      let subscription = client->LanguageClient.start
+      handle := Some({client: client, subscription: subscription})
+      client
+    | Some({client}) => client
+    }
+  // stop the LSP client
+  let stop = () =>
+    switch handle.contents {
+    | None => Promise.resolved()
+    | Some({client, subscription}) =>
+      handle := None
+      subscription->VSCode.Disposable.dispose->ignore
+      client->LanguageClient.stop->Promise.Js.toResult->Promise.map(_ => ())
+    }
+
+  let decodeResponse = (json: Js.Json.t): Response.t =>
+    switch // catching exceptions occured when decoding JSON values
+    Response.decode(json) {
+    | response => response
+    | exception Json.Decode.DecodeError(msg) => CannotDecodeResponse(msg, json)
+    }
+
+  let on = handler => handle.contents->Belt.Option.forEach(({client}) => {
+      client
+      ->LanguageClient.onReady
+      ->Promise.Js.toResult
+      ->Promise.getOk(() =>
+        client->LanguageClient.onNotification("guacamole", json =>
+          handler(decodeResponse(json))
+        )
+      )
+    })
+
+  let send = request => {
+    let client = start()
+
+    client->LanguageClient.onReady->Promise.Js.toResult->Promise.flatMapOk(() => {
+      let value = Request.encode(request)
+      client->LanguageClient.sendRequest("guacamole", value)->Promise.Js.toResult
+    })->Promise.map(x =>
+      switch x {
+      | Ok(json) => decodeResponse(json)
+      | Error(error) => Response.CannotSendRequest(Response.Error.fromJsError(error))
+      }
+    )
+  }
+}
+

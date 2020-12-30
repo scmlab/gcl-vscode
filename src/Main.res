@@ -26,7 +26,7 @@ let handleResponse = response =>
       Js.Json.stringify(json),
       [],
     )->Promise.map(_ => ())
-  }->ignore
+  }
 
 let getState = () =>
   VSCode.Window.activeTextEditor
@@ -37,14 +37,16 @@ let getState = () =>
 let handleViewResponse = response => getState()->Option.forEach(state => {
     switch response {
     | ViewType.Response.Link(MouseOver(loc)) =>
-      Js.log("viewOnResponse.MouseOver")
       let key = GCL.Loc.toString(loc)
       let range = GCL.Loc.toRange(loc)
       State.Decoration.addBackground(state, key, range, "statusBar.debuggingBackground")
     | Link(MouseOut(loc)) =>
       let key = GCL.Loc.toString(loc)
       State.Decoration.remove(key)
-    | Link(MouseClick(_loc)) => ()
+    | Link(MouseClick(loc)) =>
+      ()
+      let key = GCL.Loc.toString(loc)
+      State.Decoration.remove(key)
     // let key = GCL.Loc.toString(loc)
     // let range = GCL.Loc.toRange(loc)
     // // focus on the editor
@@ -57,127 +59,17 @@ let handleViewResponse = response => getState()->Option.forEach(state => {
       // remove all decorations
       State.Decoration.removeAll()
       // send request to the server
-      state.lspSendRequest(Request.Kind.Substitute(id, expr, subst))
-      ->Promise.flatMap(State.handleResponseWithState(state))
+      State.sendLSPRequest(state, Request.Kind.Substitute(id, expr, subst))
+      ->Promise.flatMap(handleResponse)
       ->ignore
     | ExportProofObligations =>
-      state.lspSendRequest(Request.Kind.ExportProofObligations)
-      ->Promise.flatMap(State.handleResponseWithState(state))
+      State.sendLSPRequest(state, Request.Kind.ExportProofObligations)
+      ->Promise.flatMap(handleResponse)
       ->ignore
     | Initialized => ()
     | Destroyed => ()
     }
   })
-
-module type Client = {
-  type t
-  let start: unit => LSP.LanguageClient.t
-  let stop: unit => Promise.t<unit>
-  let on: (Response.t => unit) => unit
-  let send: Request.t => Promise.t<Response.t>
-}
-module Client: Client = {
-  type t = {
-    mutable client: LSP.LanguageClient.t,
-    mutable subscription: VSCode.Disposable.t,
-  }
-  let make = () => {
-    open LSP
-    open VSCode
-    let serverOptions = ServerOptions.makeCommand("gcl")
-
-    let clientOptions = {
-      // let makePattern = [%raw "function(filename) { return fileName }"];
-      // Register the server for plain text documents
-      let documentSelector: DocumentSelector.t = [
-        StringOr.others({
-          open DocumentFilter
-          {
-            scheme: Some("file"),
-            pattern: None,
-            // Some(makePattern(fileName)),
-            language: Some("guacamole"),
-          }
-        }),
-      ]
-
-      // Notify the server about file changes to '.clientrc files contained in the workspace
-      let synchronize: FileSystemWatcher.t = Workspace.createFileSystemWatcher(
-        %raw("'**/.clientrc'"),
-        ~ignoreCreateEvents=false,
-        ~ignoreChangeEvents=false,
-        ~ignoreDeleteEvents=false,
-      )
-
-      LanguageClientOptions.make(
-        documentSelector,
-        synchronize,
-        ErrorHandler.makeDefault("Guacamole", 3),
-      )
-    }
-    // Create the language client
-    LanguageClient.make(
-      "guacamoleLanguageServer",
-      "Guacamole Language Server",
-      serverOptions,
-      clientOptions,
-    )
-  }
-
-  let handle: ref<option<t>> = ref(None)
-
-  // make and start the LSP client
-  let start = () =>
-    switch handle.contents {
-    | None =>
-      let client = make()
-      let subscription = client->LSP.LanguageClient.start
-      handle := Some({client: client, subscription: subscription})
-      client
-    | Some({client}) => client
-    }
-  // stop the LSP client
-  let stop = () =>
-    switch handle.contents {
-    | None => Promise.resolved()
-    | Some({client, subscription}) =>
-      handle := None
-      subscription->VSCode.Disposable.dispose->ignore
-      client->LSP.LanguageClient.stop->Promise.Js.toResult->Promise.map(_ => ())
-    }
-
-  let decodeResponse = (json: Js.Json.t): Response.t =>
-    switch // catching exceptions occured when decoding JSON values
-    Response.decode(json) {
-    | response => response
-    | exception Json.Decode.DecodeError(msg) => CannotDecodeResponse(msg, json)
-    }
-
-  let on = handler => handle.contents->Option.forEach(({client}) => {
-      client
-      ->LSP.LanguageClient.onReady
-      ->Promise.Js.toResult
-      ->Promise.getOk(() =>
-        client->LSP.LanguageClient.onNotification("guacamole", json =>
-          handler(decodeResponse(json))
-        )
-      )
-    })
-
-  let send = request => {
-    let client = start()
-
-    client->LSP.LanguageClient.onReady->Promise.Js.toResult->Promise.flatMapOk(() => {
-      let value = Request.encode(request)
-      client->LSP.LanguageClient.sendRequest("guacamole", value)->Promise.Js.toResult
-    })->Promise.map(x =>
-      switch x {
-      | Ok(json) => decodeResponse(json)
-      | Error(error) => Response.CannotSendRequest(Response.Error.fromJsError(error))
-      }
-    )
-  }
-}
 
 let registerInset = () => {
   // let extensionPath = context->VSCode.ExtensionContext.extensionPath
@@ -264,15 +156,10 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on open
   Events.onOpenEditor(editor => {
     let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
-    let sendRequest = kind => {
-      let source = editor->VSCode.TextEditor.document->VSCode.TextDocument.getText(None)
-      Client.send(Request.Req(filePath, source, kind))
-    }
 
     let state = switch Registry.get(filePath) {
     | None =>
-
-      let state = State.make(editor, View.send, sendRequest)
+      let state = State.make(editor)
       Registry.add(filePath, state)
 
       // registerInset()
@@ -285,7 +172,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       state.filePath = filePath
       state
     }
-    sendRequest(Load)->Promise.get(handleResponse)
+    State.sendLSPRequest(state, Load)->Promise.flatMap(handleResponse)->ignore
   })->subscribe
 
   // on close
@@ -297,13 +184,13 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on extension activation
   Events.onActivateExtension(() => {
     View.activate(context->VSCode.ExtensionContext.extensionPath)
-    Client.start()->ignore
+    LSP.Client.start()->ignore
   })->subscribe
 
   // on extension deactivation
   Events.onDeactivateExtension(_ => {
     View.deactivate()
-    Client.stop()->ignore
+    LSP.Client.stop()->ignore
   })->subscribe
 
   // on change cursor position/selection
@@ -328,26 +215,26 @@ let activate = (context: VSCode.ExtensionContext.t) => {
           )
           let end_ = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.end_(selection))
 
-          state.lspSendRequest(Inspect(start, end_))->Promise.get(handleResponse)
+          State.sendLSPRequest(state, Inspect(start, end_))
+          ->Promise.flatMap(handleResponse)
+          ->ignore
         })
       )
     }
   })->subscribe
 
   // on response/notification from the server
-  Client.on(handleResponse)
+  LSP.Client.on(response => handleResponse(response)->ignore)
 
   // on events from the view
   View.on(handleViewResponse)->subscribe
 
-  // on command
+  // on refine
   VSCode.Commands.registerCommand("guacamole.refine", () =>
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
       state->State.Spec.fromCursorPosition->Option.mapWithDefault(Promise.resolved(), spec => {
         let payload = State.Spec.getPayload(state.document, spec)
-        state.lspSendRequest(Refine(spec.id, payload))->Promise.flatMap(
-          State.handleResponseWithState(state),
-        )
+        State.sendLSPRequest(state, Refine(spec.id, payload))->Promise.flatMap(handleResponse)
       })
     })
   )->subscribe
