@@ -6,12 +6,12 @@ type t = {
   mutable filePath: string,
   // state
   mutable specifications: array<Response.Specification.t>,
+  mutable specificationDecorations: array<VSCode.TextEditorDecorationType.t>,
   // garbage
   mutable subscriptions: array<VSCode.Disposable.t>,
 }
 
 let subscribe = (disposable, state) => disposable->Js.Array.push(state.subscriptions)->ignore
-
 
 let display = (id, pos, props) =>
   View.send(ViewType.Request.Display(id, pos, props))->Promise.map(_ => ())
@@ -23,7 +23,6 @@ let sendLSPRequest = (state, kind) => {
   let source = state.document->VSCode.TextDocument.getText(None)
   LSP.Client.send(Request.Req(state.filePath, source, kind))
 }
-
 
 module HandleError = {
   // let handleStructError = (state: t, site, error) =>
@@ -179,6 +178,69 @@ module Spec = {
     // insert the assertion
     Editor.Text.insert(state.document, point, assertion)
   }
+
+  let decorate = state => {
+    // remove previous decorations 
+    state.specificationDecorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
+    // generate new decorations 
+    let decorations = state.specifications->Array.map(spec => {
+      let range = GCL.Loc.toRange(spec.loc)
+      let startPosition = VSCode.Range.start(range)
+      let endPosition = VSCode.Range.end_(range)
+      // range of {!
+      let startRange = VSCode.Range.make(
+        startPosition,
+        VSCode.Position.translate(startPosition, 0, 2),
+      )
+      // range of !}
+      let endRange = VSCode.Range.make(VSCode.Position.translate(endPosition, 0, -2), endPosition)
+      // helper function for trimming long predicates
+      let trim = s =>
+        if String.length(s) > 77 {
+          String.sub(s, 0, 73) ++ " ..."
+        } else {
+          s
+        }
+      // text decorations
+      let preCondText = " " ++ trim(GCL.Syntax.Pred.toString(spec.pre))
+      let postCondText = " " ++ trim(GCL.Syntax.Pred.toString(spec.post))
+      // see if the Spec's precondition and the post-condition look the same (i.e. the Q_Q case)
+      let isQQ = preCondText == postCondText
+
+      let highlightBackground = ranges => {
+        let backgroundColor = VSCode.StringOr.others(
+          VSCode.ThemeColor.make("editor.wordHighlightStrongBackground"),
+        )
+        let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ())
+        let decoration = VSCode.Window.createTextEditorDecorationType(options)
+        state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
+        decoration
+      }
+
+      let overlayText = (text, ranges) => {
+        let color = VSCode.StringOr.others(VSCode.ThemeColor.make("descriptionForeground"))
+        let after = VSCode.ThemableDecorationAttachmentRenderOptions.t(
+          ~contentText=text,
+          ~color,
+          (),
+        )
+        let options = VSCode.DecorationRenderOptions.t(~after, ())
+        let decoration = VSCode.Window.createTextEditorDecorationType(options)
+        state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
+        decoration
+      }
+
+      [
+        overlayText(isQQ ? "" : preCondText, [startRange]),
+        overlayText(postCondText, [endRange]),
+        highlightBackground(
+          [startRange, endRange],
+        ),
+      ]
+    })->Array.concatMany
+    // persist new decorations
+    state.specificationDecorations = decorations
+  }
 }
 
 let handleResponseKind = (state: t, kind) =>
@@ -211,9 +273,9 @@ let handleResponseKind = (state: t, kind) =>
     }
   | OK(i, pos, specs, props) =>
     state.specifications = specs
+    Spec.decorate(state)
     display(i, pos, props)
-  | Substitute(id, expr) =>
-    View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
+  | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | Resolve(i) =>
     state
     ->Spec.resolve(i)
@@ -248,15 +310,6 @@ module Decoration: Decoration = {
     Js.Dict.set(dict, key, [decoration])
   }
 
-  // let addSpec = (state, key, range, color) => {
-  //   // "editor.symbolHighlightBackground"
-  //   let backgroundColor = VSCode.StringOr.others(VSCode.ThemeColor.make(color))
-  //   let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ())
-  //   let decoration = VSCode.Window.createTextEditorDecorationType(options)
-  //   state.editor->VSCode.TextEditor.setDecorations(decoration, [range])
-  //   Js.Dict.set(dict, key, [decoration])
-  // }
-
   let remove = key => {
     Js.Dict.get(dict, key)->Option.forEach(decos =>
       decos->Array.forEach(VSCode.TextEditorDecorationType.dispose)
@@ -271,7 +324,7 @@ module Decoration: Decoration = {
     })
 }
 
-let make = (editor) => {
+let make = editor => {
   let document = VSCode.TextEditor.document(editor)
   let filePath = VSCode.TextDocument.fileName(document)
   let state = {
@@ -280,6 +333,7 @@ let make = (editor) => {
     filePath: filePath,
     // state
     specifications: [],
+    specificationDecorations: [],
     // garbage
     subscriptions: [],
   }
