@@ -10,18 +10,18 @@ let handleResponse = response =>
     )
   | CannotSendRequest(message) =>
     State.displayErrorMessages([
-      "Client Internal Error\nCannot send request to the server\n" ++ message,
+      ("Client Internal Error", "Cannot send request to the server\n" ++ message),
     ])
   | CannotDecodeRequest(message) =>
     State.displayErrorMessages([
-      "Server Internal Error\nCannot decode request from the client\n" ++ message,
+      ("Server Internal Error", "Cannot decode request from the client\n" ++ message),
     ])
   | CannotDecodeResponse(message, json) =>
     State.displayErrorMessages([
-      "Client Internal Error\nCannot decode response from the server\n" ++
-      message ++
-      "\n" ++
-      Js.Json.stringify(json),
+      (
+        "Client Internal Error",
+        "Cannot decode response from the server\n" ++ message ++ "\n" ++ Js.Json.stringify(json),
+      ),
     ])
   }
 

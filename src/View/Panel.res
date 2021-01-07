@@ -1,5 +1,6 @@
 open Belt
 open React
+open Common
 
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
@@ -57,8 +58,8 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
       <h2> {string("Error Messages")} </h2>
       <ul className="gcl-global-property-list">
         {errorMessages
-        ->Array.mapWithIndex((i, msg) =>
-          <li className="gcl-list-item native-key-bindings" tabIndex={-1} key={string_of_int(i)} > {string(msg)} </li>
+        ->Array.mapWithIndex((i, (header, body)) =>
+          <Item header body key={string_of_int(i)} /> 
         )
         ->array}
       </ul>

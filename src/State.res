@@ -40,12 +40,12 @@ module HandleError = {
   let toErrorMessage = (error: Response.Error.t) => {
     let Response.Error.Error(site, kind) = error
     switch kind {
-    | Response.Error.LexicalError => ["Lexical Error\n" ++ Response.Error.Site.toString(site)]
-    | SyntacticError(messages) => ["Parse Error\n" ++ messages->Js.String.concatMany("\n")]
+    | Response.Error.LexicalError => [("Lexical Error", Response.Error.Site.toString(site))]
+    | SyntacticError(messages) => [("Parse Error", messages->Js.String.concatMany("\n"))]
     | StructError(_error) => []
-    | CannotReadFile(string) => ["Server Internal Error\nCannot read file\n" ++ string]
-    | CannotSendRequest(string) => ["Client Internal Error\nCannot send request\n" ++ string]
-    | NotLoaded => ["Client Internal Error\nClient not loaded yet"]
+    | CannotReadFile(string) => [("Server Internal Error", "Cannot read file\n" ++ string)]
+    | CannotSendRequest(string) => [("Client Internal Error", "Cannot send request\n" ++ string)]
+    | NotLoaded => [("Client Internal Error", "Client not loaded yet")]
     | _ => []
     }
   }
@@ -320,7 +320,7 @@ let handleResponseKind = (state: t, kind) =>
   | OK(i, pos, specs, props) =>
     state.specifications = specs
     Spec.decorate(state)
-    
+
     display(i, pos, props)
   | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | Resolve(i) =>

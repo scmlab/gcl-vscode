@@ -30,3 +30,13 @@ module Paren = {
     }
   }
 }
+
+module Item = {
+  @react.component
+  let make = (~header: string, ~body: string) => {
+    <li className="gcl-list-item native-key-bindings" tabIndex={-1}>
+      <span className="gcl-list-item-header"> {string(header)} </span>
+      <span className="gcl-list-item-body"> {string(body)} </span>
+    </li>
+  }
+}
