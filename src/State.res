@@ -13,6 +13,9 @@ type t = {
 
 let subscribe = (disposable, state) => disposable->Js.Array.push(state.subscriptions)->ignore
 
+let displayErrorMessages = msgs =>
+  View.send(ViewType.Request.SetErrorMessages(msgs))->Promise.map(_ => ())
+
 let display = (id, pos, props) =>
   View.send(ViewType.Request.Display(id, pos, props))->Promise.map(_ => ())
 
@@ -25,7 +28,46 @@ let sendLSPRequest = (state, kind) => {
 }
 
 module HandleError = {
-  // let handleStructError = (state: t, site, error) =>
+  // let handleStructErrorToErrorMessage = (_site, error): Promise.t<unit> =>
+  //   switch error {
+  //   | Response.Error.StructError.MissingBound => displayErrorMessages([])
+  //   | MissingAssertion => displayErrorMessages([])
+  //   | ExcessBound => displayErrorMessages([])
+  //   | MissingPostcondition => displayErrorMessages([])
+  //   | DigHole => Promise.resolved()
+  //   }
+
+  let toErrorMessage = (error: Response.Error.t) => {
+    let Response.Error.Error(site, kind) = error
+    switch kind {
+    | Response.Error.LexicalError => ["Lexical Error\n" ++ Response.Error.Site.toString(site)]
+    | SyntacticError(messages) => ["Parse Error\n" ++ messages->Js.String.concatMany("\n")]
+    | StructError(_error) => []
+    | CannotReadFile(string) => ["Server Internal Error\nCannot read file\n" ++ string]
+    | CannotSendRequest(string) => ["Client Internal Error\nCannot send request\n" ++ string]
+    | NotLoaded => ["Client Internal Error\nClient not loaded yet"]
+    | _ => []
+    }
+  }
+  // let handleError = (state: t, error: Response.Error.t) => {
+  //   let Response.Error.Error(site, kind) = error
+  //   switch kind {
+  //   // | Response.Error.LexicalError => Promise.resolved()
+  //   // // state->display(Error("Lexical Error"), Plain(Response.Error.Site.toString(site)))
+  //   // | SyntacticError(_messages) => Promise.resolved()
+  //   // // state->display(Error("Parse Error"), Plain(messages->Js.String.concatMany("\n")))
+  //   | StructError(error) => state->handleStructError(site, error)
+  //   // | TypeError(error) => state->handleTypeError(error)
+  //   | CannotReadFile(string) =>
+  //     state->display(Error("Server Internal Error"), Plain("Cannot read file\n" ++ string))
+  //   | CannotSendRequest(string) =>
+  //     state->display(Error("Client Internal Error"), Plain("Cannot send request\n" ++ string))
+  //   | NotLoaded => state->display(Error("Client Internal Error"), Plain("Client not loaded yet"))
+  //   | _ => Promise.resolved()
+  //   }
+  // }
+
+  // let handleStructError = (site, error) =>
   //   switch error {
   //   | Response.Error.StructError.MissingBound =>
   //     state->display(
@@ -116,7 +158,6 @@ module HandleError = {
   //   | _ => Promise.resolved()
   //   }
   // }
-
 }
 module Spec = {
   // find the hole containing the cursor
@@ -180,9 +221,9 @@ module Spec = {
   }
 
   let decorate = state => {
-    // remove previous decorations 
+    // remove previous decorations
     state.specificationDecorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
-    // generate new decorations 
+    // generate new decorations
     let decorations = state.specifications->Array.map(spec => {
       let range = GCL.Loc.toRange(spec.loc)
       let startPosition = VSCode.Range.start(range)
@@ -233,11 +274,10 @@ module Spec = {
       [
         overlayText(isQQ ? "" : preCondText, [startRange]),
         overlayText(postCondText, [endRange]),
-        highlightBackground(
-          [startRange, endRange],
-        ),
+        highlightBackground([startRange, endRange]),
       ]
     })->Array.concatMany
+
     // persist new decorations
     state.specificationDecorations = decorations
   }
@@ -246,34 +286,41 @@ module Spec = {
 let handleResponseKind = (state: t, kind) =>
   switch kind {
   | Response.Kind.Error(errors) =>
-    let sites = errors->Array.keepMap(Response.Error.matchDigHole)
-    switch sites[0] {
-    | None => Promise.resolved()
-    | Some(site) =>
-      let range = Response.Error.Site.toRange(site, state.specifications, GCL.Loc.toRange)
-      // replace the question mark "?" with a hole "{!  !}"
-      let indent = Js.String.repeat(VSCode.Position.character(VSCode.Range.start(range)), " ")
-      let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}"
-      let holeRange = VSCode.Range.make(
-        VSCode.Range.start(range),
-        VSCode.Position.translate(VSCode.Range.start(range), 0, 1),
-      )
-
-      state.document->Editor.Text.replace(holeRange, holeText)->Promise.map(_ => {
-        // set the cursor inside the hole
-        let selectionRange = VSCode.Range.make(
-          VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
-          VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
+    //
+    let _temp = () => {
+      let sites = errors->Array.keepMap(Response.Error.matchDigHole)
+      switch sites[0] {
+      | None => Promise.resolved()
+      | Some(site) =>
+        let range = Response.Error.Site.toRange(site, state.specifications, GCL.Loc.toRange)
+        // replace the question mark "?" with a hole "{!  !}"
+        let indent = Js.String.repeat(VSCode.Position.character(VSCode.Range.start(range)), " ")
+        let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}"
+        let holeRange = VSCode.Range.make(
+          VSCode.Range.start(range),
+          VSCode.Position.translate(VSCode.Range.start(range), 0, 1),
         )
-        Editor.Selection.set(state.editor, selectionRange)
-      })->Promise.flatMap(_ => {
-        // save the editor to trigger the server
-        state.document->VSCode.TextDocument.save
-      })->Promise.map(_ => ())
+
+        state.document->Editor.Text.replace(holeRange, holeText)->Promise.map(_ => {
+          // set the cursor inside the hole
+          let selectionRange = VSCode.Range.make(
+            VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
+            VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
+          )
+          Editor.Selection.set(state.editor, selectionRange)
+        })->Promise.flatMap(_ => {
+          // save the editor to trigger the server
+          state.document->VSCode.TextDocument.save
+        })->Promise.map(_ => ())
+      }
     }
+
+    let errorMessages = errors->Array.map(HandleError.toErrorMessage)->Array.concatMany
+    displayErrorMessages(errorMessages)
   | OK(i, pos, specs, props) =>
     state.specifications = specs
     Spec.decorate(state)
+    
     display(i, pos, props)
   | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | Resolve(i) =>

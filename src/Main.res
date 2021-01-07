@@ -9,23 +9,20 @@ let handleResponse = response =>
       kinds->Array.map(State.handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())
     )
   | CannotSendRequest(message) =>
-    VSCode.Window.showErrorMessage(
+    State.displayErrorMessages([
       "Client Internal Error\nCannot send request to the server\n" ++ message,
-      [],
-    )->Promise.map(_ => ())
+    ])
   | CannotDecodeRequest(message) =>
-    VSCode.Window.showErrorMessage(
+    State.displayErrorMessages([
       "Server Internal Error\nCannot decode request from the client\n" ++ message,
-      [],
-    )->Promise.map(_ => ())
+    ])
   | CannotDecodeResponse(message, json) =>
-    VSCode.Window.showErrorMessage(
+    State.displayErrorMessages([
       "Client Internal Error\nCannot decode response from the server\n" ++
       message ++
       "\n" ++
       Js.Json.stringify(json),
-      [],
-    )->Promise.map(_ => ())
+    ])
   }
 
 let getState = () =>
@@ -215,9 +212,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
           )
           let end_ = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.end_(selection))
 
-          State.sendLSPRequest(state, Inspect(start, end_))
-          ->Promise.flatMap(handleResponse)
-          ->ignore
+          State.sendLSPRequest(state, Inspect(start, end_))->Promise.flatMap(handleResponse)->ignore
         })
       )
     }

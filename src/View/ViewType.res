@@ -3,6 +3,7 @@ module Request = {
     | Show
     | Hide
     | Substitute(int, GCL.Syntax.Expr.t)
+    | SetErrorMessages(array<string>)
     | Display(int, array<Response.ProofObligation.t>, array<Response.GlobalProp.t>)
 
   open Json.Decode
@@ -13,6 +14,7 @@ module Request = {
     | "Hide" => Contents(_ => Hide)
     | "Substitute" =>
       Contents(pair(int, GCL.Syntax.Expr.decode) |> map(((x, y)) => Substitute(x, y)))
+    | "SetErrorMessages" => Contents(array(string) |> map(msgs => SetErrorMessages(msgs)))
     | "Display" =>
       Contents(
         tuple3(
@@ -35,6 +37,8 @@ module Request = {
         ("tag", string("Substitute")),
         ("contents", (i, expr) |> pair(int, GCL.Syntax.Expr.encode)),
       })
+    | SetErrorMessages(msgs) =>
+      object_(list{("tag", string("SetErrorMessages")), ("contents", msgs |> array(string))})
     | Display(id, pos, globalProps) =>
       object_(list{
         ("tag", string("Display")),
