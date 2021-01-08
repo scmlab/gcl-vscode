@@ -37,18 +37,6 @@ module HandleError = {
   //   | DigHole => Promise.resolved()
   //   }
 
-  let toErrorMessage = (error: Response.Error.t) => {
-    let Response.Error.Error(site, kind) = error
-    switch kind {
-    | Response.Error.LexicalError => [("Lexical Error", Response.Error.Site.toString(site))]
-    | SyntacticError(messages) => [("Parse Error", messages->Js.String.concatMany("\n"))]
-    | StructError(_error) => []
-    | CannotReadFile(string) => [("Server Internal Error", "Cannot read file\n" ++ string)]
-    | CannotSendRequest(string) => [("Client Internal Error", "Cannot send request\n" ++ string)]
-    | NotLoaded => [("Client Internal Error", "Client not loaded yet")]
-    | _ => []
-    }
-  }
   // let handleError = (state: t, error: Response.Error.t) => {
   //   let Response.Error.Error(site, kind) = error
   //   switch kind {
@@ -158,6 +146,7 @@ module HandleError = {
   //   | _ => Promise.resolved()
   //   }
   // }
+
 }
 module Spec = {
   // find the hole containing the cursor
@@ -190,23 +179,52 @@ module Spec = {
     let end_ = VSCode.TextDocument.lineAt(doc, endingLine)->VSCode.TextLine.range->VSCode.Range.end_
     VSCode.Range.make(start, end_)
   }
-  let getPayload = (doc, spec) => {
+
+  // return the payload inside the spec 
+  // split into lines
+  let getPayload = (doc, spec): array<string> => {
     // return the text in the targeted hole
     let innerRange = getPayloadRange(doc, spec)
-    VSCode.TextDocument.getText(doc, Some(innerRange))
+    let payload = VSCode.TextDocument.getText(doc, Some(innerRange))
+    // split the payload into lines
+    let payloadLines = payload->Js.String2.match_(%re("/[^\\r\\n]+/g"))->Option.getWithDefault([])
+    // calculate the level of indentation for each lines
+    let indentLevels = payloadLines->Array.map(Js.String.search(%re("/\\S|$/")))
+    // find the smallest level
+    let smallestLevel = ref(None)
+    indentLevels->Array.forEach(lvl =>
+      switch smallestLevel.contents {
+      | None => smallestLevel := Some(lvl)
+      | Some(n) =>
+        if lvl < n {
+          smallestLevel := Some(lvl)
+        }
+      }
+    )
+    let smallestLevel = smallestLevel.contents->Option.getWithDefault(0)
+    // remove the indentation
+    payloadLines->Array.map(Js.String.sliceToEnd(~from=smallestLevel))
   }
 
   let resolve = (state, i) => {
     let specs = state.specifications->Array.keep(spec => spec.id == i)
     specs[0]->Option.forEach(spec => {
-      let payload = getPayload(state.document, spec)
+
       let range = GCL.Loc.toRange(spec.loc)
       let start = VSCode.Range.start(range)
+
+      let indentedPayload = {
+        let payload = getPayload(state.document, spec)
+        let indentationLevel = VSCode.Position.character(start)
+        let indentation = Js.String.repeat(indentationLevel, " ")
+        payload->Js.Array2.joinWith("\n" ++ indentation)
+      }
+
       // delete text
       Editor.Text.delete(state.document, range)->Promise.flatMap(result =>
         switch result {
         | false => Promise.resolved(false)
-        | true => Editor.Text.insert(state.document, start, Js.String.trim(payload))
+        | true => Editor.Text.insert(state.document, start, indentedPayload)
         }
       )->Promise.get(_ => ())
     })
@@ -286,42 +304,65 @@ module Spec = {
 let handleResponseKind = (state: t, kind) =>
   switch kind {
   | Response.Kind.Error(errors) =>
-    //
-    let _temp = () => {
-      let sites = errors->Array.keepMap(Response.Error.matchDigHole)
-      switch sites[0] {
-      | None => Promise.resolved()
-      | Some(site) =>
-        let range = Response.Error.Site.toRange(site, state.specifications, GCL.Loc.toRange)
-        // replace the question mark "?" with a hole "{!  !}"
-        let indent = Js.String.repeat(VSCode.Position.character(VSCode.Range.start(range)), " ")
-        let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}"
-        let holeRange = VSCode.Range.make(
-          VSCode.Range.start(range),
-          VSCode.Position.translate(VSCode.Range.start(range), 0, 1),
-        )
-
-        state.document->Editor.Text.replace(holeRange, holeText)->Promise.map(_ => {
-          // set the cursor inside the hole
-          let selectionRange = VSCode.Range.make(
-            VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
-            VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
-          )
-          Editor.Selection.set(state.editor, selectionRange)
-        })->Promise.flatMap(_ => {
-          // save the editor to trigger the server
-          state.document->VSCode.TextDocument.save
-        })->Promise.map(_ => ())
+    let errorToMessage = (error: Response.Error.t) => {
+      let Response.Error.Error(site, kind) = error
+      switch kind {
+      | Response.Error.LexicalError => [("Lexical Error", Response.Error.Site.toString(site))]
+      | SyntacticError(messages) => [("Parse Error", messages->Js.String.concatMany("\n"))]
+      | StructError(_error) => []
+      | CannotReadFile(string) => [("Server Internal Error", "Cannot read file\n" ++ string)]
+      | CannotSendRequest(string) => [("Client Internal Error", "Cannot send request\n" ++ string)]
+      | NotLoaded => [("Client Internal Error", "Client not loaded yet")]
+      | _ => []
       }
     }
 
-    let errorMessages = errors->Array.map(HandleError.toErrorMessage)->Array.concatMany
-    displayErrorMessages(errorMessages)
+    let errorToSideEffects = error => {
+      let Response.Error.Error(_site, kind) = error
+      switch kind {
+      | Response.Error.StructError(DigHole) =>
+        let sites = errors->Array.keepMap(Response.Error.matchDigHole)
+        switch sites[0] {
+        | None => Promise.resolved()
+        | Some(site) =>
+          let range = Response.Error.Site.toRange(site, state.specifications, GCL.Loc.toRange)
+          // replace the question mark "?" with a hole "{!  !}"
+          let indent = Js.String.repeat(VSCode.Position.character(VSCode.Range.start(range)), " ")
+          let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}"
+          let holeRange = VSCode.Range.make(
+            VSCode.Range.start(range),
+            VSCode.Position.translate(VSCode.Range.start(range), 0, 1),
+          )
+
+          state.document->Editor.Text.replace(holeRange, holeText)->Promise.map(_ => {
+            // set the cursor inside the hole
+            let selectionRange = VSCode.Range.make(
+              VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
+              VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
+            )
+            Editor.Selection.set(state.editor, selectionRange)
+          })->Promise.flatMap(_ => {
+            // save the editor to trigger the server
+            state.document->VSCode.TextDocument.save
+          })->Promise.map(_ => ())
+        }
+      | _ => Promise.resolved()
+      }
+    }
+    //
+    let errorMessages = errors->Array.map(errorToMessage)->Array.concatMany
+
+    errors
+    ->Array.map(errorToSideEffects)
+    ->Util.Promise.oneByOne
+    ->Promise.flatMap(_ => displayErrorMessages(errorMessages))
+
   | OK(i, pos, specs, props) =>
     state.specifications = specs
     Spec.decorate(state)
 
-    display(i, pos, props)
+    displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props))
+
   | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | Resolve(i) =>
     state
