@@ -6,9 +6,9 @@ open Common
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   // let (reqID, setReqID) = React.useState(() => None);
   // let (header, setHeader) = React.useState(() => ViewType.Request.Header.Loading)
+  let (devMode, setDevMode) = React.useState(_ => false)
   let ((id, pos, props), setDisplay) = React.useState(() => (0, [], []))
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
-  let (hidden, setHidden) = React.useState(_ => false)
   let onClickLink = React.useRef(Chan.make())
   let onSubstitute = React.useRef(Chan.make())
 
@@ -23,11 +23,10 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     open ViewType.Request
     let destructor = onRequest->Chan.on(req =>
       switch req {
-      | ViewType.Request.Display(id, pos, props) => setDisplay(_ => (id, pos, props))
+      | ViewType.Request.UpdateState({ devMode }) => setDevMode(_ => devMode)
+      | Display(id, pos, props) => setDisplay(_ => (id, pos, props))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
-      | Hide => setHidden(_ => true)
-      | Show => setHidden(_ => false)
       }
     )
     Some(destructor)
@@ -49,7 +48,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
 
   let onExport = () => onResponse->Chan.emit(ExportProofObligations)
 
-  let className = "gcl-panel native-key-bindings" ++ (hidden ? " hidden" : "")
+  let className = "gcl-panel native-key-bindings" 
 
   let errorMessagesBlock = if Array.length(errorMessages) == 0 {
     <> </>
@@ -70,6 +69,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
       <section className tabIndex={-1}>
+        <DevPanel devMode />
         errorMessagesBlock
         <ProofObligations id pos onExport />
         <GlobalProps id props />

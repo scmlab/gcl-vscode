@@ -215,7 +215,7 @@ module View = {
 module type Controller = {
   type t
   // methods
-  let activate: string => unit
+  let activate: string => bool => Promise.t<bool>
   let deactivate: unit => unit
   let isActivated: unit => bool
   let send: ViewType.Request.t => Promise.t<bool>
@@ -239,13 +239,17 @@ module Controller: Controller = {
     | Some(view) => view.onResponse->Chan.on(callback)->VSCode.Disposable.make
     }
 
-  let activate = extensionPath => {
+  let activate = extensionPath => devMode => {
     let view = View.make(extensionPath)
     handle.view = Some(view)
+
     // free the handle when the view has been forcibly destructed
     View.onceDestroyed(view)->Promise.get(() => {
       handle.view = None
     })
+
+    // sent the "UpdateState" request to set things up 
+    send(UpdateState({ devMode: devMode }))
   }
 
   let deactivate = () => {

@@ -1,7 +1,8 @@
 module Request = {
+  type state = {devMode: bool}
+
   type t =
-    | Show
-    | Hide
+    | UpdateState(state)
     | Substitute(int, GCL.Syntax.Expr.t)
     | SetErrorMessages(array<(string, string)>)
     | Display(int, array<Response.ProofObligation.t>, array<Response.GlobalProp.t>)
@@ -10,11 +11,11 @@ module Request = {
   open Util.Decode
   let decode: decoder<t> = sum(x =>
     switch x {
-    | "Show" => Contents(_ => Show)
-    | "Hide" => Contents(_ => Hide)
+    | "UpdateState" => Contents(bool |> map(devMode => UpdateState({devMode: devMode})))
     | "Substitute" =>
       Contents(pair(int, GCL.Syntax.Expr.decode) |> map(((x, y)) => Substitute(x, y)))
-    | "SetErrorMessages" => Contents(array(pair(string, string)) |> map(msgs => SetErrorMessages(msgs)))
+    | "SetErrorMessages" =>
+      Contents(array(pair(string, string)) |> map(msgs => SetErrorMessages(msgs)))
     | "Display" =>
       Contents(
         tuple3(
@@ -30,15 +31,18 @@ module Request = {
   open! Json.Encode
   let encode: encoder<t> = x =>
     switch x {
-    | Show => object_(list{("tag", string("Show"))})
-    | Hide => object_(list{("tag", string("Hide"))})
+    | UpdateState({devMode}) =>
+      object_(list{("tag", string("UpdateState")), ("contents", devMode |> bool)})
     | Substitute(i, expr) =>
       object_(list{
         ("tag", string("Substitute")),
         ("contents", (i, expr) |> pair(int, GCL.Syntax.Expr.encode)),
       })
     | SetErrorMessages(msgs) =>
-      object_(list{("tag", string("SetErrorMessages")), ("contents", msgs |> array(pair(string, string)))})
+      object_(list{
+        ("tag", string("SetErrorMessages")),
+        ("contents", msgs |> array(pair(string, string))),
+      })
     | Display(id, pos, globalProps) =>
       object_(list{
         ("tag", string("Display")),

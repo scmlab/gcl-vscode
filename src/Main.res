@@ -180,8 +180,11 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // on extension activation
   Events.onActivateExtension(() => {
-    View.activate(context->VSCode.ExtensionContext.extensionPath)
-    LSP.Client.start()->ignore
+    let extensionPath = VSCode.ExtensionContext.extensionPath(context)
+    let devMode = false
+    View.activate(extensionPath, devMode)->Promise.get(_viewActivationResult => {
+      LSP.Client.start()->ignore
+    })
   })->subscribe
 
   // on extension deactivation
