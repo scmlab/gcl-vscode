@@ -31,7 +31,8 @@ let getState = () =>
   ->Option.map(VSCode.TextDocument.fileName)
   ->Option.flatMap(Registry.get)
 
-let handleViewResponse = response => getState()->Option.forEach(state => {
+let handleViewResponse = response =>
+  getState()->Option.forEach(state => {
     switch response {
     | ViewType.Response.Link(MouseOver(loc)) =>
       let key = GCL.Loc.toString(loc)
@@ -110,7 +111,8 @@ module Events = {
       next->Option.forEach(f)
     })
   }
-  let onCloseEditor = callback => VSCode.Workspace.onDidCloseTextDocument(.document =>
+  let onCloseEditor = callback =>
+    VSCode.Workspace.onDidCloseTextDocument(.document =>
       if isGCL'(document) {
         callback(document)
       }
@@ -119,7 +121,8 @@ module Events = {
   // callback only gets invoked when:
   //  1. no GCL files was opened
   //  2. the view is closed
-  let onActivateExtension = callback => onOpenEditor(_ => {
+  let onActivateExtension = callback =>
+    onOpenEditor(_ => {
       // number of visible GCL file in the workplace
       let visibleCount = VSCode.Window.visibleTextEditors->Array.keep(isGCL)->Array.length
       // should activate the view when there's a visible GCL file
@@ -133,7 +136,8 @@ module Events = {
   // callback only gets invoked when:
   //  1. no GCL files was opened
   //  2. the view is opened
-  let onDeactivateExtension = callback => onCloseEditor(_ => {
+  let onDeactivateExtension = callback =>
+    onCloseEditor(_ => {
       // number of GCL States in the Registry
       let openedCount = Registry.size()
       // should deacitvate the view when all GCL States have been destroyed
@@ -154,11 +158,13 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   LSP.Client.on(response => handleResponse(response)->ignore)
 
   // on change LSP client-server connection
-  LSP.Client.onChangeConnectionStatus(status => switch status {
-  | LSP.Client.Disconnected => Js.log("Disconnected")
-  | Connecting => Js.log("Connecting")
-  | Connected => Js.log("Connected")
-  })->subscribe
+  LSP.Client.onChangeConnectionStatus(status =>
+    switch status {
+    | LSP.Client.Disconnected => State.updateConnectionStatus(Disconnected)
+    | Connecting => State.updateConnectionStatus(Connecting)
+    | Connected => State.updateConnectionStatus(Connected)
+    }->ignore
+  )->subscribe
 
   // on open
   Events.onOpenEditor(editor => {
@@ -237,14 +243,16 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on refine
   VSCode.Commands.registerCommand("guacamole.refine", () =>
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
-      state->State.Spec.fromCursorPosition->Option.mapWithDefault(Promise.resolved(), spec => {
+      state
+      ->State.Spec.fromCursorPosition
+      ->Option.mapWithDefault(Promise.resolved(), spec => {
         let payload = State.Spec.getPayload(state.document, spec)
         let payload = payload->Js.Array2.joinWith("\n")
         State.sendLSPRequest(state, Refine(spec.id, payload))->Promise.flatMap(handleResponse)
       })
     })
   )->subscribe
-  
+
   // on debug
   VSCode.Commands.registerCommand("guacamole.debug", () =>
     getState()->Option.mapWithDefault(Promise.resolved(), state => {

@@ -7,6 +7,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   // let (reqID, setReqID) = React.useState(() => None);
   // let (header, setHeader) = React.useState(() => ViewType.Request.Header.Loading)
   let (devMode, setDevMode) = React.useState(_ => false)
+  let (connectionStatus, setConnectionStatus) = React.useState(_ =>LSP.Client.Disconnected)
   let ((id, pos, props), setDisplay) = React.useState(() => (0, [], []))
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
   let onClickLink = React.useRef(Chan.make())
@@ -23,7 +24,8 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     open ViewType.Request
     let destructor = onRequest->Chan.on(req =>
       switch req {
-      | ViewType.Request.UpdateState({devMode}) => setDevMode(_ => devMode)
+      | ViewType.Request.UpdateDevMode(devMode) => setDevMode(_ => devMode)
+      | UpdateConnectionStatus(status) => setConnectionStatus(_ => status)
       | Display(id, pos, props) => setDisplay(_ => (id, pos, props))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
@@ -69,7 +71,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
       <section className tabIndex={-1}>
-      <DevPanel devMode />
+      <DevPanel devMode status=connectionStatus />
         errorMessagesBlock <ProofObligations id pos onExport /> <GlobalProps id props />
       </section>
     </Link.Provider>

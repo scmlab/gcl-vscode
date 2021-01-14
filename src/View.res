@@ -161,12 +161,16 @@ module View = {
     // Panel.moveToRight()
 
     // on message
-    view.panel->VSCode.WebviewPanel.webview->VSCode.Webview.onDidReceiveMessage(json =>
+    view.panel
+    ->VSCode.WebviewPanel.webview
+    ->VSCode.Webview.onDidReceiveMessage(json =>
       switch ViewType.Response.decode(json) {
       | result => view.onResponse->Chan.emit(result)
       | exception e => Js.log2("[ panic ][ Webview.onDidReceiveMessage JSON decode error ]", e)
       }
-    )->Js.Array.push(view.subscriptions)->ignore
+    )
+    ->Js.Array.push(view.subscriptions)
+    ->ignore
 
     // on destroy
     view.panel
@@ -176,7 +180,8 @@ module View = {
     ->Js.Array.push(view.subscriptions)
     ->ignore
     // on initizlied
-    view.onResponse->Chan.on(x =>
+    view.onResponse
+    ->Chan.on(x =>
       switch x {
       | Initialized =>
         switch view.status {
@@ -187,7 +192,10 @@ module View = {
         }
       | _ => ()
       }
-    )->VSCode.Disposable.make->Js.Array.push(view.subscriptions)->ignore
+    )
+    ->VSCode.Disposable.make
+    ->Js.Array.push(view.subscriptions)
+    ->ignore
 
     view
   }
@@ -215,7 +223,7 @@ module View = {
 module type Controller = {
   type t
   // methods
-  let activate: string => bool => Promise.t<bool>
+  let activate: (string, bool) => Promise.t<bool>
   let deactivate: unit => unit
   let isActivated: unit => bool
   let send: ViewType.Request.t => Promise.t<bool>
@@ -239,7 +247,7 @@ module Controller: Controller = {
     | Some(view) => view.onResponse->Chan.on(callback)->VSCode.Disposable.make
     }
 
-  let activate = extensionPath => devMode => {
+  let activate = (extensionPath, devMode) => {
     let view = View.make(extensionPath)
     handle.view = Some(view)
 
@@ -248,8 +256,8 @@ module Controller: Controller = {
       handle.view = None
     })
 
-    // sent the "UpdateState" request to set things up 
-    send(UpdateState({ devMode: devMode }))
+    // sent the "UpdateDevMode" request to set things up
+    send(UpdateDevMode(devMode))
   }
 
   let deactivate = () => {
@@ -259,7 +267,8 @@ module Controller: Controller = {
 
   let isActivated = () => handle.view->Option.isSome
 
-  let focus = () => handle.view->Option.forEach(view => {
+  let focus = () =>
+    handle.view->Option.forEach(view => {
       VSCode.WebviewPanel.reveal(view.panel, ())
     })
 }

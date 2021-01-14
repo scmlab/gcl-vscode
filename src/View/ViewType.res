@@ -1,8 +1,28 @@
 module Request = {
-  type state = {devMode: bool}
+  module LSPClientStatus = {
+    open Json.Decode
+    open Util.Decode
+    let decode: decoder<LSP.Client.status> = sum(x =>
+      switch x {
+      | "Disconnected" => TagOnly(_ => LSP.Client.Disconnected)
+      | "Connecting" => TagOnly(_ => Connecting)
+      | "Connected" => TagOnly(_ => Connected)
+      | tag => raise(DecodeError("[LSPClientStatus] Unknown constructor: " ++ tag))
+      }
+    )
+
+    open! Json.Encode
+    let encode: encoder<LSP.Client.status> = x =>
+      switch x {
+      | Disconnected => object_(list{("tag", string("Disconnected"))})
+      | Connecting => object_(list{("tag", string("Connecting"))})
+      | Connected => object_(list{("tag", string("Connected"))})
+      }
+  }
 
   type t =
-    | UpdateState(state)
+    | UpdateDevMode(bool)
+    | UpdateConnectionStatus(LSP.Client.status)
     | Substitute(int, GCL.Syntax.Expr.t)
     | SetErrorMessages(array<(string, string)>)
     | Display(int, array<Response.ProofObligation.t>, array<Response.GlobalProp.t>)
@@ -11,7 +31,9 @@ module Request = {
   open Util.Decode
   let decode: decoder<t> = sum(x =>
     switch x {
-    | "UpdateState" => Contents(bool |> map(devMode => UpdateState({devMode: devMode})))
+    | "UpdateDevMode" => Contents(bool |> map(devMode => UpdateDevMode(devMode)))
+    | "UpdateConnectionStatus" =>
+      Contents(LSPClientStatus.decode |> map(status => UpdateConnectionStatus(status)))
     | "Substitute" =>
       Contents(pair(int, GCL.Syntax.Expr.decode) |> map(((x, y)) => Substitute(x, y)))
     | "SetErrorMessages" =>
@@ -31,8 +53,10 @@ module Request = {
   open! Json.Encode
   let encode: encoder<t> = x =>
     switch x {
-    | UpdateState({devMode}) =>
-      object_(list{("tag", string("UpdateState")), ("contents", devMode |> bool)})
+    | UpdateDevMode(devMode) =>
+      object_(list{("tag", string("UpdateDevMode")), ("contents", devMode |> bool)})
+    | UpdateConnectionStatus(status) =>
+      object_(list{("tag", string("UpdateConnectionStatus")), ("contents", status |> LSPClientStatus.encode)})
     | Substitute(i, expr) =>
       object_(list{
         ("tag", string("Substitute")),
