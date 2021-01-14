@@ -72,12 +72,48 @@
 
 
     .gcl-dev-panel {
+        padding: @component-padding;
+        background: @background2;
+        display   : flex;
 
+        line-height: 2em;
+
+        #gcl-dev-panel-header {
+            font-variant: small-caps;
+            font-weight : bolder;
+            color       : @text-color-subtle;
+        }
+
+        #gcl-dev-panel-status {
+            margin: 0 1em;
+            padding: 0 1em;
+            flex-grow: 0;
+            display   : flex;
+            align-items: center;
+            .codicon {
+                margin-right: 0.25em
+            }
+        }
+
+
+
+        // line-height: 2em;
+
+        // display: flex;
+        // .codicon {
+        //     line-height: 2em;
+        //     align-items: center;
+        // }
+
+        // span {
+        //     line-height: 2em;
+        // }
     }
 
     .gcl-proof-obligation,
     .gcl-global-props {
         overflow-y: scroll;
+        padding   : 0;
 
         .gcl-proof-obligation-header {
             button {
@@ -146,8 +182,7 @@
         color       : @text-color-subtle;
     }
 
-    .gcl-list-item-body {
-    }
+    .gcl-list-item-body {}
 
 
     // buttons

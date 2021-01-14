@@ -23,7 +23,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     open ViewType.Request
     let destructor = onRequest->Chan.on(req =>
       switch req {
-      | ViewType.Request.UpdateState({ devMode }) => setDevMode(_ => devMode)
+      | ViewType.Request.UpdateState({devMode}) => setDevMode(_ => devMode)
       | Display(id, pos, props) => setDisplay(_ => (id, pos, props))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
@@ -39,16 +39,18 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   )
 
   // relay <Subst> substitution to "onResponse"
-  React.useEffect1(() => Some(onSubstitute.current->Chan.on(x =>
+  React.useEffect1(() => Some(
+    onSubstitute.current->Chan.on(x =>
       switch x {
       | Subst.Request(i, expr, subst) => onResponse->Chan.emit(Substitute(i, expr, subst))
       | Response(_, _) => ()
       }
-    )), [])
+    ),
+  ), [])
 
   let onExport = () => onResponse->Chan.emit(ExportProofObligations)
 
-  let className = "gcl-panel native-key-bindings" 
+  let className = "gcl-panel native-key-bindings"
 
   let errorMessagesBlock = if Array.length(errorMessages) == 0 {
     <> </>
@@ -57,9 +59,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
       <h2> {string("Error Messages")} </h2>
       <ul className="gcl-global-property-list">
         {errorMessages
-        ->Array.mapWithIndex((i, (header, body)) =>
-          <Item header body key={string_of_int(i)} /> 
-        )
+        ->Array.mapWithIndex((i, (header, body)) => <Item header body key={string_of_int(i)} />)
         ->array}
       </ul>
     </div>
@@ -69,10 +69,8 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
       <section className tabIndex={-1}>
-        <DevPanel devMode />
-        errorMessagesBlock
-        <ProofObligations id pos onExport />
-        <GlobalProps id props />
+      <DevPanel devMode />
+        errorMessagesBlock <ProofObligations id pos onExport /> <GlobalProps id props />
       </section>
     </Link.Provider>
   </Subst.Provider>
