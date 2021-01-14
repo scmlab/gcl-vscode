@@ -150,6 +150,16 @@ module Events = {
 let activate = (context: VSCode.ExtensionContext.t) => {
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
+  // on response/notification from the server
+  LSP.Client.on(response => handleResponse(response)->ignore)
+
+  // on change LSP client-server connection
+  LSP.Client.onChangeConnectionStatus(status => switch status {
+  | LSP.Client.Disconnected => Js.log("Disconnected")
+  | Connecting => Js.log("Connecting")
+  | Connected => Js.log("Connected")
+  })->subscribe
+
   // on open
   Events.onOpenEditor(editor => {
     let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
@@ -221,9 +231,6 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     }
   })->subscribe
 
-  // on response/notification from the server
-  LSP.Client.on(response => handleResponse(response)->ignore)
-
   // on events from the view
   View.on(handleViewResponse)->subscribe
 
@@ -235,6 +242,13 @@ let activate = (context: VSCode.ExtensionContext.t) => {
         let payload = payload->Js.Array2.joinWith("\n")
         State.sendLSPRequest(state, Refine(spec.id, payload))->Promise.flatMap(handleResponse)
       })
+    })
+  )->subscribe
+  
+  // on debug
+  VSCode.Commands.registerCommand("guacamole.debug", () =>
+    getState()->Option.mapWithDefault(Promise.resolved(), state => {
+      State.sendLSPRequest(state, Debug)->Promise.flatMap(handleResponse)
     })
   )->subscribe
 }

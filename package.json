@@ -65,7 +65,13 @@
 		"commands": [
 			{
 				"command": "guacamole.refine",
-				"title": "Refine"
+				"title": "Refine",
+				"category": "Guacamole"
+			}, 
+			{
+				"command": "guacamole.debug",
+				"title": "Debug",
+				"category": "Guacamole"
 			}
 		],
 		"keybindings": [

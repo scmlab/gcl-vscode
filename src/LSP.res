@@ -30,7 +30,7 @@ module ErrorHandler: {
     ~error: (Js.Exn.t, option<Message.t>, option<int>) => ErrorAction.t,
     ~closed: unit => CloseAction.t,
   ) => t
-  let makeDefault: string => int => t
+  let makeDefault: (string, int) => t
 } = {
   type t = {
     error: (Js.Exn.t, option<Message.t>, option<int>) => ErrorAction.raw,
@@ -72,15 +72,22 @@ module ErrorHandler: {
               restarts[0]->Option.map(first => latest -. first)
             )
           switch diff {
-          | Some(diff) => if int_of_float(diff) <= 3 * 60 * 1000 {
+          | Some(diff) =>
+            if int_of_float(diff) <= 3 * 60 * 1000 {
               let max = string_of_int(maxRestartCount + 1)
-            	Window.showErrorMessage("The " ++ name ++ "server crashed " ++ max ++ " times in the last 3 minutes. The server will not be restarted.", [])->ignore
+              Window.showErrorMessage(
+                "The " ++
+                name ++
+                "server crashed " ++
+                max ++ " times in the last 3 minutes. The server will not be restarted.",
+                [],
+              )->ignore
               DoNotRestart
-          } else {
-            Js.Array.shift(restarts)->ignore 
-            Restart 
-          }
-          | None => Restart 
+            } else {
+              Js.Array.shift(restarts)->ignore
+              Restart
+            }
+          | None => Restart
           }
         }
       },
@@ -91,25 +98,25 @@ module ErrorHandler: {
 // Options to control the language client
 module LanguageClientOptions = {
   type t
-  let make: (DocumentSelector.t, FileSystemWatcher.t, ErrorHandler.t) => t = %raw(
-    "function (documentSelector, synchronize, errorHandler) {
+  let make: (
+    DocumentSelector.t,
+    FileSystemWatcher.t,
+    ErrorHandler.t,
+  ) => t = %raw("function (documentSelector, synchronize, errorHandler) {
       return {
 		    documentSelector: documentSelector,
 		    synchronize: synchronize,
         errorHandler: errorHandler
       }
-    }"
-  )
+    }")
 }
 
 // Options to control the language client
 module ServerOptions = {
   type t
-  let makeCommand: string => t = %raw(
-    "function (command) {
+  let makeCommand: string => t = %raw("function (command) {
       return { command: command }
-    }"
-  )
+    }")
 }
 
 module WebviewEditorInset = {
@@ -157,13 +164,14 @@ module LanguageClient = {
   external sendRequest: (t, string, Js.Json.t) => Promise.Js.t<'result, _> = "sendRequest"
 }
 
-
-
 module type Client = {
+  type status = Disconnected | Connecting | Connected
+
   type t
   let start: unit => LanguageClient.t
   let stop: unit => Promise.t<unit>
   let on: (Response.t => unit) => unit
+  let onChangeConnectionStatus: (status => unit) => VSCode.Disposable.t
   let send: Request.t => Promise.t<Response.t>
 }
 module Client: Client = {
@@ -171,6 +179,13 @@ module Client: Client = {
     mutable client: LanguageClient.t,
     mutable subscription: VSCode.Disposable.t,
   }
+  // for emitting events
+  type status = Disconnected | Connecting | Connected
+  let statusChan: Chan.t<status> = Chan.make()
+  // for internal bookkeeping
+  type state = Disconnected | Connecting(t) | Connected(t)
+  let singleton: ref<state> = ref(Disconnected)
+
   let make = () => {
     let serverOptions = ServerOptions.makeCommand("gcl")
 
@@ -197,9 +212,21 @@ module Client: Client = {
         ~ignoreDeleteEvents=false,
       )
 
+      let _errorHandler: ErrorHandler.t = ErrorHandler.make(
+        ~error=(exn, msg, count) => {
+          Js.log4("error", exn, msg, count)
+          Shutdown
+        },
+        ~closed=() => {
+          Js.log("closed")
+          DoNotRestart
+        },
+      )
+
       LanguageClientOptions.make(
         documentSelector,
         synchronize,
+        // errorHandler
         ErrorHandler.makeDefault("Guacamole", 3),
       )
     }
@@ -212,24 +239,26 @@ module Client: Client = {
     )
   }
 
-  let handle: ref<option<t>> = ref(None)
-
   // make and start the LSP client
   let start = () =>
-    switch handle.contents {
-    | None =>
+    switch singleton.contents {
+    | Disconnected =>
       let client = make()
       let subscription = client->LanguageClient.start
-      handle := Some({client: client, subscription: subscription})
+      singleton := Connecting({client: client, subscription: subscription})
+      statusChan->Chan.emit(Connecting)
       client
-    | Some({client}) => client
+    | Connecting({client}) => client
+    | Connected({client}) => client
     }
   // stop the LSP client
   let stop = () =>
-    switch handle.contents {
-    | None => Promise.resolved()
-    | Some({client, subscription}) =>
-      handle := None
+    switch singleton.contents {
+    | Disconnected => Promise.resolved()
+    | Connecting({client, subscription})
+    | Connected({client, subscription}) => 
+      singleton := Disconnected
+      statusChan->Chan.emit(Disconnected)
       subscription->VSCode.Disposable.dispose->ignore
       client->LanguageClient.stop->Promise.Js.toResult->Promise.map(_ => ())
     }
@@ -241,29 +270,47 @@ module Client: Client = {
     | exception Json.Decode.DecodeError(msg) => CannotDecodeResponse(msg, json)
     }
 
-  let on = handler => handle.contents->Belt.Option.forEach(({client}) => {
+  let on = handler =>
+    switch singleton.contents {
+    | Disconnected => ()
+    | Connecting({client})
+    | Connected({client}) => 
       client
       ->LanguageClient.onReady
       ->Promise.Js.toResult
       ->Promise.getOk(() =>
-        client->LanguageClient.onNotification("guacamole", json =>
-          handler(decodeResponse(json))
-        )
+        client->LanguageClient.onNotification("guacamole", json => handler(decodeResponse(json)))
       )
-    })
+    }
+
+  let onChangeConnectionStatus = callback => statusChan->Chan.on(callback)->VSCode.Disposable.make
 
   let send = request => {
     let client = start()
 
-    client->LanguageClient.onReady->Promise.Js.toResult->Promise.flatMapOk(() => {
+    client
+    ->LanguageClient.onReady
+    ->Promise.Js.toResult
+    ->Promise.flatMapOk(() => {
       let value = Request.encode(request)
       client->LanguageClient.sendRequest("guacamole", value)->Promise.Js.toResult
-    })->Promise.map(x =>
+    })
+    ->Promise.map(x =>
       switch x {
-      | Ok(json) => decodeResponse(json)
-      | Error(error) => Response.CannotSendRequest(Response.Error.fromJsError(error))
+      | Ok(json) =>
+        // change 'Connecting' => 'Connected' on first response
+        switch singleton.contents {
+        | Connecting(state) => 
+          statusChan->Chan.emit(Connected)
+          singleton := Connected(state)
+        | _ => ()
+        }
+        
+        decodeResponse(json)
+      | Error(error) =>
+        statusChan->Chan.emit(Disconnected)
+        Response.CannotSendRequest(Response.Error.fromJsError(error))
       }
     )
   }
 }
-
