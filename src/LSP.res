@@ -114,8 +114,18 @@ module LanguageClientOptions = {
 // Options to control the language client
 module ServerOptions = {
   type t
-  let makeCommand: string => t = %raw("function (command) {
+  let makeWithCommand: string => t = %raw("function (command) {
       return { command: command }
+    }")
+
+  let makeWithStreamInfo: unit => t = %raw("function () {
+      const net = require('net');
+      const socket = net.createConnection({ port: 3000 })
+      return (() => { return new Promise(resolve => resolve({
+        writer: socket,
+        reader: socket
+      })
+      )})
     }")
 }
 
@@ -188,7 +198,8 @@ module Client: Client = {
   let singleton: ref<state> = ref(Disconnected)
 
   let make = () => {
-    let serverOptions = ServerOptions.makeCommand("gcl")
+    let serverOptions = ServerOptions.makeWithStreamInfo()
+    // let serverOptions = ServerOptions.makeWithCommand("gcl")
 
     let clientOptions = {
       // let makePattern = [%raw "function(filename) { return fileName }"];
