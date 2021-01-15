@@ -2,6 +2,8 @@ open Belt
 
 let isGCL = Js.Re.test_(%re("/\\.gcl$/i"))
 
+let previouslyActivatedState: ref<option<State.t>> = ref(None)
+
 let handleResponse = response =>
   switch response {
   | Response.Res(filePath, kinds) =>
@@ -25,16 +27,23 @@ let handleResponse = response =>
     ])
   }
 
-let getState = () =>
-  VSCode.Window.activeTextEditor
-  ->Option.map(VSCode.TextEditor.document)
-  ->Option.map(VSCode.TextDocument.fileName)
-  ->Option.flatMap(Registry.get)
+let sendLSPRequest = (state, kind) => {
+  State.sendLSPRequest(state, kind)->Promise.flatMap(result =>
+    switch result {
+    | None => Promise.resolved()
+    | Some(response) => handleResponse(response)
+    }
+  )
+}
 
-let handleViewResponse = response =>
+let getState = () => previouslyActivatedState.contents
+
+let handleViewResponse = response => {
   getState()->Option.forEach(state => {
     switch response {
-    | ViewType.Response.Link(MouseOver(loc)) =>
+    | ViewType.Response.Connect => LSP.Client.start()->ignore
+    | Disconnect => LSP.Client.stop()->ignore
+    | Link(MouseOver(loc)) =>
       let key = GCL.Loc.toString(loc)
       let range = GCL.Loc.toRange(loc)
       State.Decoration.addBackground(state, key, range, "statusBar.debuggingBackground")
@@ -57,17 +66,13 @@ let handleViewResponse = response =>
       // remove all decorations
       State.Decoration.removeAll()
       // send request to the server
-      State.sendLSPRequest(state, Request.Kind.Substitute(id, expr, subst))
-      ->Promise.flatMap(handleResponse)
-      ->ignore
-    | ExportProofObligations =>
-      State.sendLSPRequest(state, Request.Kind.ExportProofObligations)
-      ->Promise.flatMap(handleResponse)
-      ->ignore
+      sendLSPRequest(state, Request.Kind.Substitute(id, expr, subst))->ignore
+    | ExportProofObligations => sendLSPRequest(state, Request.Kind.ExportProofObligations)->ignore
     | Initialized => ()
     | Destroyed => ()
     }
   })
+}
 
 let registerInset = () => {
   // let extensionPath = context->VSCode.ExtensionContext.extensionPath
@@ -185,7 +190,10 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       state.filePath = filePath
       state
     }
-    State.sendLSPRequest(state, Load)->Promise.flatMap(handleResponse)->ignore
+
+    previouslyActivatedState := Some(state)
+
+    sendLSPRequest(state, Load)->ignore
   })->subscribe
 
   // on close
@@ -206,6 +214,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on extension deactivation
   Events.onDeactivateExtension(_ => {
     View.deactivate()
+    previouslyActivatedState := None
     LSP.Client.stop()->ignore
   })->subscribe
 
@@ -231,7 +240,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
           )
           let end_ = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.end_(selection))
 
-          State.sendLSPRequest(state, Inspect(start, end_))->Promise.flatMap(handleResponse)->ignore
+          sendLSPRequest(state, Inspect(start, end_))->ignore
         })
       )
     }
@@ -248,7 +257,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       ->Option.mapWithDefault(Promise.resolved(), spec => {
         let payload = State.Spec.getPayload(state.document, spec)
         let payload = payload->Js.Array2.joinWith("\n")
-        State.sendLSPRequest(state, Refine(spec.id, payload))->Promise.flatMap(handleResponse)
+        sendLSPRequest(state, Refine(spec.id, payload))
       })
     })
   )->subscribe
@@ -256,7 +265,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on debug
   VSCode.Commands.registerCommand("guacamole.debug", () =>
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
-      State.sendLSPRequest(state, Debug)->Promise.flatMap(handleResponse)
+      sendLSPRequest(state, Debug)
     })
   )->subscribe
 }

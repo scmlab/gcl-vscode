@@ -2,10 +2,12 @@
 open React
 
 @react.component
-let make = (~devMode: bool, ~status: LSP.Client.status) => {
+let make = (~devMode: bool, ~status: LSP.Client.status, ~onConnect: unit => unit, ~onDisconnect: unit => unit) => {
+  let onConnect = _ => onConnect()
+  let onDisconnect = _ => onDisconnect()
   let status = switch status {
   | Disconnected => 
-    <div id="gcl-dev-panel-status" className="disconnected">
+    <div id="gcl-dev-panel-status" className="disconnected" onClick=onConnect >
       <i className="codicon codicon-circle-large-filled" /> <span> {string("disconnected")} </span>
     </div>
   | Connecting => 
@@ -13,7 +15,7 @@ let make = (~devMode: bool, ~status: LSP.Client.status) => {
       <i className="codicon codicon-circle-large-filled" /> <span> {string("connecting")} </span>
     </div>
   | Connected => 
-    <div id="gcl-dev-panel-status" className="connected">
+    <div id="gcl-dev-panel-status" className="connected" onClick=onDisconnect >
       <i className="codicon codicon-circle-large-filled" /> <span> {string("connected")} </span>
     </div>
   }

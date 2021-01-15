@@ -7,11 +7,13 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   // let (reqID, setReqID) = React.useState(() => None);
   // let (header, setHeader) = React.useState(() => ViewType.Request.Header.Loading)
   let (devMode, setDevMode) = React.useState(_ => false)
-  let (connectionStatus, setConnectionStatus) = React.useState(_ =>LSP.Client.Disconnected)
+  let (connectionStatus, setConnectionStatus) = React.useState(_ => LSP.Client.Disconnected)
   let ((id, pos, props), setDisplay) = React.useState(() => (0, [], []))
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
   let onClickLink = React.useRef(Chan.make())
   let onSubstitute = React.useRef(Chan.make())
+  let onConnect = React.useRef(Chan.make())
+  let onDisconnect = React.useRef(Chan.make())
 
   // response with Initialized on mount
   React.useEffect1(() => {
@@ -50,6 +52,17 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     ),
   ), [])
 
+  // relay <DevPanel> events to "onResponse"
+  React.useEffect1(
+    () => Some(onDisconnect.current->Chan.on(() => onResponse->Chan.emit(Disconnect))),
+    [],
+  )
+  React.useEffect1(() => Some(onConnect.current->Chan.on(() => onResponse->Chan.emit(Connect))), [])
+
+  let onConnect = () => onConnect.current->Chan.emit()
+
+  let onDisconnect = () => onDisconnect.current->Chan.emit()
+
   let onExport = () => onResponse->Chan.emit(ExportProofObligations)
 
   let className = "gcl-panel native-key-bindings"
@@ -71,8 +84,10 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
       <section className tabIndex={-1}>
-      <DevPanel devMode status=connectionStatus />
-        errorMessagesBlock <ProofObligations id pos onExport /> <GlobalProps id props />
+        <DevPanel devMode status=connectionStatus onConnect onDisconnect />
+        errorMessagesBlock
+        <ProofObligations id pos onExport />
+        <GlobalProps id props />
       </section>
     </Link.Provider>
   </Subst.Provider>

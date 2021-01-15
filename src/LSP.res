@@ -168,16 +168,17 @@ module type Client = {
   type status = Disconnected | Connecting | Connected
 
   type t
-  let start: unit => LanguageClient.t
+  let start: unit => Promise.t<unit>
   let stop: unit => Promise.t<unit>
   let on: (Response.t => unit) => unit
   let onChangeConnectionStatus: (status => unit) => VSCode.Disposable.t
-  let send: Request.t => Promise.t<Response.t>
+  let send: Request.t => Promise.t<option<Response.t>>
 }
 module Client: Client = {
   type t = {
     mutable client: LanguageClient.t,
-    mutable subscription: VSCode.Disposable.t,
+    queue: array<(Request.t, Response.t => unit)>,
+    subscription: VSCode.Disposable.t,
   }
   // for emitting events
   type status = Disconnected | Connecting | Connected
@@ -245,18 +246,25 @@ module Client: Client = {
     | Disconnected =>
       let client = make()
       let subscription = client->LanguageClient.start
-      singleton := Connecting({client: client, subscription: subscription})
+      let state = {client: client, queue: [], subscription: subscription}
+      singleton := Connecting(state)
       statusChan->Chan.emit(Connecting)
-      client
-    | Connecting({client}) => client
-    | Connected({client}) => client
+      // emit `Connected` after ready 
+      client->LanguageClient.onReady->Promise.Js.toResult->Promise.map(result => switch result {
+      | Error(_) => ()
+      | Ok() => 
+        statusChan->Chan.emit(Connected)
+        singleton := Connected(state)
+      })
+    | Connecting(_) => Promise.resolved()
+    | Connected(_) => Promise.resolved()
     }
   // stop the LSP client
   let stop = () =>
     switch singleton.contents {
     | Disconnected => Promise.resolved()
     | Connecting({client, subscription})
-    | Connected({client, subscription}) => 
+    | Connected({client, subscription}) =>
       singleton := Disconnected
       statusChan->Chan.emit(Disconnected)
       subscription->VSCode.Disposable.dispose->ignore
@@ -274,7 +282,7 @@ module Client: Client = {
     switch singleton.contents {
     | Disconnected => ()
     | Connecting({client})
-    | Connected({client}) => 
+    | Connected({client}) =>
       client
       ->LanguageClient.onReady
       ->Promise.Js.toResult
@@ -285,32 +293,30 @@ module Client: Client = {
 
   let onChangeConnectionStatus = callback => statusChan->Chan.on(callback)->VSCode.Disposable.make
 
-  let send = request => {
-    let client = start()
-
-    client
-    ->LanguageClient.onReady
-    ->Promise.Js.toResult
-    ->Promise.flatMapOk(() => {
-      let value = Request.encode(request)
-      client->LanguageClient.sendRequest("guacamole", value)->Promise.Js.toResult
-    })
-    ->Promise.map(x =>
-      switch x {
-      | Ok(json) =>
-        // change 'Connecting' => 'Connected' on first response
-        switch singleton.contents {
-        | Connecting(state) => 
-          statusChan->Chan.emit(Connected)
-          singleton := Connected(state)
-        | _ => ()
+  let send = request =>
+    switch singleton.contents {
+    | Connected({client}) =>
+      client
+      ->LanguageClient.onReady
+      ->Promise.Js.toResult
+      ->Promise.flatMapOk(() => {
+        let value = Request.encode(request)
+        client->LanguageClient.sendRequest("guacamole", value)->Promise.Js.toResult
+      })
+      ->Promise.map(x =>
+        switch x {
+        | Ok(json) =>
+          Some(decodeResponse(json))
+        | Error(error) =>
+          statusChan->Chan.emit(Disconnected)
+          Some(Response.CannotSendRequest(Response.Error.fromJsError(error)))
         }
-        
-        decodeResponse(json)
-      | Error(error) =>
-        statusChan->Chan.emit(Disconnected)
-        Response.CannotSendRequest(Response.Error.fromJsError(error))
-      }
-    )
-  }
+      )
+    | Connecting({queue}) =>
+      Js.log("queued")
+      let (promise, resolve) = Promise.pending()
+      Js.Array.push((request, resolve), queue)->ignore
+      promise->Promise.map(x => Some(x))
+    | Disconnected => Promise.resolved(None)
+    }
 }

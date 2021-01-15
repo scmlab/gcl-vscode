@@ -56,7 +56,10 @@ module Request = {
     | UpdateDevMode(devMode) =>
       object_(list{("tag", string("UpdateDevMode")), ("contents", devMode |> bool)})
     | UpdateConnectionStatus(status) =>
-      object_(list{("tag", string("UpdateConnectionStatus")), ("contents", status |> LSPClientStatus.encode)})
+      object_(list{
+        ("tag", string("UpdateConnectionStatus")),
+        ("contents", status |> LSPClientStatus.encode),
+      })
     | Substitute(i, expr) =>
       object_(list{
         ("tag", string("Substitute")),
@@ -89,6 +92,8 @@ module Response = {
     | MouseClick(GCL.loc)
 
   type t =
+    | Connect
+    | Disconnect
     | Link(linkEvent)
     | ExportProofObligations
     | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
@@ -109,6 +114,8 @@ module Response = {
 
   let decode: decoder<t> = sum(x =>
     switch x {
+    | "Connect" => TagOnly(_ => Connect)
+    | "Disconnect" => TagOnly(_ => Disconnect)
     | "Initialized" => TagOnly(_ => Initialized)
     | "ExportProofObligations" => TagOnly(_ => ExportProofObligations)
     | "Destroyed" => TagOnly(_ => Destroyed)
@@ -138,6 +145,8 @@ module Response = {
 
   let encode: encoder<t> = x =>
     switch x {
+    | Connect => object_(list{("tag", string("Connect"))})
+    | Disconnect => object_(list{("tag", string("Disconnect"))})
     | Initialized => object_(list{("tag", string("Initialized"))})
     | Destroyed => object_(list{("tag", string("Destroyed"))})
     | ExportProofObligations => object_(list{("tag", string("ExportProofObligations"))})

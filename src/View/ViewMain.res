@@ -13,7 +13,10 @@ VSCode.Api.onMessage(stringifiedJSON => {
 
 // relay onResponse => VSCode.Api.postMessage
 let onResponse = Chan.make()
-let _ = onResponse->Chan.on(response => vscode->VSCode.Api.postMessage(ViewType.Response.encode(response)))
+let _ =
+  onResponse->Chan.on(response =>
+    vscode->VSCode.Api.postMessage(ViewType.Response.encode(response))
+  )
 
 // mount the view at the "root" element
 Webapi.Dom.Document.getElementById("root", Webapi.Dom.document)->Option.forEach(element =>
