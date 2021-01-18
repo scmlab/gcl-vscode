@@ -416,7 +416,7 @@ module Decoration: Decoration = {
     })
 }
 
-let make = editor => {
+let make = (editor) => {
   let document = VSCode.TextEditor.document(editor)
   let filePath = VSCode.TextDocument.fileName(document)
   let state = {

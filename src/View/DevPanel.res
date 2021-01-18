@@ -33,7 +33,7 @@ let make = (
     </div>
   } else {
     <div id="gcl-dev-panel-method" onClick=onChangeMethod>
-      <i className="codicon codicon-plug" /> <span> {string("via stdio")} </span>
+      <i className="codicon codicon-plug" /> <span> {string("via STDIO")} </span>
     </div>
   }
   let className = {"gcl-dev-panel " ++ (devMode ? "" : "hidden")}

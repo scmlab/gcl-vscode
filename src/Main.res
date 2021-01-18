@@ -38,14 +38,16 @@ let sendLSPRequest = (state, kind) => {
 
 let getState = () => previouslyActivatedState.contents
 
-let handleViewResponse = response => {
+let handleViewResponse = (context, response) => {
   getState()->Option.forEach(state => {
     switch response {
     | ViewType.Response.Connect(viaTCP) =>
+      let devMode =
+        VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
       if LSP.Client.isConnected() {
-        LSP.Client.stop()->Promise.flatMap(() => LSP.Client.start(viaTCP))->ignore
+        LSP.Client.stop()->Promise.flatMap(() => LSP.Client.start(devMode, viaTCP))->ignore
       } else {
-        LSP.Client.start(viaTCP)->ignore
+        LSP.Client.start(devMode, viaTCP)->ignore
       }
     | Disconnect => LSP.Client.stop()->ignore
     | Link(MouseOver(loc)) =>
@@ -176,6 +178,20 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     }->ignore
   )->subscribe
 
+  // on LSP client-server error
+  LSP.Client.onError(exn => {
+    let isECONNREFUSED =
+      Js.Exn.message(exn)->Option.mapWithDefault(
+        false,
+        Js.String.startsWith("connect ECONNREFUSED"),
+      )
+
+    let messages = isECONNREFUSED
+      ? [("LSP Connection Error", "Please enter \":main -d\" in ghci")]
+      : [("LSP Client Error", Js.Exn.message(exn)->Option.getWithDefault(""))]
+    State.displayErrorMessages(messages)->ignore
+  })->subscribe
+
   // on open
   Events.onOpenEditor(editor => {
     let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
@@ -212,13 +228,9 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
     let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
     View.activate(extensionPath, devMode)->Promise.get(_viewActivationResult => {
-      if devMode {
-        // communicate with the LSP server via TCP by default
-        LSP.Client.start(true)->ignore
-      } else {
-        // communicate with the LSP server via standard stream by default
-        LSP.Client.start(false)->ignore
-      }
+      let viaTCP = devMode
+      // when in dev mode, communicate with the LSP server via TCP by default
+      LSP.Client.start(devMode, viaTCP)->ignore
     })
   })->subscribe
 
@@ -258,7 +270,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   })->subscribe
 
   // on events from the view
-  View.on(handleViewResponse)->subscribe
+  View.on(handleViewResponse(context))->subscribe
 
   // on refine
   VSCode.Commands.registerCommand("guacamole.refine", () =>

@@ -178,19 +178,23 @@ module type Client = {
   type status = Disconnected | Connecting | Connected
 
   type t
-  let start: bool => Promise.t<unit>
+  let start: (bool, bool) => Promise.t<unit>
   let stop: unit => Promise.t<unit>
   let isConnected: unit => bool
   let on: (Response.t => unit) => unit
+  let onError: (Js.Exn.t => unit) => VSCode.Disposable.t
   let onChangeConnectionStatus: (status => unit) => VSCode.Disposable.t
   let send: Request.t => Promise.t<option<Response.t>>
 }
+
 module Client: Client = {
   type t = {
     mutable client: LanguageClient.t,
     queue: array<(Request.t, Response.t => unit)>,
     subscription: VSCode.Disposable.t,
   }
+  // for emitting errors
+  let errorChan: Chan.t<Js.Exn.t> = Chan.make()
   // for emitting events
   type status = Disconnected | Connecting | Connected
   let statusChan: Chan.t<status> = Chan.make()
@@ -198,14 +202,24 @@ module Client: Client = {
   type state = Disconnected | Connecting(t) | Connected(t)
   let singleton: ref<state> = ref(Disconnected)
 
-  let make = viaTCP => {
+  // stop the LSP client
+  let stop = () =>
+    switch singleton.contents {
+    | Disconnected => Promise.resolved()
+    | Connecting({client, subscription})
+    | Connected({client, subscription}) =>
+      singleton := Disconnected
+      statusChan->Chan.emit(Disconnected)
+      subscription->VSCode.Disposable.dispose->ignore
+      client->LanguageClient.stop->Promise.Js.toResult->Promise.map(_ => ())
+    }
+
+  let makeAndStart = (devMode, viaTCP) => {
     let serverOptions = viaTCP
       ? ServerOptions.makeWithStreamInfo(3000)
       : ServerOptions.makeWithCommand("gcl")
-    // let serverOptions = ServerOptions.makeWithCommand("gcl")
 
     let clientOptions = {
-      // let makePattern = [%raw "function(filename) { return fileName }"];
       // Register the server for plain text documents
       let documentSelector: DocumentSelector.t = [
         StringOr.others({
@@ -213,7 +227,6 @@ module Client: Client = {
           {
             scheme: Some("file"),
             pattern: None,
-            // Some(makePattern(fileName)),
             language: Some("guacamole"),
           }
         }),
@@ -227,44 +240,46 @@ module Client: Client = {
         ~ignoreDeleteEvents=false,
       )
 
-      let _errorHandler: ErrorHandler.t = ErrorHandler.make(
-        ~error=(exn, msg, count) => {
-          Js.log4("error", exn, msg, count)
-          Shutdown
-        },
-        ~closed=() => {
-          Js.log("closed")
-          DoNotRestart
-        },
-      )
+      let errorHandler: ErrorHandler.t = devMode
+        ? ErrorHandler.make(
+            ~error=(exn, _msg, _count) => {
+              errorChan->Chan.emit(exn)
+              stop()->ignore
+              Shutdown
+            },
+            ~closed=() => {
+              DoNotRestart
+            },
+          )
+        : ErrorHandler.makeDefault("Guacamole", 3)
 
-      LanguageClientOptions.make(
-        documentSelector,
-        synchronize,
-        // errorHandler
-        ErrorHandler.makeDefault("Guacamole", 3),
-      )
+      LanguageClientOptions.make(documentSelector, synchronize, errorHandler)
     }
+
     // Create the language client
-    LanguageClient.make(
+    let languageClient = LanguageClient.make(
       "guacamoleLanguageServer",
       "Guacamole Language Server",
       serverOptions,
       clientOptions,
     )
+
+    {
+      client: languageClient,
+      queue: [],
+      subscription: languageClient->LanguageClient.start,
+    }
   }
 
   // make and start the LSP client
-  let start = (viaTCP) =>
+  let start = (devMode, viaTCP) =>
     switch singleton.contents {
     | Disconnected =>
-      let client = make(viaTCP)
-      let subscription = client->LanguageClient.start
-      let state = {client: client, queue: [], subscription: subscription}
+      let state = makeAndStart(devMode, viaTCP)
       singleton := Connecting(state)
       statusChan->Chan.emit(Connecting)
       // emit `Connected` after ready
-      client
+      state.client
       ->LanguageClient.onReady
       ->Promise.Js.toResult
       ->Promise.map(result =>
@@ -278,23 +293,12 @@ module Client: Client = {
     | Connecting(_) => Promise.resolved()
     | Connected(_) => Promise.resolved()
     }
-  // stop the LSP client
-  let stop = () =>
-    switch singleton.contents {
-    | Disconnected => Promise.resolved()
-    | Connecting({client, subscription})
-    | Connected({client, subscription}) =>
-      singleton := Disconnected
-      statusChan->Chan.emit(Disconnected)
-      subscription->VSCode.Disposable.dispose->ignore
-      client->LanguageClient.stop->Promise.Js.toResult->Promise.map(_ => ())
-    }
 
-  let isConnected =  () =>
+  let isConnected = () =>
     switch singleton.contents {
     | Disconnected => false
     | Connecting(_)
-    | Connected(_) => true 
+    | Connected(_) => true
     }
 
   let decodeResponse = (json: Js.Json.t): Response.t =>
@@ -318,6 +322,7 @@ module Client: Client = {
     }
 
   let onChangeConnectionStatus = callback => statusChan->Chan.on(callback)->VSCode.Disposable.make
+  let onError = callback => errorChan->Chan.on(callback)->VSCode.Disposable.make
 
   let send = request =>
     switch singleton.contents {
