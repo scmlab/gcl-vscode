@@ -41,7 +41,12 @@ let getState = () => previouslyActivatedState.contents
 let handleViewResponse = response => {
   getState()->Option.forEach(state => {
     switch response {
-    | ViewType.Response.Connect => LSP.Client.start()->ignore
+    | ViewType.Response.Connect(viaTCP) =>
+      if LSP.Client.isConnected() {
+        LSP.Client.stop()->Promise.flatMap(() => LSP.Client.start(viaTCP))->ignore
+      } else {
+        LSP.Client.start(viaTCP)->ignore
+      }
     | Disconnect => LSP.Client.stop()->ignore
     | Link(MouseOver(loc)) =>
       let key = GCL.Loc.toString(loc)
@@ -207,7 +212,13 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
     let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
     View.activate(extensionPath, devMode)->Promise.get(_viewActivationResult => {
-      LSP.Client.start()->ignore
+      if devMode {
+        // communicate with the LSP server via TCP by default
+        LSP.Client.start(true)->ignore
+      } else {
+        // communicate with the LSP server via standard stream by default
+        LSP.Client.start(false)->ignore
+      }
     })
   })->subscribe
 

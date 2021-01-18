@@ -92,7 +92,7 @@ module Response = {
     | MouseClick(GCL.loc)
 
   type t =
-    | Connect
+    | Connect(bool)
     | Disconnect
     | Link(linkEvent)
     | ExportProofObligations
@@ -114,7 +114,7 @@ module Response = {
 
   let decode: decoder<t> = sum(x =>
     switch x {
-    | "Connect" => TagOnly(_ => Connect)
+    | "Connect" => Contents(bool |> map(viaTCP => Connect(viaTCP)))
     | "Disconnect" => TagOnly(_ => Disconnect)
     | "Initialized" => TagOnly(_ => Initialized)
     | "ExportProofObligations" => TagOnly(_ => ExportProofObligations)
@@ -145,7 +145,7 @@ module Response = {
 
   let encode: encoder<t> = x =>
     switch x {
-    | Connect => object_(list{("tag", string("Connect"))})
+    | Connect(viaTCP) => object_(list{("tag", string("Connect")), ("contents", viaTCP |> bool)})
     | Disconnect => object_(list{("tag", string("Disconnect"))})
     | Initialized => object_(list{("tag", string("Initialized"))})
     | Destroyed => object_(list{("tag", string("Destroyed"))})

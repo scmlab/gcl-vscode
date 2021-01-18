@@ -4,9 +4,8 @@ open Common
 
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
-  // let (reqID, setReqID) = React.useState(() => None);
-  // let (header, setHeader) = React.useState(() => ViewType.Request.Header.Loading)
   let (devMode, setDevMode) = React.useState(_ => false)
+  let (connectViaTCP, setConnectViaTCP) = React.useState(_ => devMode ? true : false)
   let (connectionStatus, setConnectionStatus) = React.useState(_ => LSP.Client.Disconnected)
   let ((id, pos, props), setDisplay) = React.useState(() => (0, [], []))
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
@@ -14,6 +13,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   let onSubstitute = React.useRef(Chan.make())
   let onConnect = React.useRef(Chan.make())
   let onDisconnect = React.useRef(Chan.make())
+  let onChangeConnectionMethod = React.useRef(Chan.make())
 
   // response with Initialized on mount
   React.useEffect1(() => {
@@ -26,7 +26,9 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     open ViewType.Request
     let destructor = onRequest->Chan.on(req =>
       switch req {
-      | ViewType.Request.UpdateDevMode(devMode) => setDevMode(_ => devMode)
+      | ViewType.Request.UpdateDevMode(devMode) =>
+        setDevMode(_ => devMode)
+        setConnectViaTCP(_ => devMode)
       | UpdateConnectionStatus(status) => setConnectionStatus(_ => status)
       | Display(id, pos, props) => setDisplay(_ => (id, pos, props))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
@@ -57,9 +59,21 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     () => Some(onDisconnect.current->Chan.on(() => onResponse->Chan.emit(Disconnect))),
     [],
   )
-  React.useEffect1(() => Some(onConnect.current->Chan.on(() => onResponse->Chan.emit(Connect))), [])
+  React.useEffect1(
+    () => Some(onConnect.current->Chan.on((viaTCP) => onResponse->Chan.emit(Connect(viaTCP)))),
+    [],
+  )
+  React.useEffect1(
+    () => Some(onChangeConnectionMethod.current->Chan.on((viaTCP) => onResponse->Chan.emit(Connect(viaTCP)))),
+    [],
+  )
 
-  let onConnect = () => onConnect.current->Chan.emit()
+  let onChangeMethod = () => {
+    setConnectViaTCP(value => !value)
+    onChangeConnectionMethod.current->Chan.emit(!connectViaTCP)
+  }
+
+  let onConnect = () => onConnect.current->Chan.emit(connectViaTCP)
 
   let onDisconnect = () => onDisconnect.current->Chan.emit()
 
@@ -84,7 +98,9 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
       <section className tabIndex={-1}>
-        <DevPanel devMode status=connectionStatus onConnect onDisconnect />
+        <DevPanel
+          devMode connectViaTCP status=connectionStatus onConnect onDisconnect onChangeMethod
+        />
         errorMessagesBlock
         <ProofObligations id pos onExport />
         <GlobalProps id props />
