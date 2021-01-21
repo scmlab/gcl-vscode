@@ -38,12 +38,10 @@ let sendLSPRequest = (state, kind) => {
 
 let getState = () => previouslyActivatedState.contents
 
-let handleViewResponse = (context, response) => {
+let handleViewResponse = (devMode, response) => {
   getState()->Option.forEach(state => {
     switch response {
     | ViewType.Response.Connect(viaTCP) =>
-      let devMode =
-        VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
       if LSP.Client.isConnected() {
         LSP.Client.stop()->Promise.flatMap(() => LSP.Client.start(devMode, viaTCP))->ignore
       } else {
@@ -164,7 +162,8 @@ module Events = {
 }
 
 let activate = (context: VSCode.ExtensionContext.t) => {
-  let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
+  let devMode = false
+  // let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
   // on response/notification from the server
@@ -234,7 +233,6 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on extension activation
   Events.onActivateExtension(() => {
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
-    
     View.activate(extensionPath, devMode)->Promise.get(_viewActivationResult => {
       let viaTCP = devMode
       // when in dev mode, communicate with the LSP server via TCP by default
@@ -278,7 +276,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   })->subscribe
 
   // on events from the view
-  View.on(handleViewResponse(context))->subscribe
+  View.on(handleViewResponse(devMode))->subscribe
 
   // on refine
   VSCode.Commands.registerCommand("guacamole.refine", () =>
