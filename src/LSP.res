@@ -181,7 +181,7 @@ module type Client = {
   let start: (bool, bool) => Promise.t<unit>
   let stop: unit => Promise.t<unit>
   let isConnected: unit => bool
-  let on: (Response.t => unit) => unit
+  let on: (Response.t => unit) => VSCode.Disposable.t
   let onError: (Js.Exn.t => unit) => VSCode.Disposable.t
   let onChangeConnectionStatus: (status => unit) => VSCode.Disposable.t
   let send: Request.t => Promise.t<option<Response.t>>
@@ -195,6 +195,7 @@ module Client: Client = {
   }
   // for emitting errors
   let errorChan: Chan.t<Js.Exn.t> = Chan.make()
+  let dataChan: Chan.t<Response.t> = Chan.make()
   // for emitting events
   type status = Disconnected | Connecting | Connected
   let statusChan: Chan.t<status> = Chan.make()
@@ -276,6 +277,13 @@ module Client: Client = {
     }
   }
 
+  let decodeResponse = (json: Js.Json.t): Response.t =>
+    switch // catching exceptions occured when decoding JSON values
+    Response.decode(json) {
+    | response => response
+    | exception Json.Decode.DecodeError(msg) => CannotDecodeResponse(msg, json)
+    }
+
   // make and start the LSP client
   let start = (devMode, viaTCP) =>
     switch singleton.contents {
@@ -292,6 +300,7 @@ module Client: Client = {
         | Error(_) => ()
         | Ok() =>
           statusChan->Chan.emit(Connected)
+          state.client->LanguageClient.onNotification("guacamole", json => dataChan->Chan.emit(decodeResponse(json)))
           singleton := Connected(state)
         }
       )
@@ -306,25 +315,18 @@ module Client: Client = {
     | Connected(_) => true
     }
 
-  let decodeResponse = (json: Js.Json.t): Response.t =>
-    switch // catching exceptions occured when decoding JSON values
-    Response.decode(json) {
-    | response => response
-    | exception Json.Decode.DecodeError(msg) => CannotDecodeResponse(msg, json)
-    }
-
-  let on = handler =>
-    switch singleton.contents {
-    | Disconnected => ()
-    | Connecting({client})
-    | Connected({client}) =>
-      client
-      ->LanguageClient.onReady
-      ->Promise.Js.toResult
-      ->Promise.getOk(() =>
-        client->LanguageClient.onNotification("guacamole", json => handler(decodeResponse(json)))
-      )
-    }
+  let on = handler => dataChan->Chan.on(handler)->VSCode.Disposable.make
+    // switch singleton.contents {
+    // | Disconnected => ()
+    // | Connecting({client})
+    // | Connected({client}) =>
+    //   client
+    //   ->LanguageClient.onReady
+    //   ->Promise.Js.toResult
+    //   ->Promise.getOk(() =>
+    //     client->LanguageClient.onNotification("guacamole", json => handler(decodeResponse(json)))
+    //   )
+    // }}
 
   let onChangeConnectionStatus = callback => statusChan->Chan.on(callback)->VSCode.Disposable.make
   let onError = callback => errorChan->Chan.on(callback)->VSCode.Disposable.make

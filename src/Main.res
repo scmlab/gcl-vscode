@@ -7,8 +7,8 @@ let previouslyActivatedState: ref<option<State.t>> = ref(None)
 let handleResponse = response =>
   switch response {
   | Response.Res(filePath, kinds) =>
-    Registry.get(filePath)->Option.mapWithDefault(Promise.resolved(), state =>
-      kinds->Array.map(State.handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())
+    Registry.get(filePath)->Option.mapWithDefault(Promise.resolved(), state =>{
+      kinds->Array.map(State.handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())}
     )
   | CannotSendRequest(message) =>
     State.displayErrorMessages([
@@ -167,7 +167,9 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
   // on response/notification from the server
-  LSP.Client.on(response => handleResponse(response)->ignore)
+  LSP.Client.on(response => {
+    handleResponse(response)->ignore
+  })->subscribe
 
   // on change LSP client-server connection
   LSP.Client.onChangeConnectionStatus(status =>
