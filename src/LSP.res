@@ -191,7 +191,7 @@ module Client: Client = {
   type t = {
     mutable client: LanguageClient.t,
     queue: array<(Request.t, Response.t => unit)>,
-    subscription: VSCode.Disposable.t,
+    subscription: VSCode.Disposable.t
   }
   // for emitting errors
   let errorChan: Chan.t<Js.Exn.t> = Chan.make()
@@ -215,6 +215,8 @@ module Client: Client = {
     }
 
   let makeAndStart = (devMode, viaTCP) => {
+    let emittedError = ref(false)
+
     let serverOptions = viaTCP
       ? ServerOptions.makeWithStreamInfo(3000)
       : ServerOptions.makeWithCommand("gcl")
@@ -243,8 +245,11 @@ module Client: Client = {
       let errorHandler: ErrorHandler.t = devMode
         ? ErrorHandler.make(
             ~error=(exn, _msg, _count) => {
-              errorChan->Chan.emit(exn)
-              stop()->ignore
+              if (!emittedError.contents) {
+                stop()->ignore
+                errorChan->Chan.emit(exn)
+                emittedError := true
+              }
               Shutdown
             },
             ~closed=() => {
