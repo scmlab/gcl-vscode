@@ -7,9 +7,9 @@ let previouslyActivatedState: ref<option<State.t>> = ref(None)
 let handleResponse = response =>
   switch response {
   | Response.Res(filePath, kinds) =>
-    Registry.get(filePath)->Option.mapWithDefault(Promise.resolved(), state =>{
-      kinds->Array.map(State.handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())}
-    )
+    Registry.get(filePath)->Option.mapWithDefault(Promise.resolved(), state => {
+      kinds->Array.map(State.handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())
+    })
   | CannotSendRequest(message) =>
     State.displayErrorMessages([
       ("Client Internal Error", "Cannot send request to the server\n" ++ message),
@@ -42,12 +42,12 @@ let handleViewResponse = (devMode, response) => {
   getState()->Option.forEach(state => {
     switch response {
     | ViewType.Response.Connect(viaTCP) =>
-      if LSP.Client.isConnected() {
-        LSP.Client.stop()->Promise.flatMap(() => LSP.Client.start(devMode, viaTCP))->ignore
+      if LSP.isConnected() {
+        LSP.stop()->Promise.flatMap(() => LSP.start(devMode, viaTCP))->ignore
       } else {
-        LSP.Client.start(devMode, viaTCP)->ignore
+        LSP.start(devMode, viaTCP)->ignore
       }
-    | Disconnect => LSP.Client.stop()->ignore
+    | Disconnect => LSP.stop()->ignore
     | Link(MouseOver(loc)) =>
       let key = GCL.Loc.toString(loc)
       let range = GCL.Loc.toRange(loc)
@@ -167,21 +167,19 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
   // on response/notification from the server
-  LSP.Client.on(response => {
-    handleResponse(response)->ignore
-  })->subscribe
+  LSP.onResponse(response => handleResponse(response)->ignore)->subscribe
 
   // on change LSP client-server connection
-  LSP.Client.onChangeConnectionStatus(status =>
+  LSP.onChangeConnectionStatus(status =>
     switch status {
-    | LSP.Client.Disconnected => State.updateConnectionStatus(Disconnected)
+    | LSP.Disconnected => State.updateConnectionStatus(Disconnected)
     | Connecting => State.updateConnectionStatus(Connecting)
     | Connected => State.updateConnectionStatus(Connected)
     }->ignore
   )->subscribe
 
   // on LSP client-server error
-  LSP.Client.onError(exn => {
+  LSP.onError(exn => {
     let isECONNREFUSED =
       Js.Exn.message(exn)->Option.mapWithDefault(
         false,
@@ -195,7 +193,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     let shouldSwitchToSTDIO = devMode && isECONNREFUSED
 
     if shouldSwitchToSTDIO {
-      LSP.Client.start(devMode, false)->ignore      
+      LSP.start(devMode, false)->ignore
     } else {
       State.displayErrorMessages(messages)->ignore
     }
@@ -238,7 +236,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     View.activate(extensionPath, devMode)->Promise.get(_viewActivationResult => {
       let viaTCP = devMode
       // when in dev mode, communicate with the LSP server via TCP by default
-      LSP.Client.start(devMode, viaTCP)->ignore
+      LSP.start(devMode, viaTCP)->ignore
     })
   })->subscribe
 
@@ -246,7 +244,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   Events.onDeactivateExtension(_ => {
     View.deactivate()
     previouslyActivatedState := None
-    LSP.Client.stop()->ignore
+    LSP.stop()->ignore
   })->subscribe
 
   // on change cursor position/selection

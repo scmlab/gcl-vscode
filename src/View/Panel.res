@@ -6,7 +6,7 @@ open Common
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (devMode, setDevMode) = React.useState(_ => false)
   let (connectViaTCP, setConnectViaTCP) = React.useState(_ => devMode ? true : false)
-  let (connectionStatus, setConnectionStatus) = React.useState(_ => LSP.Client.Disconnected)
+  let (connectionStatus, setConnectionStatus) = React.useState(_ => LSP.Disconnected)
   let ((id, pos, props), setDisplay) = React.useState(() => (0, [], []))
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
   let onClickLink = React.useRef(Chan.make())

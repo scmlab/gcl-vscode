@@ -5,7 +5,7 @@ open React
 let make = (
   ~devMode: bool,
   ~connectViaTCP: bool,
-  ~status: LSP.Client.status,
+  ~status: LSP.status,
   ~onConnect: unit => unit,
   ~onDisconnect: unit => unit,
   ~onChangeMethod: unit => unit,

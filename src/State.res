@@ -28,7 +28,7 @@ let focus = state =>
 
 let sendLSPRequest = (state, kind) => {
   let source = state.document->VSCode.TextDocument.getText(None)
-  LSP.Client.send(Request.Req(state.filePath, source, kind))
+  LSP.sendRequest(Request.Req(state.filePath, source, kind))
 }
 
 module HandleError = {

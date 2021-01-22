@@ -2,9 +2,9 @@ module Request = {
   module LSPClientStatus = {
     open Json.Decode
     open Util.Decode
-    let decode: decoder<LSP.Client.status> = sum(x =>
+    let decode: decoder<LSP.status> = sum(x =>
       switch x {
-      | "Disconnected" => TagOnly(_ => LSP.Client.Disconnected)
+      | "Disconnected" => TagOnly(_ => LSP.Disconnected)
       | "Connecting" => TagOnly(_ => Connecting)
       | "Connected" => TagOnly(_ => Connected)
       | tag => raise(DecodeError("[LSPClientStatus] Unknown constructor: " ++ tag))
@@ -12,7 +12,7 @@ module Request = {
     )
 
     open! Json.Encode
-    let encode: encoder<LSP.Client.status> = x =>
+    let encode: encoder<LSP.status> = x =>
       switch x {
       | Disconnected => object_(list{("tag", string("Disconnected"))})
       | Connecting => object_(list{("tag", string("Connecting"))})
@@ -22,7 +22,7 @@ module Request = {
 
   type t =
     | UpdateDevMode(bool)
-    | UpdateConnectionStatus(LSP.Client.status)
+    | UpdateConnectionStatus(LSP.status)
     | Substitute(int, GCL.Syntax.Expr.t)
     | SetErrorMessages(array<(string, string)>)
     | Display(int, array<Response.ProofObligation.t>, array<Response.GlobalProp.t>)
