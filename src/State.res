@@ -22,6 +22,9 @@ let display = (id, pos, props) =>
 let updateConnectionStatus = status =>
   View.send(UpdateConnectionStatus(status))->Promise.map(_ => ())
 
+let updateConnectionMethod = method =>
+  View.send(UpdateConnectionMethod(method))->Promise.map(_ => ())
+
 
 let focus = state =>
   VSCode.Window.showTextDocument(state.document, ~column=VSCode.ViewColumn.Beside, ())->ignore

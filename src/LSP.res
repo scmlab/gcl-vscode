@@ -188,7 +188,7 @@ module type Client = {
   let sendRequest: (t, Js.Json.t) => Promise.t<result<Js.Json.t, 'a>>
 
   let destroy: t => Promise.t<unit>
-  let make: (bool, method) => Promise.t<option<t>>
+  let make: (bool, method) => Promise.t<result<t, Js.Exn.t>>
 }
 
 module Client: Client = {
@@ -252,12 +252,6 @@ module Client: Client = {
         ? ErrorHandler.make(
             ~error=(exn, _msg, _count) => {
               errorChan->Chan.emit(exn)
-
-              // if !emittedError.contents {
-              //   destroy()->ignore
-              //   errorChan->Chan.emit(exn)
-              //   emittedError := true
-              // }
               Shutdown
             },
             ~closed=() => {
@@ -283,15 +277,16 @@ module Client: Client = {
       subscription: languageClient->LanguageClient.start,
     }
 
-    self.client
-    ->LanguageClient.onReady
-    ->Promise.Js.toResult
-    ->Promise.map(result =>
+    // Let `LanguageClient.onReady` and `errorChan->Chan.once` race
+    Promise.race(list{
+      self.client->LanguageClient.onReady->Promise.Js.toResult,
+      errorChan->Chan.once->Promise.map(err => Error(err)),
+    })->Promise.map(result =>
       switch result {
-      | Error(_) => None
+      | Error(error) => Error(error)
       | Ok() =>
         self.client->LanguageClient.onNotification("guacamole", json => dataChan->Chan.emit(json))
-        Some(self)
+        Ok(self)
       }
     )
   }
@@ -299,13 +294,13 @@ module Client: Client = {
 
 module type Module = {
   // methods
-  let start: (bool) => Promise.t<bool>
+  let start: bool => Promise.t<bool>
   let stop: unit => Promise.t<unit>
   let sendRequest: Request.t => Promise.t<option<Response.t>>
   let changeMethod: method => Promise.t<bool>
   // predicate
   let isConnected: unit => bool
-  // output 
+  // output
   let onResponse: (Response.t => unit) => VSCode.Disposable.t
   let onError: (Js.Exn.t => unit) => VSCode.Disposable.t
   let onChangeStatus: (status => unit) => VSCode.Disposable.t
@@ -327,12 +322,12 @@ module Module: Module = {
   type singleton = {
     mutable state: state,
     mutable method: method,
-    mutable devMode: bool
+    mutable devMode: bool,
   }
   let singleton: singleton = {
     state: Disconnected,
     method: ViaStdIO,
-    devMode: false
+    devMode: false,
   }
 
   // stop the LSP client
@@ -371,13 +366,8 @@ module Module: Module = {
       }
     )
 
-
   // make and start the LSP client
-  let start = (devMode) => {
-    singleton.devMode = devMode
-
-    singleton.method = devMode ? ViaTCP : ViaStdIO
-
+  let rec startWithMethod = devMode => method => {
     // state
     switch singleton.state {
     | Disconnected =>
@@ -386,12 +376,30 @@ module Module: Module = {
       singleton.state = Connecting([], promise)
       statusChan->Chan.emit(Connecting)
 
-      Client.make(devMode, singleton.method)->Promise.flatMap(result =>
+      Client.make(devMode, method)->Promise.flatMap(result =>
         switch result {
-        | None =>
-          resolve(false)
-          Promise.resolved(false)
-        | Some(client) =>
+        | Error(exn) =>
+          let isECONNREFUSED =
+            Js.Exn.message(exn)->Option.mapWithDefault(
+              false,
+              Js.String.startsWith("connect ECONNREFUSED"),
+            )
+          let shouldSwitchToStdIO = isECONNREFUSED && method == ViaTCP
+
+          if shouldSwitchToStdIO {
+            Js.log("Connecting via TCP failed, switch to StdIO")
+            singleton.method = ViaStdIO
+            methodChan->Chan.emit(ViaStdIO)
+            singleton.state = Disconnected
+            statusChan->Chan.emit(Disconnected)
+            startWithMethod(devMode, ViaStdIO)
+          } else {
+            singleton.state = Disconnected
+            statusChan->Chan.emit(Disconnected)
+            resolve(false)
+            Promise.resolved(false)
+          }
+        | Ok(client) =>
           let queuedRequest = switch singleton.state {
           | Disconnected => []
           | Connecting(queued, _) => queued
@@ -417,6 +425,14 @@ module Module: Module = {
     }
   }
 
+
+  // make and start the LSP client
+  let start = devMode => {
+    singleton.devMode = devMode
+    singleton.method = devMode ? ViaTCP : ViaStdIO
+    startWithMethod(devMode, singleton.method)
+  }
+
   let isConnected = () =>
     switch singleton.state {
     | Disconnected => false
@@ -439,8 +455,7 @@ module Module: Module = {
     | Disconnected => Promise.resolved(None)
     }
 
-
-  let changeMethod = (method) =>  {
+  let changeMethod = method => {
     // update the state and reconfigure the connection
     if singleton.method != method {
       singleton.method = method

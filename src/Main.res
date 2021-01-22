@@ -41,8 +41,7 @@ let getState = () => previouslyActivatedState.contents
 let handleViewResponse = (devMode, response) => {
   getState()->Option.forEach(state => {
     switch response {
-    | ViewType.Response.Connect =>
-      LSP.start(devMode)->ignore
+    | ViewType.Response.Connect => LSP.start(devMode)->ignore
     | Disconnect => LSP.stop()->ignore
     | ChangeConnectionMethod(method) => LSP.changeMethod(method)->ignore
     | Link(MouseOver(loc)) =>
@@ -166,14 +165,11 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on response/notification from the server
   LSP.onResponse(response => handleResponse(response)->ignore)->subscribe
 
-  // on change LSP client-server connection
-  LSP.onChangeStatus(status =>
-    switch status {
-    | LSP.Disconnected => State.updateConnectionStatus(Disconnected)
-    | Connecting => State.updateConnectionStatus(Connecting)
-    | Connected => State.updateConnectionStatus(Connected)
-    }->ignore
-  )->subscribe
+  // on change LSP client-server connection status
+  LSP.onChangeStatus(status => State.updateConnectionStatus(status)->ignore)->subscribe
+
+  // on change LSP client-server connection method
+  LSP.onChangeMethod(method => State.updateConnectionMethod(method)->ignore)->subscribe
 
   // on LSP client-server error
   LSP.onError(exn => {
@@ -187,13 +183,6 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       ? [("LSP Connection Error", "Please enter \":main -d\" in ghci")]
       : [("LSP Client Error", Js.Exn.message(exn)->Option.getWithDefault(""))]
 
-    // let shouldSwitchToSTDIO = devMode && isECONNREFUSED
-
-    // if shouldSwitchToSTDIO {
-    //   LSP.start(devMode, false)->ignore
-    // } else {
-    //   State.displayErrorMessages(messages)->ignore
-    // }
     State.displayErrorMessages(messages)->ignore
   })->subscribe
 
