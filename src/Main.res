@@ -41,13 +41,10 @@ let getState = () => previouslyActivatedState.contents
 let handleViewResponse = (devMode, response) => {
   getState()->Option.forEach(state => {
     switch response {
-    | ViewType.Response.Connect(viaTCP) =>
-      if LSP.isConnected() {
-        LSP.stop()->Promise.flatMap(() => LSP.start(devMode, viaTCP))->ignore
-      } else {
-        LSP.start(devMode, viaTCP)->ignore
-      }
+    | ViewType.Response.Connect =>
+      LSP.start(devMode)->ignore
     | Disconnect => LSP.stop()->ignore
+    | ChangeConnectionMethod(method) => LSP.changeMethod(method)->ignore
     | Link(MouseOver(loc)) =>
       let key = GCL.Loc.toString(loc)
       let range = GCL.Loc.toRange(loc)
@@ -162,15 +159,15 @@ module Events = {
 }
 
 let activate = (context: VSCode.ExtensionContext.t) => {
-  let devMode = false
-  // let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
+  // let devMode = false
+  let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
   // on response/notification from the server
   LSP.onResponse(response => handleResponse(response)->ignore)->subscribe
 
   // on change LSP client-server connection
-  LSP.onChangeConnectionStatus(status =>
+  LSP.onChangeStatus(status =>
     switch status {
     | LSP.Disconnected => State.updateConnectionStatus(Disconnected)
     | Connecting => State.updateConnectionStatus(Connecting)
@@ -190,13 +187,14 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       ? [("LSP Connection Error", "Please enter \":main -d\" in ghci")]
       : [("LSP Client Error", Js.Exn.message(exn)->Option.getWithDefault(""))]
 
-    let shouldSwitchToSTDIO = devMode && isECONNREFUSED
+    // let shouldSwitchToSTDIO = devMode && isECONNREFUSED
 
-    if shouldSwitchToSTDIO {
-      LSP.start(devMode, false)->ignore
-    } else {
-      State.displayErrorMessages(messages)->ignore
-    }
+    // if shouldSwitchToSTDIO {
+    //   LSP.start(devMode, false)->ignore
+    // } else {
+    //   State.displayErrorMessages(messages)->ignore
+    // }
+    State.displayErrorMessages(messages)->ignore
   })->subscribe
 
   // on open
@@ -234,9 +232,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   Events.onActivateExtension(() => {
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
     View.activate(extensionPath, devMode)->Promise.get(_viewActivationResult => {
-      let viaTCP = devMode
-      // when in dev mode, communicate with the LSP server via TCP by default
-      LSP.start(devMode, viaTCP)->ignore
+      LSP.start(devMode)->ignore
     })
   })->subscribe
 

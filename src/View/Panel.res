@@ -5,7 +5,7 @@ open Common
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (devMode, setDevMode) = React.useState(_ => false)
-  let (connectViaTCP, setConnectViaTCP) = React.useState(_ => devMode ? true : false)
+  let (connectionMethod, setConnectionMethod) = React.useState(_ => devMode ? LSP.ViaTCP : ViaStdIO)
   let (connectionStatus, setConnectionStatus) = React.useState(_ => LSP.Disconnected)
   let ((id, pos, props), setDisplay) = React.useState(() => (0, [], []))
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
@@ -26,10 +26,9 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     open ViewType.Request
     let destructor = onRequest->Chan.on(req =>
       switch req {
-      | ViewType.Request.UpdateDevMode(devMode) =>
-        setDevMode(_ => devMode)
-        setConnectViaTCP(_ => devMode)
+      | ViewType.Request.UpdateDevMode(devMode) => setDevMode(_ => devMode)
       | UpdateConnectionStatus(status) => setConnectionStatus(_ => status)
+      | UpdateConnectionMethod(method) => setConnectionMethod(_ => method)
       | Display(id, pos, props) => setDisplay(_ => (id, pos, props))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
@@ -60,20 +59,22 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     [],
   )
   React.useEffect1(
-    () => Some(onConnect.current->Chan.on((viaTCP) => onResponse->Chan.emit(Connect(viaTCP)))),
+    () => Some(onConnect.current->Chan.on(() => onResponse->Chan.emit(Connect))),
     [],
   )
   React.useEffect1(
-    () => Some(onChangeConnectionMethod.current->Chan.on((viaTCP) => onResponse->Chan.emit(Connect(viaTCP)))),
+    () => Some(
+      onChangeConnectionMethod.current->Chan.on(method => onResponse->Chan.emit(ChangeConnectionMethod(method))),
+    ),
     [],
   )
 
-  let onChangeMethod = () => {
-    setConnectViaTCP(value => !value)
-    onChangeConnectionMethod.current->Chan.emit(!connectViaTCP)
+  let onChangeMethod = (method) => {
+    setConnectionMethod(_ => method)
+    onChangeConnectionMethod.current->Chan.emit(method)
   }
 
-  let onConnect = () => onConnect.current->Chan.emit(connectViaTCP)
+  let onConnect = () => onConnect.current->Chan.emit()
 
   let onDisconnect = () => onDisconnect.current->Chan.emit()
 
@@ -99,7 +100,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     <Link.Provider value=onClickLink.current>
       <section className tabIndex={-1}>
         <DevPanel
-          devMode connectViaTCP status=connectionStatus onConnect onDisconnect onChangeMethod
+          devMode method=connectionMethod status=connectionStatus onConnect onDisconnect onChangeMethod
         />
         errorMessagesBlock
         <ProofObligations id pos onExport />

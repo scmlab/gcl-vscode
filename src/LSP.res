@@ -1,6 +1,5 @@
 open VSCode
 
-
 module Message = {
   type t = {jsonrpc: string}
 }
@@ -177,6 +176,9 @@ module LanguageClient = {
 
 open Belt
 
+type status = Disconnected | Connecting | Connected
+type method = ViaStdIO | ViaTCP
+
 module type Client = {
   type t
 
@@ -186,7 +188,7 @@ module type Client = {
   let sendRequest: (t, Js.Json.t) => Promise.t<result<Js.Json.t, 'a>>
 
   let destroy: t => Promise.t<unit>
-  let make: (bool, bool) => Promise.t<option<t>>
+  let make: (bool, method) => Promise.t<option<t>>
 }
 
 module Client: Client = {
@@ -195,6 +197,7 @@ module Client: Client = {
     queue: array<(Request.t, Response.t => unit)>,
     subscription: VSCode.Disposable.t,
   }
+
   // for emitting errors
   let errorChan: Chan.t<Js.Exn.t> = Chan.make()
   // for emitting data
@@ -216,12 +219,13 @@ module Client: Client = {
     self.client->LanguageClient.stop->Promise.Js.toResult->Promise.map(_ => ())
   }
 
-  let make = (devMode, viaTCP) => {
+  let make = (devMode, method) => {
     // let emittedError = ref(false)
 
-    let serverOptions = viaTCP
-      ? ServerOptions.makeWithStreamInfo(3000)
-      : ServerOptions.makeWithCommand("gcl")
+    let serverOptions =
+      method == ViaTCP
+        ? ServerOptions.makeWithStreamInfo(3000)
+        : ServerOptions.makeWithCommand("gcl")
 
     let clientOptions = {
       // Register the server for plain text documents
@@ -294,37 +298,55 @@ module Client: Client = {
 }
 
 module type Module = {
-  type status = Disconnected | Connecting | Connected
-
-  let start: bool => bool => Promise.t<bool>
+  // methods
+  let start: (bool) => Promise.t<bool>
   let stop: unit => Promise.t<unit>
+  let sendRequest: Request.t => Promise.t<option<Response.t>>
+  let changeMethod: method => Promise.t<bool>
+  // predicate
   let isConnected: unit => bool
+  // output 
   let onResponse: (Response.t => unit) => VSCode.Disposable.t
   let onError: (Js.Exn.t => unit) => VSCode.Disposable.t
-  let onChangeConnectionStatus: (status => unit) => VSCode.Disposable.t
-  let sendRequest: Request.t => Promise.t<option<Response.t>>
+  let onChangeStatus: (status => unit) => VSCode.Disposable.t
+  let onChangeMethod: (method => unit) => VSCode.Disposable.t
 }
 
 module Module: Module = {
   // for emitting events
-  type status = Disconnected | Connecting | Connected
   let statusChan: Chan.t<status> = Chan.make()
+  let methodChan: Chan.t<method> = Chan.make()
+
   // for internal bookkeeping
-  type state = Disconnected | Connecting(array<(Request.t, option<Response.t> => unit)>, Promise.t<bool>) | Connected(Client.t)
-  let singleton: ref<state> = ref(Disconnected)
+  type state =
+    | Disconnected
+    | Connecting(array<(Request.t, option<Response.t> => unit)>, Promise.t<bool>)
+    | Connected(Client.t)
+
+  // internal states
+  type singleton = {
+    mutable state: state,
+    mutable method: method,
+    mutable devMode: bool
+  }
+  let singleton: singleton = {
+    state: Disconnected,
+    method: ViaStdIO,
+    devMode: false
+  }
 
   // stop the LSP client
   let stop = () =>
-    switch singleton.contents {
+    switch singleton.state {
     | Disconnected => Promise.resolved()
-    | Connecting(_) => 
+    | Connecting(_) =>
       // update the status
-      singleton := Disconnected
+      singleton.state = Disconnected
       statusChan->Chan.emit(Disconnected)
       Promise.resolved()
     | Connected(client) =>
       // update the status
-      singleton := Disconnected
+      singleton.state = Disconnected
       statusChan->Chan.emit(Disconnected)
       // destroy the client
       client->Client.destroy
@@ -337,55 +359,66 @@ module Module: Module = {
     | exception Json.Decode.DecodeError(msg) => CannotDecodeResponse(msg, json)
     }
 
-  let sendRequestWithClient = client => request =>
-      client
-      ->Client.sendRequest(Request.encode(request))
-      ->Promise.map(x =>
-        switch x {
-        | Ok(json) => Some(decodeResponse(json))
-        | Error(error) =>
-          statusChan->Chan.emit(Disconnected)
-          Some(Response.CannotSendRequest(Response.Error.fromJsError(error)))
-        }
-      )
+  let sendRequestWithClient = (client, request) =>
+    client
+    ->Client.sendRequest(Request.encode(request))
+    ->Promise.map(x =>
+      switch x {
+      | Ok(json) => Some(decodeResponse(json))
+      | Error(error) =>
+        statusChan->Chan.emit(Disconnected)
+        Some(Response.CannotSendRequest(Response.Error.fromJsError(error)))
+      }
+    )
+
 
   // make and start the LSP client
-  let start = (devMode, viaTCP) =>
-    switch singleton.contents {
+  let start = (devMode) => {
+    singleton.devMode = devMode
+
+    singleton.method = devMode ? ViaTCP : ViaStdIO
+
+    // state
+    switch singleton.state {
     | Disconnected =>
       // update the status
       let (promise, resolve) = Promise.pending()
-      singleton := Connecting([], promise)
+      singleton.state = Connecting([], promise)
       statusChan->Chan.emit(Connecting)
 
-      Client.make(devMode, viaTCP)->Promise.flatMap(result =>
+      Client.make(devMode, singleton.method)->Promise.flatMap(result =>
         switch result {
-        | None => 
+        | None =>
           resolve(false)
           Promise.resolved(false)
         | Some(client) =>
-          let queuedRequest = switch singleton.contents {
+          let queuedRequest = switch singleton.state {
           | Disconnected => []
           | Connecting(queued, _) => queued
           | Connected(_) => []
           }
           // resolve the `Connecting` status
           resolve(true)
+
           // update the status
-          singleton := Connected(client)
+          singleton.state = Connected(client)
           statusChan->Chan.emit(Connected)
-          // handle the requests queued up when connecting  
-          queuedRequest->Array.map(((request, resolve)) => {
+          // handle the requests queued up when connecting
+          queuedRequest
+          ->Array.map(((request, resolve)) => {
             sendRequestWithClient(client, request)->Promise.tap(resolve)
-          })->Util.Promise.oneByOne->Promise.map(_ => true)
+          })
+          ->Util.Promise.oneByOne
+          ->Promise.map(_ => true)
         }
       )
     | Connecting(_, promise) => promise
     | Connected(_) => Promise.resolved(true)
     }
+  }
 
   let isConnected = () =>
-    switch singleton.contents {
+    switch singleton.state {
     | Disconnected => false
     | Connecting(_, _) => false
     | Connected(_) => true
@@ -393,10 +426,11 @@ module Module: Module = {
 
   let onResponse = handler => Client.onData(json => handler(decodeResponse(json)))
   let onError = Client.onError
-  let onChangeConnectionStatus = callback => statusChan->Chan.on(callback)->VSCode.Disposable.make
+  let onChangeStatus = callback => statusChan->Chan.on(callback)->VSCode.Disposable.make
+  let onChangeMethod = callback => methodChan->Chan.on(callback)->VSCode.Disposable.make
 
   let sendRequest = request =>
-    switch singleton.contents {
+    switch singleton.state {
     | Connected(client) => sendRequestWithClient(client, request)
     | Connecting(queue, _) =>
       let (promise, resolve) = Promise.pending()
@@ -404,6 +438,20 @@ module Module: Module = {
       promise
     | Disconnected => Promise.resolved(None)
     }
+
+
+  let changeMethod = (method) =>  {
+    // update the state and reconfigure the connection
+    if singleton.method != method {
+      singleton.method = method
+      methodChan->Chan.emit(method)
+      stop()->Promise.flatMap(() => {
+        start(singleton.devMode)
+      })
+    } else {
+      Promise.resolved(false)
+    }
+  }
 }
 
 include Module

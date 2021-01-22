@@ -4,15 +4,15 @@ open React
 @react.component
 let make = (
   ~devMode: bool,
-  ~connectViaTCP: bool,
+  ~method: LSP.method,
   ~status: LSP.status,
   ~onConnect: unit => unit,
   ~onDisconnect: unit => unit,
-  ~onChangeMethod: unit => unit,
+  ~onChangeMethod: LSP.method => unit,
 ) => {
   let onConnect = _ => onConnect()
   let onDisconnect = _ => onDisconnect()
-  let onChangeMethod = _ => onChangeMethod()
+  let onChangeMethod = method => _ => onChangeMethod(method)
   let status = switch status {
   | Disconnected =>
     <div id="gcl-dev-panel-status" className="disconnected" onClick=onConnect>
@@ -27,15 +27,17 @@ let make = (
       <i className="codicon codicon-circle-large-filled" /> <span> {string("connected")} </span>
     </div>
   }
-  let method = if connectViaTCP {
-    <div id="gcl-dev-panel-method" onClick=onChangeMethod>
+  let method = switch method {
+  | ViaTCP => 
+    <div id="gcl-dev-panel-method" onClick=onChangeMethod(ViaStdIO)>
       <i className="codicon codicon-plug" /> <span> {string("via TCP")} </span>
     </div>
-  } else {
-    <div id="gcl-dev-panel-method" onClick=onChangeMethod>
-      <i className="codicon codicon-plug" /> <span> {string("via STDIO")} </span>
+  | ViaStdIO => 
+    <div id="gcl-dev-panel-method" onClick=onChangeMethod(ViaTCP)>
+      <i className="codicon codicon-plug" /> <span> {string("via StdIO")} </span>
     </div>
   }
+
   let className = {"gcl-dev-panel " ++ (devMode ? "" : "hidden")}
   <div className> <div id="gcl-dev-panel-header"> {string("dev mode")} </div> method status </div>
 }

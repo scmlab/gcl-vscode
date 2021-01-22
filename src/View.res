@@ -257,7 +257,9 @@ module Controller: Controller = {
     })
 
     // sent the "UpdateDevMode" request to set things up
-    send(UpdateDevMode(devMode))
+    send(UpdateDevMode(devMode))->Promise.flatMap(_ =>
+      send(UpdateConnectionMethod(devMode ? ViaTCP : ViaStdIO))
+    )
   }
 
   let deactivate = () => {
