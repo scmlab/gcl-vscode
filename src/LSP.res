@@ -285,7 +285,17 @@ module Client: Client = {
       switch result {
       | Error(error) => Error(error)
       | Ok() =>
-        self.client->LanguageClient.onNotification("guacamole", json => dataChan->Chan.emit(json))
+        // NOTE: somehow `onNotification` gets called TWICE everytime
+        // This flag is for filtering out half of the Notifications
+        let flag = ref(true)
+        self.client->LanguageClient.onNotification("guacamole", json => {
+          if flag.contents {
+            dataChan->Chan.emit(json)
+            flag := false
+          } else {
+            flag := true
+          }
+        })
         Ok(self)
       }
     )
@@ -354,7 +364,7 @@ module Module: Module = {
     | exception Json.Decode.DecodeError(msg) => CannotDecodeResponse(msg, json)
     }
 
-  let sendRequestWithClient = (client, request) =>
+  let sendRequestWithClient = (client, request) => {
     client
     ->Client.sendRequest(Request.encode(request))
     ->Promise.map(x =>
@@ -365,9 +375,10 @@ module Module: Module = {
         Some(Response.CannotSendRequest(Response.Error.fromJsError(error)))
       }
     )
+  }
 
   // make and start the LSP client
-  let rec startWithMethod = devMode => method => {
+  let rec startWithMethod = (devMode, method) => {
     // state
     switch singleton.state {
     | Disconnected =>
@@ -424,7 +435,6 @@ module Module: Module = {
     | Connected(_) => Promise.resolved(true)
     }
   }
-
 
   // make and start the LSP client
   let start = devMode => {

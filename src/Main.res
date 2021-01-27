@@ -75,29 +75,6 @@ let handleViewResponse = (devMode, response) => {
   })
 }
 
-let registerInset = () => {
-  // let extensionPath = context->VSCode.ExtensionContext.extensionPath
-  // let distPath = Node.Path.join2(extensionPath, "dist")
-  // let options = {
-  //         VSCode.WebviewOptions.enableCommandUris:  Some(true),
-  //         enableScripts: Some(true),
-  //         // And restrict the webview to only loading content from our extension's `dist` directory.
-  //         localResourceRoots: Some([VSCode.Uri.file(distPath)]),
-  //         portMapping: None
-  //       }
-  // let inset = LSP.WindowExt.createWebviewTextEditorInsetWithOptions(editor, 2, 5, options)
-  // let webview = inset->LSP.WebviewEditorInset.webview
-  // let html = View.Panel.makeHTML(webview, extensionPath)
-
-  // Js.log(html)
-  // webview->VSCode.Webview.setHtml(html)
-
-  // let inset = LSP.WindowExt.createWebviewTextEditorInset(editor, 5, 2)
-  // let html = "<p>WEBVIEW INSET HERE !!!</p>"
-  // inset->LSP.WebviewEditorInset.webview->VSCode.Webview.setHtml(html)
-  ()
-}
-
 module Events = {
   let isGCL = editor =>
     Js.Re.test_(%re("/\\.gcl$/i"), editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName)
@@ -164,6 +141,21 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // on response/notification from the server
   LSP.onResponse(response => handleResponse(response)->ignore)->subscribe
+
+  // LSP.onResponse(response => {
+  //   switch response {
+  //   | Res(_, kinds) => kinds->Array.map(kind => {
+  //     switch kind {
+  //     | Error(_) => "[Error]"
+  //     | OK(_) => "[OK]"
+  //     | Resolve(_) => "[Resolve]"
+  //     | Substitute(_) => "[Substitute]"
+  //     | ConsoleLog(_) => "[ConsoleLog]"
+  //     }
+  //   })->Js.Array2.joinWith(", ")->Js.log
+  //   | _ => Js.log("error")
+  //   }
+  // })->subscribe
 
   // on change LSP client-server connection status
   LSP.onChangeStatus(status => State.updateConnectionStatus(status)->ignore)->subscribe
