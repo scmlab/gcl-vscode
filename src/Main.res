@@ -142,20 +142,20 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on response/notification from the server
   LSP.onResponse(response => handleResponse(response)->ignore)->subscribe
 
-  // LSP.onResponse(response => {
-  //   switch response {
-  //   | Res(_, kinds) => kinds->Array.map(kind => {
-  //     switch kind {
-  //     | Error(_) => "[Error]"
-  //     | OK(_) => "[OK]"
-  //     | Resolve(_) => "[Resolve]"
-  //     | Substitute(_) => "[Substitute]"
-  //     | ConsoleLog(_) => "[ConsoleLog]"
-  //     }
-  //   })->Js.Array2.joinWith(", ")->Js.log
-  //   | _ => Js.log("error")
-  //   }
-  // })->subscribe
+  LSP.onResponse(response => {
+    switch response {
+    | Res(_, kinds) => kinds->Array.map(kind => {
+      switch kind {
+      | Error(_) => "[Error]"
+      | OK(_) => "[OK]"
+      | Resolve(_) => "[Resolve]"
+      | Substitute(_) => "[Substitute]"
+      | ConsoleLog(_) => "[ConsoleLog]"
+      }
+    })->Js.Array2.joinWith(", ")->Js.log
+    | _ => Js.log("error")
+    }
+  })->subscribe
 
   // on change LSP client-server connection status
   LSP.onChangeStatus(status => State.updateConnectionStatus(status)->ignore)->subscribe

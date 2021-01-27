@@ -25,7 +25,6 @@ let updateConnectionStatus = status =>
 let updateConnectionMethod = method =>
   View.send(UpdateConnectionMethod(method))->Promise.map(_ => ())
 
-
 let focus = state =>
   VSCode.Window.showTextDocument(state.document, ~column=VSCode.ViewColumn.Beside, ())->ignore
 
@@ -161,10 +160,12 @@ module Spec = {
     let cursor = state.editor->VSCode.TextEditor.selection->VSCode.Selection.end_
     // find the smallest hole containing the cursor, as there might be many of them
     let smallestHole = ref(None)
-    state.specifications->Array.keep(spec => {
+    state.specifications
+    ->Array.keep(spec => {
       let range = GCL.Loc.toRange(spec.loc)
       VSCode.Range.contains(range, cursor)
-    })->Array.forEach(spec =>
+    })
+    ->Array.forEach(spec =>
       switch smallestHole.contents {
       | None => smallestHole := Some(spec)
       | Some(spec') =>
@@ -187,7 +188,7 @@ module Spec = {
     VSCode.Range.make(start, end_)
   }
 
-  // return the payload inside the spec 
+  // return the payload inside the spec
   // split into lines
   let getPayload = (doc, spec): array<string> => {
     // return the text in the targeted hole
@@ -216,7 +217,6 @@ module Spec = {
   let resolve = (state, i) => {
     let specs = state.specifications->Array.keep(spec => spec.id == i)
     specs[0]->Option.forEach(spec => {
-
       let range = GCL.Loc.toRange(spec.loc)
       let start = VSCode.Range.start(range)
 
@@ -228,12 +228,14 @@ module Spec = {
       }
 
       // delete text
-      Editor.Text.delete(state.document, range)->Promise.flatMap(result =>
+      Editor.Text.delete(state.document, range)
+      ->Promise.flatMap(result =>
         switch result {
         | false => Promise.resolved(false)
         | true => Editor.Text.insert(state.document, start, indentedPayload)
         }
-      )->Promise.get(_ => ())
+      )
+      ->Promise.get(_ => ())
     })
     Promise.resolved()
   }
@@ -249,59 +251,62 @@ module Spec = {
     // remove previous decorations
     state.specificationDecorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
     // generate new decorations
-    let decorations = state.specifications->Array.map(spec => {
-      let range = GCL.Loc.toRange(spec.loc)
-      let startPosition = VSCode.Range.start(range)
-      let endPosition = VSCode.Range.end_(range)
-      // range of {!
-      let startRange = VSCode.Range.make(
-        startPosition,
-        VSCode.Position.translate(startPosition, 0, 2),
-      )
-      // range of !}
-      let endRange = VSCode.Range.make(VSCode.Position.translate(endPosition, 0, -2), endPosition)
-      // helper function for trimming long predicates
-      let trim = s =>
-        if String.length(s) > 77 {
-          String.sub(s, 0, 73) ++ " ..."
-        } else {
-          s
+    let decorations =
+      state.specifications
+      ->Array.map(spec => {
+        let range = GCL.Loc.toRange(spec.loc)
+        let startPosition = VSCode.Range.start(range)
+        let endPosition = VSCode.Range.end_(range)
+        // range of {!
+        let startRange = VSCode.Range.make(
+          startPosition,
+          VSCode.Position.translate(startPosition, 0, 2),
+        )
+        // range of !}
+        let endRange = VSCode.Range.make(VSCode.Position.translate(endPosition, 0, -2), endPosition)
+        // helper function for trimming long predicates
+        let trim = s =>
+          if String.length(s) > 77 {
+            String.sub(s, 0, 73) ++ " ..."
+          } else {
+            s
+          }
+        // text decorations
+        let preCondText = " " ++ trim(GCL.Syntax.Pred.toString(spec.pre))
+        let postCondText = " " ++ trim(GCL.Syntax.Pred.toString(spec.post))
+        // see if the Spec's precondition and the post-condition look the same (i.e. the Q_Q case)
+        let isQQ = preCondText == postCondText
+
+        let highlightBackground = ranges => {
+          let backgroundColor = VSCode.StringOr.others(
+            VSCode.ThemeColor.make("editor.wordHighlightStrongBackground"),
+          )
+          let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ())
+          let decoration = VSCode.Window.createTextEditorDecorationType(options)
+          state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
+          decoration
         }
-      // text decorations
-      let preCondText = " " ++ trim(GCL.Syntax.Pred.toString(spec.pre))
-      let postCondText = " " ++ trim(GCL.Syntax.Pred.toString(spec.post))
-      // see if the Spec's precondition and the post-condition look the same (i.e. the Q_Q case)
-      let isQQ = preCondText == postCondText
 
-      let highlightBackground = ranges => {
-        let backgroundColor = VSCode.StringOr.others(
-          VSCode.ThemeColor.make("editor.wordHighlightStrongBackground"),
-        )
-        let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ())
-        let decoration = VSCode.Window.createTextEditorDecorationType(options)
-        state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
-        decoration
-      }
+        let overlayText = (text, ranges) => {
+          let color = VSCode.StringOr.others(VSCode.ThemeColor.make("descriptionForeground"))
+          let after = VSCode.ThemableDecorationAttachmentRenderOptions.t(
+            ~contentText=text,
+            ~color,
+            (),
+          )
+          let options = VSCode.DecorationRenderOptions.t(~after, ())
+          let decoration = VSCode.Window.createTextEditorDecorationType(options)
+          state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
+          decoration
+        }
 
-      let overlayText = (text, ranges) => {
-        let color = VSCode.StringOr.others(VSCode.ThemeColor.make("descriptionForeground"))
-        let after = VSCode.ThemableDecorationAttachmentRenderOptions.t(
-          ~contentText=text,
-          ~color,
-          (),
-        )
-        let options = VSCode.DecorationRenderOptions.t(~after, ())
-        let decoration = VSCode.Window.createTextEditorDecorationType(options)
-        state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
-        decoration
-      }
-
-      [
-        overlayText(isQQ ? "" : preCondText, [startRange]),
-        overlayText(postCondText, [endRange]),
-        highlightBackground([startRange, endRange]),
-      ]
-    })->Array.concatMany
+        [
+          overlayText(isQQ ? "" : preCondText, [startRange]),
+          overlayText(postCondText, [endRange]),
+          highlightBackground([startRange, endRange]),
+        ]
+      })
+      ->Array.concatMany
 
     // persist new decorations
     state.specificationDecorations = decorations
@@ -316,11 +321,58 @@ let handleResponseKind = (state: t, kind) =>
       switch kind {
       | Response.Error.LexicalError => [("Lexical Error", Response.Error.Site.toString(site))]
       | SyntacticError(messages) => [("Parse Error", messages->Js.String.concatMany("\n"))]
-      | StructError(_error) => []
+      | StructError(MissingAssertion) => [
+          ("Missing Loop Invariant", "There should be a loop invariant before the DO construct"),
+        ]
+      | StructError(MissingBound) => [
+          (
+            "Missing Bound",
+            "There should be a Bound at the end of the assertion before the DO construct \" , bnd : ... }\"",
+          ),
+        ]
+      | StructError(ExcessBound) => [
+          ("Excess Bound", "The bound annotation at this assertion is unnecessary"),
+        ]
+      | StructError(MissingPostcondition) => [
+          ("Missing Postcondition", "The last statement of the program should be an assertion"),
+        ]
+      | StructError(DigHole) => []
       | CannotReadFile(string) => [("Server Internal Error", "Cannot read file\n" ++ string)]
       | CannotSendRequest(string) => [("Client Internal Error", "Cannot send request\n" ++ string)]
       | NotLoaded => [("Client Internal Error", "Client not loaded yet")]
-      | _ => []
+      | TypeError(NotInScope(name)) => [
+          (
+            "Not In Scope",
+            "The identifier \"" ++
+            name ++
+            "\" " ++
+            Response.Error.Site.toString(site) ++ " is not in scope",
+          ),
+        ]
+      | TypeError(UnifyFailed(s, t)) => [
+          (
+            "Cannot unify types",
+            "Cannot unify: " ++
+            GCL.Syntax.Type.toString(s) ++
+            "\nwith        : " ++
+            GCL.Syntax.Type.toString(t),
+          ),
+        ]
+      | TypeError(RecursiveType(var, t)) => [
+          (
+            "Recursive type variable",
+            "Recursive type variable: " ++ string_of_int(var) ++
+            "\nin type             : " ++
+            GCL.Syntax.Type.toString(t),
+          ),
+        ]
+      | TypeError(NotFunction(t)) => [
+          (
+            "Not a function",
+            "The type " ++ GCL.Syntax.Type.toString(t) ++
+            " is not a function type",
+          ),
+        ]
       }
     }
 
@@ -341,24 +393,27 @@ let handleResponseKind = (state: t, kind) =>
             VSCode.Position.translate(VSCode.Range.start(range), 0, 1),
           )
 
-          state.document->Editor.Text.replace(holeRange, holeText)->Promise.map(_ => {
+          state.document
+          ->Editor.Text.replace(holeRange, holeText)
+          ->Promise.map(_ => {
             // set the cursor inside the hole
             let selectionRange = VSCode.Range.make(
               VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
               VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
             )
             Editor.Selection.set(state.editor, selectionRange)
-          })->Promise.flatMap(_ => {
+          })
+          ->Promise.flatMap(_ => {
             // save the editor to trigger the server
             state.document->VSCode.TextDocument.save
-          })->Promise.map(_ => ())
+          })
+          ->Promise.map(_ => ())
         }
       | _ => Promise.resolved()
       }
     }
     //
     let errorMessages = errors->Array.map(errorToMessage)->Array.concatMany
-
     errors
     ->Array.map(errorToSideEffects)
     ->Util.Promise.oneByOne
@@ -392,9 +447,10 @@ module Decoration: Decoration = {
   let dict: Js.Dict.t<array<VSCode.TextEditorDecorationType.t>> = empty()
 
   // deletes a entry (does not destruct the value)
-  let delete: (Js.Dict.t<array<VSCode.TextEditorDecorationType.t>>, string) => unit = %raw(
-    `function (dict, id) {delete dict[id]}`
-  )
+  let delete: (
+    Js.Dict.t<array<VSCode.TextEditorDecorationType.t>>,
+    string,
+  ) => unit = %raw(`function (dict, id) {delete dict[id]}`)
 
   let addBackground = (state, key, range, color) => {
     // "editor.symbolHighlightBackground"
@@ -413,13 +469,14 @@ module Decoration: Decoration = {
   }
 
   // deletes all entries
-  let removeAll = () => entries(dict)->Array.forEach(((key, decos)) => {
+  let removeAll = () =>
+    entries(dict)->Array.forEach(((key, decos)) => {
       delete(dict, key)
       decos->Array.forEach(VSCode.TextEditorDecorationType.dispose)
     })
 }
 
-let make = (editor) => {
+let make = editor => {
   let document = VSCode.TextEditor.document(editor)
   let filePath = VSCode.TextDocument.fileName(document)
   let state = {
