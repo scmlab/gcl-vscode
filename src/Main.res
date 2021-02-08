@@ -28,7 +28,6 @@ let handleResponse = response =>
   }
 
 let sendLSPRequest = (state, kind) => {
-  Js.log("MAIN SEND")
   State.sendLSPRequest(state, kind)->Promise.flatMap(result =>
     switch result {
     | Error(error) => Connection.Error.toString(error)->State.displayErrorMessage
@@ -39,7 +38,7 @@ let sendLSPRequest = (state, kind) => {
 
 let getState = () => previouslyActivatedState.contents
 
-let handleViewResponse = (devMode, response) => {
+let handleViewResponse = response => {
   getState()->Option.forEach(state => {
     switch response {
     | ViewType.Response.Link(MouseOver(loc)) =>
@@ -138,32 +137,20 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
   // on response/notification from the server
-  // Connection.onResponse(response => handleResponse(response)->ignore)->subscribe
-
-  // on change LSP client-server connection status
-  // LSP.onChangeStatus(status => State.updateConnectionStatus(status)->ignore)->subscribe
-
-  // on change LSP client-server connection method
-  // LSP.onChangeMethod(method => State.updateConnectionMethod(method)->ignore)->subscribe
-
-  // on LSP client-server error
-  Connection.onError(error =>
-    switch error {
-    | ConnectionError(exn) =>
-      let isECONNREFUSED =
-        Js.Exn.message(exn)->Option.mapWithDefault(
-          false,
-          Js.String.startsWith("connect ECONNREFUSED"),
-        )
-
-      let messages = isECONNREFUSED
-        ? [("LSP Connection Error", "Please enter \":main -d\" in ghci")]
-        : [("LSP Client Error", Js.Exn.message(exn)->Option.getWithDefault(""))]
-
-      State.displayErrorMessages(messages)->ignore
-    | error => ()
+  Connection.onResponse(result =>
+    switch result {
+    | Ok(response) => handleResponse(response)->ignore
+    | Error(error) =>
+      let message = Connection.Error.toString(error)
+      State.displayErrorMessage(message)->ignore
     }
   )->subscribe
+
+  // on LSP client-server error
+  Connection.onError(error => {
+    let message = Connection.Error.toString(error)
+    State.displayErrorMessage(message)->ignore
+  })->subscribe
 
   // on open
   Events.onOpenEditor(editor => {
@@ -171,7 +158,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
     let state = switch Registry.get(filePath) {
     | None =>
-      let state = State.make(editor)
+      let state = State.make(devMode, editor)
       Registry.add(filePath, state)
 
       // registerInset()
@@ -247,7 +234,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   })->subscribe
 
   // on events from the view
-  View.on(handleViewResponse(devMode))->subscribe
+  View.on(handleViewResponse)->subscribe
 
   // on refine
   VSCode.Commands.registerCommand("guacamole.refine", () =>

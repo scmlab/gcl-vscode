@@ -6,7 +6,6 @@ module Error = {
     | CannotConnectViaTCP(Js.Exn.t)
     // connection
     | ConnectionError(Js.Exn.t)
-    | NotConnectedYet
     | CannotSendRequest(Js.Exn.t)
     // decoding
     | CannotDecodeResponse(string, Js.Json.t)
@@ -30,7 +29,6 @@ module Error = {
       isECONNREFUSED
         ? ("LSP Connection Error", "Please enter \":main -d\" in ghci")
         : ("LSP Client Error", Js.Exn.message(exn)->Option.getWithDefault(""))
-    | NotConnectedYet => ("PANIC: Connection not established", "Please file an issue")
     | CannotSendRequest(exn) => (
         "PANIC: Cannot send request",
         "Please file an issue\n" ++ Js.Exn.message(exn)->Option.getWithDefault(""),
@@ -49,7 +47,7 @@ module type Module = {
   let make: bool => Promise.t<result<method, Error.t>>
   let destroy: unit => Promise.t<unit>
   // input / output / event
-  let sendRequest: Request.t => Promise.t<result<Response.t, Error.t>>
+  let sendRequest: (bool, Request.t) => Promise.t<result<Response.t, Error.t>>
   let onResponse: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
   let onError: (Error.t => unit) => VSCode.Disposable.t
   // properties
@@ -99,7 +97,6 @@ module Module: Module = {
 
     type t = {
       client: LSP.LanguageClient.t,
-      queue: array<(Request.t, Response.t => unit)>,
       subscription: VSCode.Disposable.t,
       method: method,
     }
@@ -178,7 +175,6 @@ module Module: Module = {
 
       let self = {
         client: languageClient,
-        queue: [],
         subscription: languageClient->LSP.LanguageClient.start,
         method: method,
       }
@@ -192,9 +188,17 @@ module Module: Module = {
         switch result {
         | Error(error) => Error(error)
         | Ok() =>
-          self.client->LSP.LanguageClient.onNotification("guacamole", json =>
-            dataChan->Chan.emit(json)
-          )
+          // NOTE: somehow `onNotification` gets called TWICE everytime
+          // This flag is for filtering out half of the Notifications
+          let flag = ref(true)
+          self.client->LSP.LanguageClient.onNotification("guacamole", json => {
+            if flag.contents {
+              dataChan->Chan.emit(json)
+              flag := false
+            } else {
+              flag := true
+            }
+          })
           Ok(self)
         }
       )
@@ -213,24 +217,22 @@ module Module: Module = {
     }
   }
 
-  let singleton: ref<option<Client.t>> = ref(None)
+  // for internal bookkeeping
+  type state =
+    | Disconnected
+    | Connecting(
+        // pending requests & callbacks
+        array<(Request.t, result<Response.t, Error.t> => unit)>,
+        Promise.t<result<method, Error.t>>,
+      )
+    | Connected(Client.t)
 
-  let make = tryTCP =>
-    switch singleton.contents {
-    | Some(client) => Promise.resolved(Ok(client.method))
-    | None =>
-      probe(tryTCP)
-      ->Promise.flatMapOk(Client.make)
-      ->Promise.mapOk(client => {
-        singleton := Some(client)
-        client.method
-      })
-    }
+  let singleton: ref<state> = ref(Disconnected)
 
-  let destroy = () =>
+  let getPendingRequests = () =>
     switch singleton.contents {
-    | Some(client) => Client.destroy(client)
-    | None => Promise.resolved()
+    | Connecting(queue, _) => queue
+    | _ => []
     }
 
   // catches exceptions occured when decoding JSON values
@@ -240,10 +242,51 @@ module Module: Module = {
     | exception Json.Decode.DecodeError(msg) => Error(Error.CannotDecodeResponse(msg, json))
     }
 
-  let sendRequest = request =>
+  let make = tryTCP =>
     switch singleton.contents {
-    | None => Promise.resolved(Error(Error.NotConnectedYet))
-    | Some(client) =>
+    | Connected(client) => Promise.resolved(Ok(client.method))
+    | Connecting(_, promise) => promise
+    | Disconnected =>
+      let (promise, resolve) = Promise.pending()
+      singleton := Connecting([], promise)
+      probe(tryTCP)
+      ->Promise.flatMapOk(Client.make)
+      ->Promise.map(result =>
+        switch result {
+        | Error(error) =>
+          singleton := Disconnected
+          getPendingRequests()->Array.forEach(((_req, callback)) => callback(Error(error)))
+          resolve(Error(error))
+          Error(error)
+        | Ok(client) =>
+          singleton := Connected(client)
+          getPendingRequests()->Array.forEach(((request, callback)) => {
+            client
+            ->Client.sendRequest(Request.encode(request))
+            ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
+            ->Promise.get(callback)
+          })
+          resolve(Ok(client.method))
+          Ok(client.method)
+        }
+      )
+    }
+
+  let rec destroy = () =>
+    switch singleton.contents {
+    | Connected(client) => Client.destroy(client)
+    | Connecting(_, promise) => promise->Promise.flatMap(_ => destroy())
+    | Disconnected => Promise.resolved()
+    }
+
+  let rec sendRequest = (tryTCP, request) =>
+    switch singleton.contents {
+    | Disconnected => make(tryTCP)->Promise.flatMapOk(_ => sendRequest(tryTCP, request))
+    | Connecting(queue, _) =>
+      let (promise, resolve) = Promise.pending()
+      Js.Array.push((request, resolve), queue)->ignore
+      promise
+    | Connected(client) =>
       client
       ->Client.sendRequest(Request.encode(request))
       ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
@@ -255,8 +298,8 @@ module Module: Module = {
 
   let getMethod = () =>
     switch singleton.contents {
-    | Some(client) => Some(client.method)
-    | None => None
+    | Connected(client) => Some(client.method)
+    | _ => None
     }
 }
 

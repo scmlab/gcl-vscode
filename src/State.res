@@ -7,6 +7,7 @@ type t = {
   // state
   mutable specifications: array<Response.Specification.t>,
   mutable specificationDecorations: array<VSCode.TextEditorDecorationType.t>,
+  devMode: bool,
   // garbage
   mutable subscriptions: array<VSCode.Disposable.t>,
 }
@@ -29,7 +30,7 @@ let focus = state =>
 
 let sendLSPRequest = (state, kind) => {
   let source = state.document->VSCode.TextDocument.getText(None)
-  Connection.sendRequest(Request.Req(state.filePath, source, kind))
+  Connection.sendRequest(state.devMode, Request.Req(state.filePath, source, kind))
 }
 
 module HandleError = {
@@ -475,7 +476,7 @@ module Decoration: Decoration = {
     })
 }
 
-let make = editor => {
+let make = (devMode, editor) => {
   let document = VSCode.TextEditor.document(editor)
   let filePath = VSCode.TextDocument.fileName(document)
   let state = {
@@ -485,6 +486,7 @@ let make = editor => {
     // state
     specifications: [],
     specificationDecorations: [],
+    devMode: devMode,
     // garbage
     subscriptions: [],
   }
