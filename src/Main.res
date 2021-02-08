@@ -212,7 +212,10 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on extension activation
   Events.onActivateExtension(() => {
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
-    View.activate(extensionPath, devMode)->Promise.get(_viewActivationResult => {
+    // 1. activate the view
+    View.activate(extensionPath, devMode)
+    // 2. connect with GCL
+    ->Promise.get(_viewActivationResult => {
       LSP.start(devMode)->ignore
     })
   })->subscribe
