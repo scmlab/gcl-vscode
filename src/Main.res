@@ -28,10 +28,11 @@ let handleResponse = response =>
   }
 
 let sendLSPRequest = (state, kind) => {
+  Js.log("MAIN SEND")
   State.sendLSPRequest(state, kind)->Promise.flatMap(result =>
     switch result {
-    | None => Promise.resolved()
-    | Some(response) => handleResponse(response)
+    | Error(error) => Connection.Error.toString(error)->State.displayErrorMessage
+    | Ok(response) => handleResponse(response)
     }
   )
 }
@@ -41,10 +42,7 @@ let getState = () => previouslyActivatedState.contents
 let handleViewResponse = (devMode, response) => {
   getState()->Option.forEach(state => {
     switch response {
-    | ViewType.Response.Connect => LSP.start(devMode)->ignore
-    | Disconnect => LSP.stop()->ignore
-    | ChangeConnectionMethod(method) => LSP.changeMethod(method)->ignore
-    | Link(MouseOver(loc)) =>
+    | ViewType.Response.Link(MouseOver(loc)) =>
       let key = GCL.Loc.toString(loc)
       let range = GCL.Loc.toRange(loc)
       State.Decoration.addBackground(state, key, range, "statusBar.debuggingBackground")
@@ -140,43 +138,32 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
   // on response/notification from the server
-  LSP.onResponse(response => handleResponse(response)->ignore)->subscribe
-
-  LSP.onResponse(response => {
-    switch response {
-    | Res(_, kinds) => kinds->Array.map(kind => {
-      switch kind {
-      | Error(_) => "[Error]"
-      | OK(_) => "[OK]"
-      | Resolve(_) => "[Resolve]"
-      | Substitute(_) => "[Substitute]"
-      | ConsoleLog(_) => "[ConsoleLog]"
-      }
-    })->Js.Array2.joinWith(", ")->Js.log
-    | _ => Js.log("error")
-    }
-  })->subscribe
+  // Connection.onResponse(response => handleResponse(response)->ignore)->subscribe
 
   // on change LSP client-server connection status
-  LSP.onChangeStatus(status => State.updateConnectionStatus(status)->ignore)->subscribe
+  // LSP.onChangeStatus(status => State.updateConnectionStatus(status)->ignore)->subscribe
 
   // on change LSP client-server connection method
-  LSP.onChangeMethod(method => State.updateConnectionMethod(method)->ignore)->subscribe
+  // LSP.onChangeMethod(method => State.updateConnectionMethod(method)->ignore)->subscribe
 
   // on LSP client-server error
-  LSP.onError(exn => {
-    let isECONNREFUSED =
-      Js.Exn.message(exn)->Option.mapWithDefault(
-        false,
-        Js.String.startsWith("connect ECONNREFUSED"),
-      )
+  Connection.onError(error =>
+    switch error {
+    | ConnectionError(exn) =>
+      let isECONNREFUSED =
+        Js.Exn.message(exn)->Option.mapWithDefault(
+          false,
+          Js.String.startsWith("connect ECONNREFUSED"),
+        )
 
-    let messages = isECONNREFUSED
-      ? [("LSP Connection Error", "Please enter \":main -d\" in ghci")]
-      : [("LSP Client Error", Js.Exn.message(exn)->Option.getWithDefault(""))]
+      let messages = isECONNREFUSED
+        ? [("LSP Connection Error", "Please enter \":main -d\" in ghci")]
+        : [("LSP Client Error", Js.Exn.message(exn)->Option.getWithDefault(""))]
 
-    State.displayErrorMessages(messages)->ignore
-  })->subscribe
+      State.displayErrorMessages(messages)->ignore
+    | error => ()
+    }
+  )->subscribe
 
   // on open
   Events.onOpenEditor(editor => {
@@ -213,10 +200,14 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   Events.onActivateExtension(() => {
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
     // 1. activate the view
-    View.activate(extensionPath, devMode)
-    // 2. connect with GCL
-    ->Promise.get(_viewActivationResult => {
-      LSP.start(devMode)->ignore
+    View.activate(extensionPath, devMode)->Promise.get(_viewActivationResult => {
+      // 2. connect with GCL
+      Connection.make(devMode)->Promise.get(result =>
+        switch result {
+        | Ok(method) => State.updateConnection(Some(method))->ignore
+        | Error(error) => Js.log(error)
+        }
+      )
     })
   })->subscribe
 
@@ -224,7 +215,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   Events.onDeactivateExtension(_ => {
     View.deactivate()
     previouslyActivatedState := None
-    LSP.stop()->ignore
+    Connection.destroy()->ignore
   })->subscribe
 
   // on change cursor position/selection

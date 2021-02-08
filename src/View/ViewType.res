@@ -1,51 +1,29 @@
+module ConnectionMethod = {
+  open Json.Decode
+  open Util.Decode
 
-  module ConnectionStatus = {
-    open Json.Decode
-    open Util.Decode
-    let decode: decoder<LSP.status> = sum(x =>
-      switch x {
-      | "Disconnected" => TagOnly(_ => LSP.Disconnected)
-      | "Connecting" => TagOnly(_ => Connecting)
-      | "Connected" => TagOnly(_ => Connected)
-      | tag => raise(DecodeError("[ConnectionStatus] Unknown constructor: " ++ tag))
-      }
-    )
+  let decode: decoder<Connection.method> = sum(x =>
+    switch x {
+    | "ViaTCP" => Contents(int |> map(port => Connection.ViaTCP(port)))
+    | "ViaStdIO" =>
+      Contents(pair(string, string) |> map(((name, path)) => Connection.ViaStdIO(name, path)))
+    | tag => raise(DecodeError("[ConnectionMethod] Unknown constructor: " ++ tag))
+    }
+  )
 
-    open! Json.Encode
-    let encode: encoder<LSP.status> = x =>
-      switch x {
-      | Disconnected => object_(list{("tag", string("Disconnected"))})
-      | Connecting => object_(list{("tag", string("Connecting"))})
-      | Connected => object_(list{("tag", string("Connected"))})
-      }
-  }
+  open! Json.Encode
 
-  module ConnectionMethod = {
-    open Json.Decode
-    open Util.Decode
-    open LSP
-    let decode: decoder<method> = sum(x =>
-      switch x {
-      | "ViaTCP" => TagOnly(_ => ViaTCP)
-      | "ViaStdIO" => TagOnly(_ => ViaStdIO)
-      | tag => raise(DecodeError("[ConnectionMethod] Unknown constructor: " ++ tag))
-      }
-    )
-
-    open! Json.Encode
-
-    let encode: encoder<method> = x =>
-      switch x {
-      | ViaStdIO => object_(list{("tag", string("ViaStdIO"))})
-      | ViaTCP => object_(list{("tag", string("ViaTCP"))})
-      }
-  }
+  let encode: encoder<Connection.method> = x =>
+    switch x {
+    | ViaStdIO(name, path) =>
+      object_(list{("tag", string("ViaStdIO")), ("contents", (name, path) |> pair(string, string))})
+    | ViaTCP(port) => object_(list{("tag", string("ViaTCP")), ("contents", port |> int)})
+    }
+}
 module Request = {
-
   type t =
     | UpdateDevMode(bool)
-    | UpdateConnectionStatus(LSP.status)
-    | UpdateConnectionMethod(LSP.method)
+    | UpdateConnection(option<Connection.method>)
     | Substitute(int, GCL.Syntax.Expr.t)
     | SetErrorMessages(array<(string, string)>)
     | Display(int, array<Response.ProofObligation.t>, array<Response.GlobalProp.t>)
@@ -55,10 +33,8 @@ module Request = {
   let decode: decoder<t> = sum(x =>
     switch x {
     | "UpdateDevMode" => Contents(bool |> map(devMode => UpdateDevMode(devMode)))
-    | "UpdateConnectionStatus" =>
-      Contents(ConnectionStatus.decode |> map(status => UpdateConnectionStatus(status)))
-    | "UpdateConnectionMethod" =>
-      Contents(ConnectionMethod.decode |> map(method => UpdateConnectionMethod(method)))
+    | "UpdateConnection" =>
+      Contents(optional(ConnectionMethod.decode) |> map(method => UpdateConnection(method)))
     | "Substitute" =>
       Contents(pair(int, GCL.Syntax.Expr.decode) |> map(((x, y)) => Substitute(x, y)))
     | "SetErrorMessages" =>
@@ -80,15 +56,10 @@ module Request = {
     switch x {
     | UpdateDevMode(devMode) =>
       object_(list{("tag", string("UpdateDevMode")), ("contents", devMode |> bool)})
-    | UpdateConnectionStatus(status) =>
+    | UpdateConnection(method) =>
       object_(list{
-        ("tag", string("UpdateConnectionStatus")),
-        ("contents", status |> ConnectionStatus.encode),
-      })
-    | UpdateConnectionMethod(method) =>
-      object_(list{
-        ("tag", string("UpdateConnectionMethod")),
-        ("contents", method |> ConnectionMethod.encode),
+        ("tag", string("UpdateConnection")),
+        ("contents", method |> nullable(ConnectionMethod.encode)),
       })
     | Substitute(i, expr) =>
       object_(list{
@@ -122,9 +93,6 @@ module Response = {
     | MouseClick(GCL.loc)
 
   type t =
-    | Connect
-    | Disconnect
-    | ChangeConnectionMethod(LSP.method)
     | Link(linkEvent)
     | ExportProofObligations
     | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
@@ -158,10 +126,6 @@ module Response = {
 
   let decode: decoder<t> = sum(x =>
     switch x {
-    | "Connect" => TagOnly(_ => Connect)
-    | "Disconnect" => TagOnly(_ => Disconnect)
-    | "ChangeConnectionMethod" =>
-      Contents(ConnectionMethod.decode |> map(method => ChangeConnectionMethod(method)))
     | "Initialized" => TagOnly(_ => Initialized)
     | "ExportProofObligations" => TagOnly(_ => ExportProofObligations)
     | "Destroyed" => TagOnly(_ => Destroyed)
@@ -182,13 +146,6 @@ module Response = {
 
   let encode: encoder<t> = x =>
     switch x {
-    | Connect => object_(list{("tag", string("Connect"))})
-    | Disconnect => object_(list{("tag", string("Disconnect"))})
-    | ChangeConnectionMethod(method) =>
-      object_(list{
-        ("tag", string("ChangeConnectionMethod")),
-        ("contents", method |> ConnectionMethod.encode),
-      })
     | Initialized => object_(list{("tag", string("Initialized"))})
     | Destroyed => object_(list{("tag", string("Destroyed"))})
     | ExportProofObligations => object_(list{("tag", string("ExportProofObligations"))})

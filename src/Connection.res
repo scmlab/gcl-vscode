@@ -1,3 +1,4 @@
+open Belt
 module Error = {
   type t =
     // probe
@@ -9,13 +10,43 @@ module Error = {
     | CannotSendRequest(Js.Exn.t)
     // decoding
     | CannotDecodeResponse(string, Js.Json.t)
+
+  let toString = error =>
+    switch error {
+    | CannotConnectViaStdIO(e) =>
+      let (_header, body) = AgdaModeVscode.Process.PathSearch.Error.toString(e)
+      ("Cannot locate \"gcl\"", body ++ "\nPlease make sure that the executable is in the path")
+    | CannotConnectViaTCP(_) => (
+        "Cannot connect with the server",
+        "Please enter \":main -d\" in ghci",
+      )
+    | ConnectionError(exn) =>
+      let isECONNREFUSED =
+        Js.Exn.message(exn)->Option.mapWithDefault(
+          false,
+          Js.String.startsWith("connect ECONNREFUSED"),
+        )
+
+      isECONNREFUSED
+        ? ("LSP Connection Error", "Please enter \":main -d\" in ghci")
+        : ("LSP Client Error", Js.Exn.message(exn)->Option.getWithDefault(""))
+    | NotConnectedYet => ("PANIC: Connection not established", "Please file an issue")
+    | CannotSendRequest(exn) => (
+        "PANIC: Cannot send request",
+        "Please file an issue\n" ++ Js.Exn.message(exn)->Option.getWithDefault(""),
+      )
+    | CannotDecodeResponse(msg, json) => (
+        "PANIC: Cannot decode response",
+        "Please file an issue\n\n" ++ msg ++ "\n" ++ Json.stringify(json),
+      )
+    }
 }
 
 type method = ViaStdIO(string, string) | ViaTCP(int)
 
 module type Module = {
   // lifecycle
-  let make: bool => Promise.t<result<unit, Error.t>>
+  let make: bool => Promise.t<result<method, Error.t>>
   let destroy: unit => Promise.t<unit>
   // input / output / event
   let sendRequest: Request.t => Promise.t<result<Response.t, Error.t>>
@@ -182,15 +213,18 @@ module Module: Module = {
     }
   }
 
-  let singleton = ref(None)
+  let singleton: ref<option<Client.t>> = ref(None)
 
   let make = tryTCP =>
     switch singleton.contents {
-    | Some(_client) => Promise.resolved(Ok())
+    | Some(client) => Promise.resolved(Ok(client.method))
     | None =>
       probe(tryTCP)
       ->Promise.flatMapOk(Client.make)
-      ->Promise.mapOk(client => singleton := Some(client))
+      ->Promise.mapOk(client => {
+        singleton := Some(client)
+        client.method
+      })
     }
 
   let destroy = () =>

@@ -13,24 +13,23 @@ type t = {
 
 let subscribe = (disposable, state) => disposable->Js.Array.push(state.subscriptions)->ignore
 
+let displayErrorMessage = msg =>
+  View.send(ViewType.Request.SetErrorMessages([msg]))->Promise.map(_ => ())
+
 let displayErrorMessages = msgs =>
   View.send(ViewType.Request.SetErrorMessages(msgs))->Promise.map(_ => ())
 
 let display = (id, pos, props) =>
   View.send(ViewType.Request.Display(id, pos, props))->Promise.map(_ => ())
 
-let updateConnectionStatus = status =>
-  View.send(UpdateConnectionStatus(status))->Promise.map(_ => ())
-
-let updateConnectionMethod = method =>
-  View.send(UpdateConnectionMethod(method))->Promise.map(_ => ())
+let updateConnection = status => View.send(UpdateConnection(status))->Promise.map(_ => ())
 
 let focus = state =>
   VSCode.Window.showTextDocument(state.document, ~column=VSCode.ViewColumn.Beside, ())->ignore
 
 let sendLSPRequest = (state, kind) => {
   let source = state.document->VSCode.TextDocument.getText(None)
-  LSP.sendRequest(Request.Req(state.filePath, source, kind))
+  Connection.sendRequest(Request.Req(state.filePath, source, kind))
 }
 
 module HandleError = {
@@ -361,7 +360,8 @@ let handleResponseKind = (state: t, kind) =>
       | TypeError(RecursiveType(var, t)) => [
           (
             "Recursive type variable",
-            "Recursive type variable: " ++ string_of_int(var) ++
+            "Recursive type variable: " ++
+            string_of_int(var) ++
             "\nin type             : " ++
             GCL.Syntax.Type.toString(t),
           ),
@@ -369,8 +369,7 @@ let handleResponseKind = (state: t, kind) =>
       | TypeError(NotFunction(t)) => [
           (
             "Not a function",
-            "The type " ++ GCL.Syntax.Type.toString(t) ++
-            " is not a function type",
+            "The type " ++ GCL.Syntax.Type.toString(t) ++ " is not a function type",
           ),
         ]
       }

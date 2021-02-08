@@ -5,15 +5,11 @@ open Common
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (devMode, setDevMode) = React.useState(_ => false)
-  let (connectionMethod, setConnectionMethod) = React.useState(_ => devMode ? LSP.ViaTCP : ViaStdIO)
-  let (connectionStatus, setConnectionStatus) = React.useState(_ => LSP.Disconnected)
+  let (connection, setConnection) = React.useState(_ => None)
   let ((id, pos, props), setDisplay) = React.useState(() => (0, [], []))
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
   let onClickLink = React.useRef(Chan.make())
   let onSubstitute = React.useRef(Chan.make())
-  let onConnect = React.useRef(Chan.make())
-  let onDisconnect = React.useRef(Chan.make())
-  let onChangeConnectionMethod = React.useRef(Chan.make())
 
   // response with Initialized on mount
   React.useEffect1(() => {
@@ -27,8 +23,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     let destructor = onRequest->Chan.on(req =>
       switch req {
       | ViewType.Request.UpdateDevMode(devMode) => setDevMode(_ => devMode)
-      | UpdateConnectionStatus(status) => setConnectionStatus(_ => status)
-      | UpdateConnectionMethod(method) => setConnectionMethod(_ => method)
+      | UpdateConnection(method) => setConnection(_ => method)
       | Display(id, pos, props) => setDisplay(_ => (id, pos, props))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
@@ -53,31 +48,6 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     ),
   ), [])
 
-  // relay <DevPanel> events to "onResponse"
-  React.useEffect1(
-    () => Some(onDisconnect.current->Chan.on(() => onResponse->Chan.emit(Disconnect))),
-    [],
-  )
-  React.useEffect1(
-    () => Some(onConnect.current->Chan.on(() => onResponse->Chan.emit(Connect))),
-    [],
-  )
-  React.useEffect1(
-    () => Some(
-      onChangeConnectionMethod.current->Chan.on(method => onResponse->Chan.emit(ChangeConnectionMethod(method))),
-    ),
-    [],
-  )
-
-  let onChangeMethod = (method) => {
-    setConnectionMethod(_ => method)
-    onChangeConnectionMethod.current->Chan.emit(method)
-  }
-
-  let onConnect = () => onConnect.current->Chan.emit()
-
-  let onDisconnect = () => onDisconnect.current->Chan.emit()
-
   let onExport = () => onResponse->Chan.emit(ExportProofObligations)
 
   let className = "gcl-panel native-key-bindings"
@@ -95,18 +65,14 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     </div>
   }
 
-  // <ReqID.Provider value=reqID>
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
       <section className tabIndex={-1}>
-        <DevPanel
-          devMode method=connectionMethod status=connectionStatus onConnect onDisconnect onChangeMethod
-        />
+        <DevPanel devMode method=connection />
         errorMessagesBlock
         <ProofObligations id pos onExport />
         <GlobalProps id props />
       </section>
     </Link.Provider>
   </Subst.Provider>
-  // </ReqID.Provider>;
 }

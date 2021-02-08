@@ -256,10 +256,8 @@ module Controller: Controller = {
       handle.view = None
     })
 
-    // sent the "UpdateDevMode" request to set things up
-    send(UpdateDevMode(devMode))->Promise.flatMap(_ =>
-      send(UpdateConnectionMethod(devMode ? ViaTCP : ViaStdIO))
-    )
+    // update DevMode state on activation
+    send(UpdateDevMode(devMode))
   }
 
   let deactivate = () => {
