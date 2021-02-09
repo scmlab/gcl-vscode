@@ -274,7 +274,10 @@ module Module: Module = {
 
   let rec destroy = () =>
     switch singleton.contents {
-    | Connected(client) => Client.destroy(client)
+    | Connected(client) =>
+      // update the status
+      singleton := Disconnected
+      Client.destroy(client)
     | Connecting(_, promise) => promise->Promise.flatMap(_ => destroy())
     | Disconnected => Promise.resolved()
     }
