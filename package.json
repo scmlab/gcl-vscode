@@ -24,11 +24,11 @@
 	"devDependencies": {
 		"less-loader": "^7.0.2",
 		"less-watch-compiler": "^1.14.6",
+		"react": "16.9.0",
+		"react-dom": "16.9.0",
 		"vscode-test": "^1.2.2",
 		"webpack": "^5.0.0",
-		"webpack-cli": "^4.2.0",
-		"react": "16.9.0",
-		"react-dom": "16.9.0"
+		"webpack-cli": "^4.2.0"
 	},
 	"dependencies": {
 		"@glennsl/bs-json": "github:banacorn/bs-json#0c900d3",
