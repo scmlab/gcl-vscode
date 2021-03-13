@@ -129,7 +129,8 @@ module Syntax = {
 
     open Util.Decode
     open Json.Decode
-    let decode: decoder<t> = json => json |> sum(x =>
+    let decode: decoder<t> = json =>
+      json |> sum(x =>
         switch x {
         | "Num" => Contents(int |> map(x => Num(x)))
         | "Bol" => Contents(bool |> map(x => Bool(x)))
@@ -294,7 +295,8 @@ module Syntax = {
     open Util.Decode
     open Json.Decode
 
-    let rec decode: decoder<t> = json => json |> sum(x =>
+    let rec decode: decoder<t> = json =>
+      json |> sum(x =>
         switch x {
         | "Lit" => Contents(pair(Lit.decode, Loc.decode) |> map(((x, r)) => Lit(x, r)))
         | "Var" => Contents(pair(Name.decode, Loc.decode) |> map(((x, r)) => Var(x, r)))
@@ -513,7 +515,8 @@ module Syntax = {
 
     open Util.Decode
     open Json.Decode
-    let rec decode: decoder<t> = json => json |> sum(x =>
+    let rec decode: decoder<t> = json =>
+      json |> sum(x =>
         switch x {
         | "Constant" => Contents(Expr.decode |> map(x => Constant(x)))
         | "Bound" => Contents(pair(Expr.decode, Loc.decode) |> map(((e, l)) => Bound(e, l)))
@@ -610,30 +613,70 @@ module Syntax = {
       )
     }
 
+    module Endpoint = {
+      type t =
+        | Including(Expr.t)
+        | Excluding(Expr.t)
+
+      let toString = x =>
+        switch x {
+        | Including(e) => "Including " ++ Expr.toString(e)
+        | Excluding(e) => "Excluding " ++ Expr.toString(e)
+        }
+
+      open Util.Decode
+      open Json.Decode
+      let decode: decoder<t> = sum(x =>
+        switch x {
+        | "Including" => Contents(Expr.decode |> map(x => Including(x)))
+        | "Excluding" => Contents(Expr.decode |> map(x => Excluding(x)))
+        | tag => raise(DecodeError("[GCL.Syntax.Type.Endpoint] Unknown constructor: " ++ tag))
+        }
+      )
+    }
+
+    module Interval = {
+      type t = Interval(Endpoint.t, Endpoint.t, Loc.t)
+
+      let toString = x =>
+        switch x {
+        | Interval(s, t, _) => "Interval " ++ Endpoint.toString(s) ++ " " ++ Endpoint.toString(t)
+        }
+
+      open Json.Decode
+      let decode: decoder<t> =
+        tuple3(Endpoint.decode, Endpoint.decode, Loc.decode) |> map(((s, t, l)) => Interval(
+          s,
+          t,
+          l,
+        ))
+    }
+
     type rec t =
-      | Base(Base.t)
-      | Array(t)
-      | Func(t, t)
-      | Var(int)
+      | Base(Base.t, Loc.t)
+      | Array(Interval.t, t, Loc.t)
+      | Func(t, t, Loc.t)
+      | Var(Name.t, Loc.t)
 
     let rec toString = x =>
       switch x {
-      | Base(b) => Base.toString(b)
-      | Array(t) => "Array " ++ toString(t)
-      | Func(s, t) => toString(s) ++ (" -> " ++ toString(t))
-      | Var(i) => "Var " ++ string_of_int(i)
+      | Base(b, _) => Base.toString(b)
+      | Array(i, t, _) => "Array " ++ Interval.toString(i) ++ " " ++ toString(t)
+      | Func(s, t, _) => toString(s) ++ (" -> " ++ toString(t))
+      | Var(s, _) => "Var " ++ Name.toString(s)
       }
 
     open Util.Decode
     open Json.Decode
     let rec decode: decoder<t> = json => json |> sum(x =>
-        switch x {
-        | "TBase" => Contents(Base.decode |> map(x => Base(x)))
-        | "TArray" => Contents(decode |> map(x => Array(x)))
-        | "TFun" => Contents(pair(decode, decode) |> map(((x, y)) => Func(x, y)))
-        | "TVar" => Contents(int |> map(x => Var(x)))
-        | tag => raise(DecodeError("Unknown constructor: " ++ tag))
-        }
-      )
+      switch x {
+      | "TBase" => Contents(pair(Base.decode, Loc.decode) |> map(((x, l)) => Base(x, l)))
+      | "TArray" =>
+        Contents(tuple3(Interval.decode, decode, Loc.decode) |> map(((i, x, l)) => Array(i, x, l)))
+      | "TFun" => Contents(tuple3(decode, decode, Loc.decode) |> map(((x, y, t)) => Func(x, y, t)))
+      | "TVar" => Contents(pair(Name.decode, Loc.decode) |> map(((x, l)) => Var(x, l)))
+      | tag => raise(DecodeError("[GCL.Syntax.Type] Unknown constructor: " ++ tag))
+      }
+    )
   }
 }
