@@ -673,7 +673,7 @@ module Syntax = {
       | "TBase" => Contents(pair(Base.decode, Loc.decode) |> map(((x, l)) => Base(x, l)))
       | "TArray" =>
         Contents(tuple3(Interval.decode, decode, Loc.decode) |> map(((i, x, l)) => Array(i, x, l)))
-      | "TFun" => Contents(tuple3(decode, decode, Loc.decode) |> map(((x, y, t)) => Func(x, y, t)))
+      | "TFunc" => Contents(tuple3(decode, decode, Loc.decode) |> map(((x, y, t)) => Func(x, y, t)))
       | "TVar" => Contents(pair(Name.decode, Loc.decode) |> map(((x, l)) => Var(x, l)))
       | tag => raise(DecodeError("[GCL.Syntax.Type] Unknown constructor: " ++ tag))
       }
