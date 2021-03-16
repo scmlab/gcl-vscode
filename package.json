@@ -63,6 +63,13 @@
 				"filenames": []
 			}
 		],
+		"grammars": [
+		  {
+			"language": "guacamole",
+			"scopeName": "source.gcl",
+			"path": "./syntaxes/guacamole.tmGrammar.json"
+		  }
+		],
 		"commands": [
 			{
 				"command": "guacamole.refine",
