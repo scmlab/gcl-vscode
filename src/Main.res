@@ -175,8 +175,6 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     }
 
     previouslyActivatedState := Some(state)
-
-    sendLSPRequest(state, Load)->ignore
   })->subscribe
 
   // on close

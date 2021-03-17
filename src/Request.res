@@ -3,7 +3,6 @@ type source = string
 
 module Kind = {
   type t =
-    | Load
     | Inspect(int, int)
     | Refine(int, string)
     | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
@@ -13,7 +12,6 @@ module Kind = {
   open! Json.Encode
   let encode: encoder<t> = x =>
     switch x {
-    | Load => object_(list{("tag", string("ReqLoad"))})
     | Inspect(start, end_) =>
       object_(list{("tag", string("ReqInspect")), ("contents", (start, end_) |> tuple2(int, int))})
     | Refine(id, payload) =>
@@ -34,9 +32,9 @@ module Kind = {
     }
 }
 
-type t = Req(filepath, source, Kind.t)
+type t = Req(filepath, Kind.t)
 open Json.Encode
 let encode: encoder<t> = x =>
   switch x {
-  | Req(filepath, source, kind) => (filepath, source, kind) |> tuple3(string, string, Kind.encode)
+  | Req(filepath, kind) => (filepath, kind) |> pair(string, Kind.encode)
   }

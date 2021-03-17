@@ -29,8 +29,7 @@ let focus = state =>
   VSCode.Window.showTextDocument(state.document, ~column=VSCode.ViewColumn.Beside, ())->ignore
 
 let sendLSPRequest = (state, kind) => {
-  let source = state.document->VSCode.TextDocument.getText(None)
-  Connection.sendRequest(state.devMode, Request.Req(state.filePath, source, kind))
+  Connection.sendRequest(state.devMode, Request.Req(state.filePath, kind))
 }
 
 module HandleError = {
