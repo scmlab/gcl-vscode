@@ -339,7 +339,6 @@ let handleResponseKind = (state: t, kind) =>
       | StructError(DigHole) => []
       | CannotReadFile(string) => [("Server Internal Error", "Cannot read file\n" ++ string)]
       | CannotSendRequest(string) => [("Client Internal Error", "Cannot send request\n" ++ string)]
-      | NotLoaded => [("Client Internal Error", "Client not loaded yet")]
       | TypeError(NotInScope(name)) => [
           (
             "Not In Scope",

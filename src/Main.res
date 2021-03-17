@@ -18,6 +18,8 @@ let handleResponse = response =>
     State.displayErrorMessages([
       ("Server Internal Error", "Cannot decode request from the client\n" ++ message),
     ])
+  | NotLoaded => 
+    State.displayErrorMessages([("Internal Error", "Program source not loaded yet")])
   | CannotDecodeResponse(message, json) =>
     State.displayErrorMessages([
       (
