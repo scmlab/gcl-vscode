@@ -20,8 +20,8 @@ let displayErrorMessage = msg =>
 let displayErrorMessages = msgs =>
   View.send(ViewType.Request.SetErrorMessages(msgs))->Promise.map(_ => ())
 
-let display = (id, pos, props) =>
-  View.send(ViewType.Request.Display(id, pos, props))->Promise.map(_ => ())
+let display = (id, pos, props, warnings) =>
+  View.send(ViewType.Request.Display(id, pos, props, warnings))->Promise.map(_ => ())
 
 let updateConnection = status => View.send(UpdateConnection(status))->Promise.map(_ => ())
 
@@ -323,15 +323,15 @@ let handleResponseKind = (state: t, kind) =>
       | StructError(MissingAssertion) => [
           ("Missing Loop Invariant", "There should be a loop invariant before the DO construct"),
         ]
-      | StructError(MissingBound) => [
-          (
-            "Missing Bound",
-            "There should be a Bound at the end of the assertion before the DO construct \" , bnd : ... }\"",
-          ),
-        ]
-      | StructError(ExcessBound) => [
-          ("Excess Bound", "The bound annotation at this assertion is unnecessary"),
-        ]
+      // | StructError(MissingBound) => [
+      //     (
+      //       "Missing Bound",
+      //       "There should be a Bound at the end of the assertion before the DO construct \" , bnd : ... }\"",
+      //     ),
+      //   ]
+      // | StructError(ExcessBound) => [
+      //     ("Excess Bound", "The bound annotation at this assertion is unnecessary"),
+      //   ]
       | StructError(MissingPostcondition) => [
           ("Missing Postcondition", "The last statement of the program should be an assertion"),
         ]
@@ -417,12 +417,11 @@ let handleResponseKind = (state: t, kind) =>
     ->Util.Promise.oneByOne
     ->Promise.flatMap(_ => displayErrorMessages(errorMessages))
 
-  | OK(i, pos, specs, props) =>
+  | OK(i, pos, specs, props, warnings) =>
     state.specifications = specs
     Spec.decorate(state)
-
-    displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props))
-
+    // clear error messages before display othe stuff
+    displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props, warnings))
   | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | Resolve(i) =>
     state

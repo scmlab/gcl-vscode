@@ -26,7 +26,7 @@ module Request = {
     | UpdateConnection(option<Connection.method>)
     | Substitute(int, GCL.Syntax.Expr.t)
     | SetErrorMessages(array<(string, string)>)
-    | Display(int, array<Response.ProofObligation.t>, array<Response.GlobalProp.t>)
+    | Display(int, array<Response.ProofObligation.t>, array<Response.GlobalProp.t>, array<Response.Warning.t>)
 
   open Json.Decode
   open Util.Decode
@@ -41,11 +41,12 @@ module Request = {
       Contents(array(pair(string, string)) |> map(msgs => SetErrorMessages(msgs)))
     | "Display" =>
       Contents(
-        tuple3(
+        tuple4(
           int,
           array(Response.ProofObligation.decode),
           array(Response.GlobalProp.decode),
-        ) |> map(((id, xs, ys)) => Display(id, xs, ys)),
+          array(Response.Warning.decode),
+        ) |> map(((id, xs, ys, ws)) => Display(id, xs, ys, ws)),
       )
     | tag => raise(DecodeError("[Request] Unknown constructor: " ++ tag))
     }
@@ -71,15 +72,16 @@ module Request = {
         ("tag", string("SetErrorMessages")),
         ("contents", msgs |> array(pair(string, string))),
       })
-    | Display(id, pos, globalProps) =>
+    | Display(id, pos, globalProps, ws) =>
       object_(list{
         ("tag", string("Display")),
         (
           "contents",
-          (id, pos, globalProps) |> tuple3(
+          (id, pos, globalProps, ws) |> tuple4(
             int,
             array(Response.ProofObligation.encode),
             array(Response.GlobalProp.encode),
+            array(Response.Warning.encode),
           ),
         ),
       })

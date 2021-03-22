@@ -6,7 +6,7 @@ open Common
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (devMode, setDevMode) = React.useState(_ => false)
   let (connection, setConnection) = React.useState(_ => None)
-  let ((id, pos, props), setDisplay) = React.useState(() => (0, [], []))
+  let ((id, pos, props, warnings), setDisplay) = React.useState(() => (0, [], [], []))
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
   let onClickLink = React.useRef(Chan.make())
   let onSubstitute = React.useRef(Chan.make())
@@ -24,7 +24,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
       switch req {
       | ViewType.Request.UpdateDevMode(devMode) => setDevMode(_ => devMode)
       | UpdateConnection(method) => setConnection(_ => method)
-      | Display(id, pos, props) => setDisplay(_ => (id, pos, props))
+      | Display(id, pos, props, warnings) => setDisplay(_ => (id, pos, props, warnings))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
       }
@@ -65,11 +65,40 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     </div>
   }
 
+  let warningMessagesBlock = if Array.length(warnings) == 0 {
+    <> </>
+  } else {
+    <div className="gcl-global-props">
+      <h2> {string("Warnings")} </h2>
+      <ul className="gcl-global-property-list">
+        {warnings
+        ->Array.mapWithIndex((i, warning) =>
+          switch warning {
+          | MissingBound(_loc) =>
+            <Item
+              header={"Bound Missing"}
+              body={"Bound missing at the end of the assertion before the DO construct \" , bnd : ... }\""}
+              key={string_of_int(i)}
+            />
+          | ExcessBound(_loc) =>
+            <Item
+              header={"Excess Bound"}
+              body={"The bound annotation at this assertion is unnecessary"}
+              key={string_of_int(i)}
+            />
+          }
+        )
+        ->array}
+      </ul>
+    </div>
+  }
+
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
       <section className tabIndex={-1}>
         <DevPanel devMode method=connection />
         errorMessagesBlock
+        warningMessagesBlock
         <ProofObligations id pos onExport />
         <GlobalProps id props />
       </section>

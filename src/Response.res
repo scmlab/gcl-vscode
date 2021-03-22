@@ -196,8 +196,6 @@ module Error = {
   module StructError = {
     type t =
       | MissingAssertion
-      | MissingBound
-      | ExcessBound
       | MissingPostcondition
       | DigHole
 
@@ -206,8 +204,6 @@ module Error = {
     let decode: decoder<t> = sum(x =>
       switch x {
       | "MissingAssertion" => Contents(_ => MissingAssertion)
-      | "MissingBound" => Contents(_ => MissingBound)
-      | "ExcessBound" => Contents(_ => ExcessBound)
       | "MissingPostcondition" => Contents(_ => MissingPostcondition)
       | "DigHole" => Contents(_ => DigHole)
       | tag => raise(DecodeError("Unknown constructor: " ++ tag))
@@ -255,10 +251,33 @@ module Error = {
     }
 }
 
+module Warning = {
+  type t =
+    | MissingBound(loc)
+    | ExcessBound(loc)
+
+  open Json.Decode
+  open Util.Decode
+  let decode: decoder<t> = sum(x =>
+    switch x {
+    | "MissingBound" => Contents(Loc.decode |> map(loc => MissingBound(loc)))
+    | "ExcessBound" => Contents(Loc.decode |> map(loc => ExcessBound(loc)))
+    | tag => raise(DecodeError("[Response.Warning] Unknown constructor: " ++ tag))
+    }
+  )
+
+  open! Json.Encode
+  let encode: encoder<t> = x =>
+    switch x {
+    | MissingBound(loc) => object_(list{("tag", string("MissingBound")), ("contents", loc |> Loc.encode)})
+    | ExcessBound(loc) => object_(list{("tag", string("ExcessBound")), ("contents", loc |> Loc.encode)})
+    }
+}
+
 module Kind = {
   type t =
     | Error(array<Error.t>)
-    | OK(int, array<ProofObligation.t>, array<Specification.t>, array<GlobalProp.t>)
+    | OK(int, array<ProofObligation.t>, array<Specification.t>, array<GlobalProp.t>, array<Warning.t>)
     | Resolve(int)
     | Substitute(int, Syntax.Expr.t)
     | ConsoleLog(string)
@@ -270,12 +289,13 @@ module Kind = {
     | "ResError" => Contents(array(Error.decode) |> map(errors => Error(errors)))
     | "ResOK" =>
       Contents(
-        tuple4(
+        tuple5(
           int,
           array(ProofObligation.decode),
           array(Specification.decode),
           array(GlobalProp.decode),
-        ) |> map(((id, obs, specs, globalProps)) => OK(id, obs, specs, globalProps)),
+          array(Warning.decode),
+        ) |> map(((id, obs, specs, globalProps, warnings)) => OK(id, obs, specs, globalProps, warnings)),
       )
     | "ResSubstitute" =>
       Contents(pair(int, Syntax.Expr.decode) |> map(((i, expr)) => Substitute(i, expr)))
