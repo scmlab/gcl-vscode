@@ -1,9 +1,6 @@
-# gcl-vscode
-
-VS Code extension for GCL.
+# Guacamole on VS Code
 
 ## Installation
-
 
 [![MarketPlace Tag](https://vsmarketplacebadge.apphb.com/version/scmlab.guacamole.svg)](https://marketplace.visualstudio.com/items?itemName=scmlab.guacamole)
 
