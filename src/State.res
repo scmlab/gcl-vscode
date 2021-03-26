@@ -256,12 +256,12 @@ module Spec = {
         let range = GCL.Loc.toRange(spec.loc)
         let startPosition = VSCode.Range.start(range)
         let endPosition = VSCode.Range.end_(range)
-        // range of {!
+        // range of [!
         let startRange = VSCode.Range.make(
           startPosition,
           VSCode.Position.translate(startPosition, 0, 2),
         )
-        // range of !}
+        // range of !]
         let endRange = VSCode.Range.make(VSCode.Position.translate(endPosition, 0, -2), endPosition)
         // helper function for trimming long predicates
         let trim = s =>
@@ -383,9 +383,9 @@ let handleResponseKind = (state: t, kind) =>
         | None => Promise.resolved()
         | Some(site) =>
           let range = Response.Error.Site.toRange(site, state.specifications, GCL.Loc.toRange)
-          // replace the question mark "?" with a hole "{!  !}"
+          // replace the question mark "?" with a hole "[!  !]"
           let indent = Js.String.repeat(VSCode.Position.character(VSCode.Range.start(range)), " ")
-          let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}"
+          let holeText = "[!\n" ++ indent ++ "\n" ++ indent ++ "!]"
           let holeRange = VSCode.Range.make(
             VSCode.Range.start(range),
             VSCode.Position.translate(VSCode.Range.start(range), 0, 1),
