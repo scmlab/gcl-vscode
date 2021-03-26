@@ -22,6 +22,7 @@
 		"vscode:prepublish": "npx bsb -make-world && npx lessc style/style.less dist/style.css && webpack --mode production"
 	},
 	"devDependencies": {
+		"less": "^4.1.1",
 		"less-loader": "^7.0.2",
 		"less-watch-compiler": "^1.14.6",
 		"react": "16.9.0",
@@ -64,11 +65,11 @@
 			}
 		],
 		"grammars": [
-		  {
-			"language": "guacamole",
-			"scopeName": "source.gcl",
-			"path": "./syntaxes/guacamole.tmGrammar.json"
-		  }
+			{
+				"language": "guacamole",
+				"scopeName": "source.gcl",
+				"path": "./syntaxes/guacamole.tmGrammar.json"
+			}
 		],
 		"commands": [
 			{
