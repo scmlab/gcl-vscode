@@ -4,9 +4,10 @@ VS Code extension for GCL.
 
 ## Installation
 
-This extension is currently not available on the Marketplace.
 
-The following steps should guide you through the installation.
+[![MarketPlace Tag](https://vsmarketplacebadge.apphb.com/version/scmlab.guacamole.svg)](https://marketplace.visualstudio.com/items?itemName=scmlab.guacamole)
+
+Search for "Guacamole" and install it from the Visual Studio Marketplace
 
 ## Development and testing
 
