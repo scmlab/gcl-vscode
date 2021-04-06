@@ -18,8 +18,7 @@ let handleResponse = response =>
     State.displayErrorMessages([
       ("Server Internal Error", "Cannot decode request from the client\n" ++ message),
     ])
-  | NotLoaded => 
-    State.displayErrorMessages([("Internal Error", "Program source not loaded yet")])
+  | NotLoaded => State.displayErrorMessages([("Internal Error", "Program source not loaded yet")])
   | CannotDecodeResponse(message, json) =>
     State.displayErrorMessages([
       (
@@ -135,7 +134,7 @@ module Events = {
 
 let activate = (context: VSCode.ExtensionContext.t) => {
   // let devMode = false
-  let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
+  // let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
   // on response/notification from the server
@@ -160,7 +159,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
     let state = switch Registry.get(filePath) {
     | None =>
-      let state = State.make(devMode, editor)
+      let state = State.make(editor)
       Registry.add(filePath, state)
 
       // registerInset()
@@ -187,15 +186,15 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   Events.onActivateExtension(() => {
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
     // 1. activate the view
-    View.activate(extensionPath, devMode)->Promise.get(_viewActivationResult => {
-      // 2. connect with GCL
-      Connection.make(devMode)->Promise.get(result =>
-        switch result {
-        | Ok(method) => State.updateConnection(Some(method))->ignore
-        | Error(error) => Js.log(error)
-        }
-      )
-    })
+    View.activate(extensionPath)
+
+    // 2. connect with GCL
+    Connection.make()->Promise.get(result =>
+      switch result {
+      | Ok(method) => State.updateConnection(Some(method))->ignore
+      | Error(error) => Js.log(error)
+      }
+    )
   })->subscribe
 
   // on extension deactivation

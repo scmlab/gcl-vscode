@@ -4,7 +4,6 @@ open Common
 
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
-  let (devMode, setDevMode) = React.useState(_ => false)
   let (connection, setConnection) = React.useState(_ => None)
   let ((id, pos, props, warnings), setDisplay) = React.useState(() => (0, [], [], []))
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
@@ -22,8 +21,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     open ViewType.Request
     let destructor = onRequest->Chan.on(req =>
       switch req {
-      | ViewType.Request.UpdateDevMode(devMode) => setDevMode(_ => devMode)
-      | UpdateConnection(method) => setConnection(_ => method)
+      | ViewType.Request.UpdateConnection(method) => setConnection(_ => method)
       | Display(id, pos, props, warnings) => setDisplay(_ => (id, pos, props, warnings))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
@@ -96,7 +94,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
       <section className tabIndex={-1}>
-        <DevPanel devMode method=connection />
+        <DevPanel method=connection />
         errorMessagesBlock
         warningMessagesBlock
         <ProofObligations id pos onExport />

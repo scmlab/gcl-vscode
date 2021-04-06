@@ -22,7 +22,6 @@ module ConnectionMethod = {
 }
 module Request = {
   type t =
-    | UpdateDevMode(bool)
     | UpdateConnection(option<Connection.method>)
     | Substitute(int, GCL.Syntax.Expr.t)
     | SetErrorMessages(array<(string, string)>)
@@ -32,7 +31,6 @@ module Request = {
   open Util.Decode
   let decode: decoder<t> = sum(x =>
     switch x {
-    | "UpdateDevMode" => Contents(bool |> map(devMode => UpdateDevMode(devMode)))
     | "UpdateConnection" =>
       Contents(optional(ConnectionMethod.decode) |> map(method => UpdateConnection(method)))
     | "Substitute" =>
@@ -55,8 +53,6 @@ module Request = {
   open! Json.Encode
   let encode: encoder<t> = x =>
     switch x {
-    | UpdateDevMode(devMode) =>
-      object_(list{("tag", string("UpdateDevMode")), ("contents", devMode |> bool)})
     | UpdateConnection(method) =>
       object_(list{
         ("tag", string("UpdateConnection")),

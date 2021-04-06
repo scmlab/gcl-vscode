@@ -44,10 +44,10 @@ type method = ViaStdIO(string, string) | ViaTCP(int)
 
 module type Module = {
   // lifecycle
-  let make: bool => Promise.t<result<method, Error.t>>
+  let make: unit => Promise.t<result<method, Error.t>>
   let destroy: unit => Promise.t<unit>
   // input / output / event
-  let sendRequest: (bool, Request.t) => Promise.t<result<Response.t, Error.t>>
+  let sendRequest: Request.t => Promise.t<result<Response.t, Error.t>>
   let onResponse: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
   let onError: (Error.t => unit) => VSCode.Disposable.t
   // properties
@@ -199,14 +199,10 @@ module Module: Module = {
   }
 
   // see if the server is available
-  let probe = tryTCP => {
+  let probe = () => {
     let port = 3000
     let name = "gcl"
-    if tryTCP {
-      TCP.probe(port)->Promise.flatMapError(_ => StdIO.probe(name))
-    } else {
-      StdIO.probe(name)
-    }
+    TCP.probe(port)->Promise.flatMapError(_ => StdIO.probe(name))
   }
 
   // for internal bookkeeping
@@ -234,14 +230,14 @@ module Module: Module = {
     | exception Json.Decode.DecodeError(msg) => Error(Error.CannotDecodeResponse(msg, json))
     }
 
-  let make = tryTCP =>
+  let make = () =>
     switch singleton.contents {
     | Connected(client) => Promise.resolved(Ok(client.method))
     | Connecting(_, promise) => promise
     | Disconnected =>
       let (promise, resolve) = Promise.pending()
       singleton := Connecting([], promise)
-      probe(tryTCP)
+      probe()
       ->Promise.flatMapOk(Client.make)
       ->Promise.map(result =>
         switch result {
@@ -274,9 +270,9 @@ module Module: Module = {
     | Disconnected => Promise.resolved()
     }
 
-  let rec sendRequest = (tryTCP, request) =>
+  let rec sendRequest = request =>
     switch singleton.contents {
-    | Disconnected => make(tryTCP)->Promise.flatMapOk(_ => sendRequest(tryTCP, request))
+    | Disconnected => make()->Promise.flatMapOk(_ => sendRequest(request))
     | Connecting(queue, _) =>
       let (promise, resolve) = Promise.pending()
       Js.Array.push((request, resolve), queue)->ignore
