@@ -1,4 +1,5 @@
 const path = require('path');
+const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = [
     {
@@ -20,7 +21,14 @@ module.exports = [
                     loader: 'less-loader', // compiles Less to CSS
                 },
             ],
-        }
+        },
+        plugins: [
+            new CopyPlugin({
+                patterns: [
+                    { from: 'asset/codicon', to: 'codicon' },
+                ],
+            }),
+        ]
     },
     {
         target: "node",
