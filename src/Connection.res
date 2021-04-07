@@ -62,7 +62,7 @@ module Module: Module = {
       TCP.probe(port)->Promise.flatMapError(_ => StdIO.probe(name))
     }
   }
-  // internal state singleton
+  // internal singleton
   type state =
     | Disconnected
     | Connecting(

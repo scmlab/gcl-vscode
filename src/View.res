@@ -111,19 +111,6 @@ module Panel = {
 
     panel
   }
-
-  // let moveToRight = () => {
-  //   open VSCode.Commands
-  //   executeCommand(
-  //     #setEditorLayout({
-  //       orientation: 0,
-  //       groups: {
-  //         open Layout
-  //         [sized({groups: [simple], size: 0.5}), sized({groups: [simple], size: 0.5})]
-  //       },
-  //     }),
-  //   )->ignore
-  // }
 }
 
 module View = {
@@ -221,53 +208,60 @@ module View = {
 }
 
 module type Controller = {
-  type t
-  // methods
-  let activate: (string) => unit
+  // life cycle
+  let activate: string => unit
   let deactivate: unit => unit
+  // properties
   let isActivated: unit => bool
+  // messaging 
   let send: ViewType.Request.t => Promise.t<bool>
   let on: (ViewType.Response.t => unit) => VSCode.Disposable.t
   let focus: unit => unit
 }
+
 module Controller: Controller = {
-  type t = {mutable view: option<View.t>}
-  let handle = {
-    view: None,
-  }
+  // type t = {mutable view: option<View.t>}
+  // internal singleton
+  let singleton: ref<option<View.t>> = ref(None)
 
   let send = req =>
-    switch handle.view {
+    switch singleton.contents {
     | None => Promise.resolved(false)
     | Some(view) => View.send(view, req)
     }
   let on = callback =>
-    switch handle.view {
+    switch singleton.contents {
     | None => VSCode.Disposable.make(() => ())
     | Some(view) => view.onResponse->Chan.on(callback)->VSCode.Disposable.make
     }
 
-  let activate = (extensionPath) => {
-    let view = View.make(extensionPath)
-    handle.view = Some(view)
+  let activate = extensionPath =>
+    switch singleton.contents {
+    | None =>
+      let view = View.make(extensionPath)
+      singleton.contents = Some(view)
+      // free the handle when the view has been forcibly destructed
+      View.onceDestroyed(view)->Promise.get(() => {
+        singleton.contents = None
+      })
+    | Some(_) => ()
+    }
 
-    // free the handle when the view has been forcibly destructed
-    View.onceDestroyed(view)->Promise.get(() => {
-      handle.view = None
-    })
-  }
+  let deactivate = () =>
+    switch singleton.contents {
+    | Some(view) => 
+      View.destroy(view)
+      singleton.contents = None
+    | None => ()
+    }
 
-  let deactivate = () => {
-    handle.view->Option.forEach(View.destroy)
-    handle.view = None
-  }
-
-  let isActivated = () => handle.view->Option.isSome
+  let isActivated = () => singleton.contents->Option.isSome
 
   let focus = () =>
-    handle.view->Option.forEach(view => {
-      VSCode.WebviewPanel.reveal(view.panel, ())
-    })
+    switch singleton.contents {
+    | Some(view) => VSCode.WebviewPanel.reveal(view.panel, ())
+    | None => ()
+    }
 }
 
 include Controller

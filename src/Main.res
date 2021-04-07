@@ -184,8 +184,8 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // on extension activation
   Events.onActivateExtension(() => {
-    let extensionPath = VSCode.ExtensionContext.extensionPath(context)
     // 1. activate the view
+    let extensionPath = VSCode.ExtensionContext.extensionPath(context)
     View.activate(extensionPath)
 
     // 2. connect with GCL
@@ -245,6 +245,35 @@ let activate = (context: VSCode.ExtensionContext.t) => {
         let payload = payload->Js.Array2.joinWith("\n")
         sendLSPRequest(state, Refine(spec.id, payload))
       })
+    })
+  )->subscribe
+
+  // on restart
+  VSCode.Commands.registerCommand("guacamole.restart", () =>
+    getState()->Option.mapWithDefault(Promise.resolved(), state => {
+      previouslyActivatedState.contents = None
+      let editor = state.editor
+      let filePath = state.filePath
+      // destroy
+      Registry.destroy(filePath)
+      // make
+      let state = State.make(editor)
+      Registry.add(filePath, state)
+      previouslyActivatedState := Some(state)
+      // reactivate the view
+      let extensionPath = VSCode.ExtensionContext.extensionPath(context)
+      View.activate(extensionPath)
+      // reconnect with GCL
+      Connection.stop()
+      ->Promise.flatMap(Connection.start)
+      ->Promise.get(result =>
+        switch result {
+        | Ok(method) => State.updateConnection(Some(method))->ignore
+        | Error(error) => Js.log(error)
+        }
+      )
+
+      Promise.resolved()
     })
   )->subscribe
 
