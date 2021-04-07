@@ -2,18 +2,18 @@ module ConnectionMethod = {
   open Json.Decode
   open Util.Decode
 
-  let decode: decoder<Connection.method> = sum(x =>
+  let decode: decoder<Connection.LSP.method> = sum(x =>
     switch x {
-    | "ViaTCP" => Contents(int |> map(port => Connection.ViaTCP(port)))
+    | "ViaTCP" => Contents(int |> map(port => Connection.LSP.ViaTCP(port)))
     | "ViaStdIO" =>
-      Contents(pair(string, string) |> map(((name, path)) => Connection.ViaStdIO(name, path)))
+      Contents(pair(string, string) |> map(((name, path)) => Connection.LSP.ViaStdIO(name, path)))
     | tag => raise(DecodeError("[ConnectionMethod] Unknown constructor: " ++ tag))
     }
   )
 
   open! Json.Encode
 
-  let encode: encoder<Connection.method> = x =>
+  let encode: encoder<Connection.LSP.method> = x =>
     switch x {
     | ViaStdIO(name, path) =>
       object_(list{("tag", string("ViaStdIO")), ("contents", (name, path) |> pair(string, string))})
@@ -22,7 +22,7 @@ module ConnectionMethod = {
 }
 module Request = {
   type t =
-    | UpdateConnection(option<Connection.method>)
+    | UpdateConnection(option<Connection.LSP.method>)
     | Substitute(int, GCL.Syntax.Expr.t)
     | SetErrorMessages(array<(string, string)>)
     | Display(

@@ -1,57 +1,19 @@
+module LSP = Connection__LSP
+module Error = Connection__Error
+
 open Belt
-module Error = {
-  type t =
-    // probe
-    | CannotConnectViaStdIO(AgdaModeVscode.Process.PathSearch.Error.t)
-    | CannotConnectViaTCP(Js.Exn.t)
-    // connection
-    | ConnectionError(Js.Exn.t)
-    | CannotSendRequest(Js.Exn.t)
-    // decoding
-    | CannotDecodeResponse(string, Js.Json.t)
 
-  let toString = error =>
-    switch error {
-    | CannotConnectViaStdIO(e) =>
-      let (_header, body) = AgdaModeVscode.Process.PathSearch.Error.toString(e)
-      ("Cannot locate \"gcl\"", body ++ "\nPlease make sure that the executable is in the path")
-    | CannotConnectViaTCP(_) => (
-        "Cannot connect with the server",
-        "Please enter \":main -d\" in ghci",
-      )
-    | ConnectionError(exn) =>
-      let isECONNREFUSED =
-        Js.Exn.message(exn)->Option.mapWithDefault(
-          false,
-          Js.String.startsWith("connect ECONNREFUSED"),
-        )
-
-      isECONNREFUSED
-        ? ("LSP Connection Error", "Please enter \":main -d\" in ghci")
-        : ("LSP Client Error", Js.Exn.message(exn)->Option.getWithDefault(""))
-    | CannotSendRequest(exn) => (
-        "PANIC: Cannot send request",
-        "Please file an issue\n" ++ Js.Exn.message(exn)->Option.getWithDefault(""),
-      )
-    | CannotDecodeResponse(msg, json) => (
-        "PANIC: Cannot decode response",
-        "Please file an issue\n\n" ++ msg ++ "\n" ++ Json.stringify(json),
-      )
-    }
-}
-
-type method = ViaStdIO(string, string) | ViaTCP(int)
 
 module type Module = {
   // lifecycle
-  let make: unit => Promise.t<result<method, Error.t>>
+  let make: unit => Promise.t<result<LSP.method, Error.t>>
   let destroy: unit => Promise.t<unit>
   // input / output / event
   let sendRequest: Request.t => Promise.t<result<Response.t, Error.t>>
   let onResponse: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
   let onError: (Error.t => unit) => VSCode.Disposable.t
   // properties
-  let getMethod: unit => option<method>
+  let getMethod: unit => option<LSP.method>
 }
 
 module Module: Module = {
@@ -59,7 +21,7 @@ module Module: Module = {
     // see if "gcl" is available
     let probe = name => {
       AgdaModeVscode.Process.PathSearch.run(name)
-      ->Promise.mapOk(path => ViaStdIO(name, Js.String.trim(path)))
+      ->Promise.mapOk(path => LSP.ViaStdIO(name, Js.String.trim(path)))
       ->Promise.mapError(e => Error.CannotConnectViaStdIO(e))
     }
   }
@@ -87,114 +49,8 @@ module Module: Module = {
       // destroy the connection afterwards
       promise->Promise.mapOk(() => {
         Socket.destroy(socket)->ignore
-        ViaTCP(port)
+        LSP.ViaTCP(port)
       })
-    }
-  }
-
-  module Client = {
-    open VSCode
-
-    type t = {
-      client: LSP.LanguageClient.t,
-      subscription: VSCode.Disposable.t,
-      method: method,
-    }
-
-    // for emitting errors
-    let errorChan: Chan.t<Js.Exn.t> = Chan.make()
-    // for emitting data
-    let dataChan: Chan.t<Js.Json.t> = Chan.make()
-
-    let onError = callback =>
-      errorChan->Chan.on(e => callback(Error.ConnectionError(e)))->VSCode.Disposable.make
-    let onResponse = callback => dataChan->Chan.on(callback)->VSCode.Disposable.make
-
-    let sendRequest = (self, data) =>
-      self.client
-      ->LSP.LanguageClient.onReady
-      ->Promise.Js.toResult
-      ->Promise.flatMapOk(() => {
-        self.client->LSP.LanguageClient.sendRequest("guacamole", data)->Promise.Js.toResult
-      })
-      ->Promise.mapError(exn => Error.CannotSendRequest(exn))
-
-    let destroy = self => {
-      self.subscription->VSCode.Disposable.dispose->ignore
-      self.client->LSP.LanguageClient.stop->Promise.Js.toResult->Promise.map(_ => ())
-    }
-
-    let make = method => {
-      // let emittedError = ref(false)
-
-      let serverOptions = switch method {
-      | ViaTCP(port) => LSP.ServerOptions.makeWithStreamInfo(port)
-      | ViaStdIO(name, _path) => LSP.ServerOptions.makeWithCommand(name)
-      }
-
-      let clientOptions = {
-        // Register the server for plain text documents
-        let documentSelector: DocumentSelector.t = [
-          StringOr.others({
-            open DocumentFilter
-            {
-              scheme: Some("file"),
-              pattern: None,
-              language: Some("guacamole"),
-            }
-          }),
-        ]
-
-        // Notify the server about file changes to '.clientrc files contained in the workspace
-        let synchronize: FileSystemWatcher.t = Workspace.createFileSystemWatcher(
-          %raw("'**/.clientrc'"),
-          ~ignoreCreateEvents=false,
-          ~ignoreChangeEvents=false,
-          ~ignoreDeleteEvents=false,
-        )
-
-        let errorHandler: LSP.ErrorHandler.t = LSP.ErrorHandler.make(
-          ~error=(exn, _msg, _count) => {
-            errorChan->Chan.emit(exn)
-            Shutdown
-          },
-          ~closed=() => {
-            DoNotRestart
-          },
-        )
-        LSP.LanguageClientOptions.make(documentSelector, synchronize, errorHandler)
-      }
-
-      // Create the language client
-      let languageClient = LSP.LanguageClient.make(
-        "guacamoleLanguageServer",
-        "Guacamole Language Server",
-        serverOptions,
-        clientOptions,
-      )
-
-      let self = {
-        client: languageClient,
-        subscription: languageClient->LSP.LanguageClient.start,
-        method: method,
-      }
-
-      // Let `LanguageClient.onReady` and `errorChan->Chan.once` race
-      Promise.race(list{
-        self.client->LSP.LanguageClient.onReady->Promise.Js.toResult,
-        errorChan->Chan.once->Promise.map(err => Error(err)),
-      })
-      ->Promise.map(result =>
-        switch result {
-        | Error(error) => Error(error)
-        | Ok() =>
-          self.client->LSP.LanguageClient.onNotification("guacamole", json =>
-            dataChan->Chan.emit(json)
-          )
-          Ok(self)
-        }
-      )
-      ->Promise.mapError(e => Error.ConnectionError(e))
     }
   }
 
@@ -211,9 +67,9 @@ module Module: Module = {
     | Connecting(
         // pending requests & callbacks
         array<(Request.t, result<Response.t, Error.t> => unit)>,
-        Promise.t<result<method, Error.t>>,
+        Promise.t<result<LSP.method, Error.t>>,
       )
-    | Connected(Client.t)
+    | Connected(LSP.Client.t)
 
   let singleton: ref<state> = ref(Disconnected)
 
@@ -238,7 +94,7 @@ module Module: Module = {
       let (promise, resolve) = Promise.pending()
       singleton := Connecting([], promise)
       probe()
-      ->Promise.flatMapOk(Client.make)
+      ->Promise.flatMapOk(LSP.Client.make)
       ->Promise.map(result =>
         switch result {
         | Error(error) =>
@@ -250,7 +106,7 @@ module Module: Module = {
           singleton := Connected(client)
           getPendingRequests()->Array.forEach(((request, callback)) => {
             client
-            ->Client.sendRequest(Request.encode(request))
+            ->LSP.Client.sendRequest(Request.encode(request))
             ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
             ->Promise.get(callback)
           })
@@ -265,7 +121,7 @@ module Module: Module = {
     | Connected(client) =>
       // update the status
       singleton := Disconnected
-      Client.destroy(client)
+      LSP.Client.destroy(client)
     | Connecting(_, promise) => promise->Promise.flatMap(_ => destroy())
     | Disconnected => Promise.resolved()
     }
@@ -279,13 +135,13 @@ module Module: Module = {
       promise
     | Connected(client) =>
       client
-      ->Client.sendRequest(Request.encode(request))
+      ->LSP.Client.sendRequest(Request.encode(request))
       ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
     }
 
-  let onResponse = handler => Client.onResponse(json => handler(decodeResponse(json)))
+  let onResponse = handler => LSP.Client.onResponse(json => handler(decodeResponse(json)))
 
-  let onError = Client.onError
+  let onError = LSP.Client.onError
 
   let getMethod = () =>
     switch singleton.contents {
