@@ -189,7 +189,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     View.activate(extensionPath)
 
     // 2. connect with GCL
-    Connection.make()->Promise.get(result =>
+    Connection.start()->Promise.get(result =>
       switch result {
       | Ok(method) => State.updateConnection(Some(method))->ignore
       | Error(error) => Js.log(error)
@@ -201,7 +201,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   Events.onDeactivateExtension(_ => {
     View.deactivate()
     previouslyActivatedState := None
-    Connection.destroy()->ignore
+    Connection.stop()->ignore
   })->subscribe
 
   // on change cursor position/selection

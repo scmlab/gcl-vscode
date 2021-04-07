@@ -2,7 +2,7 @@
 open React
 
 @react.component
-let make = (~method: option<Connection.LSP.method>) =>
+let make = (~method: option<Connection.method>) =>
   switch method {
   | Some(ViaTCP(_)) => <div id="gcl-connection-status"> {string("TCP")} </div>
   | Some(ViaStdIO(_)) => <div id="gcl-connection-status"/>
