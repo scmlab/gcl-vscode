@@ -111,6 +111,7 @@ module Module: Module = {
             ->Promise.get(callback)
           })
           resolve(Ok(Client.getMethod(client)))
+          Js.log("[ connection ] established")
           Ok(Client.getMethod(client))
         }
       )
@@ -121,6 +122,7 @@ module Module: Module = {
     | Connected(client) =>
       // update the status
       singleton := Disconnected
+      Js.log("[ connection ] severed")
       Client.destroy(client)
     | Connecting(_, promise) => promise->Promise.flatMap(_ => stop())
     | Disconnected => Promise.resolved()

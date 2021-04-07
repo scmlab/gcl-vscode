@@ -187,9 +187,8 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     // 1. activate the view
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
     View.activate(extensionPath)
-
-    // 2. connect with GCL
-    Connection.start()->Promise.get(result =>
+    ->Promise.flatMap(Connection.start)
+    ->Promise.get(result =>
       switch result {
       | Ok(method) => State.updateConnection(Some(method))->ignore
       | Error(error) => Js.log(error)
@@ -262,9 +261,10 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       previouslyActivatedState := Some(state)
       // reactivate the view
       let extensionPath = VSCode.ExtensionContext.extensionPath(context)
+      View.deactivate()
       View.activate(extensionPath)
       // reconnect with GCL
-      Connection.stop()
+      ->Promise.flatMap(Connection.stop)
       ->Promise.flatMap(Connection.start)
       ->Promise.get(result =>
         switch result {
