@@ -214,29 +214,35 @@ module Spec = {
   }
 
   let resolve = (state, i) => {
-    let specs = state.specifications->Array.keep(spec => spec.id == i)
-    specs[0]->Option.forEach(spec => {
-      let range = GCL.Loc.toRange(spec.loc)
-      let start = VSCode.Range.start(range)
+    // find the corresponding Spec
 
+    let spec = (state.specifications->Array.keep(spec => spec.id == i))[0]
+    switch spec {
+    | None => Promise.resolved()
+    | Some(spec) =>
+      let range = GCL.Loc.toRange(spec.loc)
+      // get text inside the Spec
+      let start = VSCode.Range.start(range)
       let indentedPayload = {
         let payload = getPayload(state.document, spec)
         let indentationLevel = VSCode.Position.character(start)
         let indentation = Js.String.repeat(indentationLevel, " ")
         payload->Js.Array2.joinWith("\n" ++ indentation)
       }
-
-      // delete text
+      // delete the whole Spec 
       Editor.Text.delete(state.document, range)
+      // restore the original text inside that Spec 
       ->Promise.flatMap(result =>
         switch result {
         | false => Promise.resolved(false)
         | true => Editor.Text.insert(state.document, start, indentedPayload)
         }
       )
-      ->Promise.get(_ => ())
-    })
-    Promise.resolved()
+      // remove decorations
+      ->Promise.map(_ => {
+        spec.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
+      })
+    }
   }
 
   let insert = (state, lineNo, expr) => {
@@ -247,8 +253,7 @@ module Spec = {
   }
 
   let decorate = state => {
-    state.specifications
-    ->Array.forEach(spec => {
+    state.specifications->Array.forEach(spec => {
       // dispose old decorations
       spec.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
       // devise and apply new decorations
@@ -310,7 +315,8 @@ module Spec = {
           highlightBackground([startRange, endRange]),
         ]
       }
-      // persist new decoraitons 
+
+      // persist new decoraitons
       spec.decorations = decorations
     })
   }
@@ -497,4 +503,6 @@ let make = editor => {
 let destroy = state => {
   state.subscriptions->Array.forEach(VSCode.Disposable.dispose)
   state.subscriptions = []
+  state.specifications->Array.forEach(Response.Specification.destroy)
+  state.specifications = []
 }

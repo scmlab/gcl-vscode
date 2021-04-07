@@ -106,8 +106,10 @@ module Specification = {
     pre: Syntax.Pred.t,
     post: Syntax.Pred.t,
     loc: loc,
-    mutable decorations: array<VSCode.TextEditorDecorationType.t>
+    mutable decorations: array<VSCode.TextEditorDecorationType.t>,
   }
+
+  let destroy = self => self.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
 
   open Json.Decode
   let decode: decoder<t> = json => {
@@ -115,7 +117,7 @@ module Specification = {
     pre: json |> field("specPreCond", Syntax.Pred.decode),
     post: json |> field("specPostCond", Syntax.Pred.decode),
     loc: json |> field("specLoc", Loc.decode),
-    decorations: []
+    decorations: [],
   }
 }
 
