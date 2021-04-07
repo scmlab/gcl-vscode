@@ -252,10 +252,13 @@ module Spec = {
     Editor.Text.insert(state.document, point, assertion)
   }
 
-  let decorate = state => {
+  let redecorate = state => specs => {
+    // dispose old decorations
+    state.specifications->Array.forEach(spec => spec.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose))
+    // persist new spects 
+    state.specifications = specs
+    // apply new decorations 
     state.specifications->Array.forEach(spec => {
-      // dispose old decorations
-      spec.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
       // devise and apply new decorations
       let decorations = {
         let range = GCL.Loc.toRange(spec.loc)
@@ -315,7 +318,6 @@ module Spec = {
           highlightBackground([startRange, endRange]),
         ]
       }
-
       // persist new decoraitons
       spec.decorations = decorations
     })
@@ -428,8 +430,7 @@ let handleResponseKind = (state: t, kind) =>
     ->Promise.flatMap(_ => displayErrorMessages(errorMessages))
 
   | OK(i, pos, specs, props, warnings) =>
-    state.specifications = specs
-    Spec.decorate(state)
+    Spec.redecorate(state, specs)
     // clear error messages before display othe stuff
     displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props, warnings))
   | Inspect(pos) => updatePOs(pos)
