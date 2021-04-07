@@ -281,7 +281,8 @@ module Spec = {
           let backgroundColor = VSCode.StringOr.others(
             VSCode.ThemeColor.make("editor.wordHighlightStrongBackground"),
           )
-          let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ())
+          let rangeBehavior = VSCode.DecorationRangeBehavior.toEnum(VSCode.DecorationRangeBehavior.ClosedClosed)
+          let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ~rangeBehavior, ())
           let decoration = VSCode.Window.createTextEditorDecorationType(options)
           state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
           decoration
@@ -294,7 +295,8 @@ module Spec = {
             ~color,
             (),
           )
-          let options = VSCode.DecorationRenderOptions.t(~after, ())
+          let rangeBehavior = VSCode.DecorationRangeBehavior.toEnum(VSCode.DecorationRangeBehavior.ClosedClosed)
+          let options = VSCode.DecorationRenderOptions.t(~after, ~rangeBehavior, ())
           let decoration = VSCode.Window.createTextEditorDecorationType(options)
           state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
           decoration
