@@ -106,6 +106,7 @@ module Specification = {
     pre: Syntax.Pred.t,
     post: Syntax.Pred.t,
     loc: loc,
+    mutable decorations: array<VSCode.TextEditorDecorationType.t>
   }
 
   open Json.Decode
@@ -114,6 +115,7 @@ module Specification = {
     pre: json |> field("specPreCond", Syntax.Pred.decode),
     post: json |> field("specPostCond", Syntax.Pred.decode),
     loc: json |> field("specLoc", Loc.decode),
+    decorations: []
   }
 }
 

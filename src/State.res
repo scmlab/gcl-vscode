@@ -6,7 +6,6 @@ type t = {
   mutable filePath: string,
   // state
   mutable specifications: array<Response.Specification.t>,
-  mutable specificationDecorations: array<VSCode.TextEditorDecorationType.t>,
   // garbage
   mutable subscriptions: array<VSCode.Disposable.t>,
 }
@@ -248,12 +247,12 @@ module Spec = {
   }
 
   let decorate = state => {
-    // remove previous decorations
-    state.specificationDecorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
-    // generate new decorations
-    let decorations =
-      state.specifications
-      ->Array.map(spec => {
+    state.specifications
+    ->Array.forEach(spec => {
+      // dispose old decorations
+      spec.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
+      // devise and apply new decorations
+      let decorations = {
         let range = GCL.Loc.toRange(spec.loc)
         let startPosition = VSCode.Range.start(range)
         let endPosition = VSCode.Range.end_(range)
@@ -281,7 +280,9 @@ module Spec = {
           let backgroundColor = VSCode.StringOr.others(
             VSCode.ThemeColor.make("editor.wordHighlightStrongBackground"),
           )
-          let rangeBehavior = VSCode.DecorationRangeBehavior.toEnum(VSCode.DecorationRangeBehavior.ClosedClosed)
+          let rangeBehavior = VSCode.DecorationRangeBehavior.toEnum(
+            VSCode.DecorationRangeBehavior.ClosedClosed,
+          )
           let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ~rangeBehavior, ())
           let decoration = VSCode.Window.createTextEditorDecorationType(options)
           state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
@@ -295,23 +296,23 @@ module Spec = {
             ~color,
             (),
           )
-          let rangeBehavior = VSCode.DecorationRangeBehavior.toEnum(VSCode.DecorationRangeBehavior.ClosedClosed)
+          let rangeBehavior = VSCode.DecorationRangeBehavior.toEnum(
+            VSCode.DecorationRangeBehavior.ClosedClosed,
+          )
           let options = VSCode.DecorationRenderOptions.t(~after, ~rangeBehavior, ())
           let decoration = VSCode.Window.createTextEditorDecorationType(options)
           state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
           decoration
         }
-
         [
           overlayText(isQQ ? "" : preCondText, [startRange]),
           overlayText(postCondText, [endRange]),
           highlightBackground([startRange, endRange]),
         ]
-      })
-      ->Array.concatMany
-
-    // persist new decorations
-    state.specificationDecorations = decorations
+      }
+      // persist new decoraitons 
+      spec.decorations = decorations
+    })
   }
 }
 
@@ -477,7 +478,7 @@ module Decoration: Decoration = {
     })
 }
 
-let make = (editor) => {
+let make = editor => {
   let document = VSCode.TextEditor.document(editor)
   let filePath = VSCode.TextDocument.fileName(document)
   let state = {
@@ -486,7 +487,6 @@ let make = (editor) => {
     filePath: filePath,
     // state
     specifications: [],
-    specificationDecorations: [],
     // garbage
     subscriptions: [],
   }
