@@ -269,15 +269,24 @@ module Warning = {
   open! Json.Encode
   let encode: encoder<t> = x =>
     switch x {
-    | MissingBound(loc) => object_(list{("tag", string("MissingBound")), ("contents", loc |> Loc.encode)})
-    | ExcessBound(loc) => object_(list{("tag", string("ExcessBound")), ("contents", loc |> Loc.encode)})
+    | MissingBound(loc) =>
+      object_(list{("tag", string("MissingBound")), ("contents", loc |> Loc.encode)})
+    | ExcessBound(loc) =>
+      object_(list{("tag", string("ExcessBound")), ("contents", loc |> Loc.encode)})
     }
 }
 
 module Kind = {
   type t =
     | Error(array<Error.t>)
-    | OK(int, array<ProofObligation.t>, array<Specification.t>, array<GlobalProp.t>, array<Warning.t>)
+    | OK(
+        int,
+        array<ProofObligation.t>,
+        array<Specification.t>,
+        array<GlobalProp.t>,
+        array<Warning.t>,
+      )
+    | Inspect(array<ProofObligation.t>)
     | Resolve(int)
     | Substitute(int, Syntax.Expr.t)
     | ConsoleLog(string)
@@ -295,8 +304,15 @@ module Kind = {
           array(Specification.decode),
           array(GlobalProp.decode),
           array(Warning.decode),
-        ) |> map(((id, obs, specs, globalProps, warnings)) => OK(id, obs, specs, globalProps, warnings)),
+        ) |> map(((id, obs, specs, globalProps, warnings)) => OK(
+          id,
+          obs,
+          specs,
+          globalProps,
+          warnings,
+        )),
       )
+    | "ResInspect" => Contents(array(ProofObligation.decode) |> map(pos => Inspect(pos)))
     | "ResSubstitute" =>
       Contents(pair(int, Syntax.Expr.decode) |> map(((i, expr)) => Substitute(i, expr)))
     | "ResResolve" => Contents(int |> map(i => Resolve(i)))

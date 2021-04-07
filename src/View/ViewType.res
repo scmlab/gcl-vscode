@@ -25,7 +25,13 @@ module Request = {
     | UpdateConnection(option<Connection.method>)
     | Substitute(int, GCL.Syntax.Expr.t)
     | SetErrorMessages(array<(string, string)>)
-    | Display(int, array<Response.ProofObligation.t>, array<Response.GlobalProp.t>, array<Response.Warning.t>)
+    | Display(
+        int,
+        array<Response.ProofObligation.t>,
+        array<Response.GlobalProp.t>,
+        array<Response.Warning.t>,
+      )
+    | UpdatePOs(array<Response.ProofObligation.t>)
 
   open Json.Decode
   open Util.Decode
@@ -46,6 +52,8 @@ module Request = {
           array(Response.Warning.decode),
         ) |> map(((id, xs, ys, ws)) => Display(id, xs, ys, ws)),
       )
+    | "UpdatePOs" =>
+      Contents(array(Response.ProofObligation.decode) |> map(pos => UpdatePOs(pos)))
     | tag => raise(DecodeError("[Request] Unknown constructor: " ++ tag))
     }
   )
@@ -80,6 +88,11 @@ module Request = {
             array(Response.Warning.encode),
           ),
         ),
+      })
+    | UpdatePOs(pos) =>
+      object_(list{
+        ("tag", string("UpdatePOs")),
+        ("contents", pos |> array(Response.ProofObligation.encode)),
       })
     }
 }

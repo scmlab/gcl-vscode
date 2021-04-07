@@ -22,6 +22,8 @@ let displayErrorMessages = msgs =>
 let display = (id, pos, props, warnings) =>
   View.send(ViewType.Request.Display(id, pos, props, warnings))->Promise.map(_ => ())
 
+let updatePOs = pos => View.send(ViewType.Request.UpdatePOs(pos))->Promise.map(_ => ())
+
 let updateConnection = status => View.send(UpdateConnection(status))->Promise.map(_ => ())
 
 let focus = state =>
@@ -421,6 +423,7 @@ let handleResponseKind = (state: t, kind) =>
     Spec.decorate(state)
     // clear error messages before display othe stuff
     displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props, warnings))
+  | Inspect(pos) => updatePOs(pos)
   | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | Resolve(i) =>
     state
