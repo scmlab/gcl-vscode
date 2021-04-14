@@ -133,8 +133,6 @@ module Events = {
 }
 
 let activate = (context: VSCode.ExtensionContext.t) => {
-  // let devMode = false
-  // let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
   // on response/notification from the server
@@ -161,8 +159,6 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     | None =>
       let state = State.make(editor)
       Registry.add(filePath, state)
-
-      // registerInset()
       state
     | Some(state) =>
       // after switching tabs, the old editor would be "_disposed"
@@ -170,6 +166,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       state.editor = editor
       state.document = editor->VSCode.TextEditor.document
       state.filePath = filePath
+      State.Spec.redecorate(state, state.specifications)
       state
     }
 
