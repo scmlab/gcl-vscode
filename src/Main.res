@@ -234,13 +234,15 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on refine
   VSCode.Commands.registerCommand("guacamole.refine", () =>
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
-      state
-      ->State.Spec.fromCursorPosition
-      ->Option.mapWithDefault(Promise.resolved(), spec => {
-        let payload = State.Spec.getPayload(state.document, spec)
-        let payload = payload->Js.Array2.joinWith("\n")
-        sendLSPRequest(state, Refine(spec.id, payload))
+      // TEMP HACK: retreive and update spec locations before refine
+      sendLSPRequest(state, RetreiveSpecPositions)->Promise.flatMap(() => {
+        State.Spec.fromCursorPosition(state)->Option.mapWithDefault(Promise.resolved(), spec => {
+          let payload = State.Spec.getPayload(state.document, spec)
+          let payload = payload->Js.Array2.joinWith("\n")
+          sendLSPRequest(state, Refine(spec.id, payload))
+        })
       })
+      // })
     })
   )->subscribe
 

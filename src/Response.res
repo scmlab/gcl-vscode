@@ -105,7 +105,7 @@ module Specification = {
     id: int,
     pre: Syntax.Pred.t,
     post: Syntax.Pred.t,
-    loc: loc,
+    mutable loc: loc,
     mutable decorations: array<VSCode.TextEditorDecorationType.t>,
   }
 
@@ -293,6 +293,7 @@ module Kind = {
     | Inspect(array<ProofObligation.t>)
     | Resolve(int)
     | Substitute(int, Syntax.Expr.t)
+    | UpdateSpecPositions(array<Loc.t>)
     | ConsoleLog(string)
 
   open Json.Decode
@@ -319,6 +320,7 @@ module Kind = {
     | "ResInspect" => Contents(array(ProofObligation.decode) |> map(pos => Inspect(pos)))
     | "ResSubstitute" =>
       Contents(pair(int, Syntax.Expr.decode) |> map(((i, expr)) => Substitute(i, expr)))
+    | "ResUpdateSpecPositions" => Contents(array(Loc.decode) |> map(locs => UpdateSpecPositions(locs)))
     | "ResResolve" => Contents(int |> map(i => Resolve(i)))
     | "ResConsoleLog" => Contents(string |> map(i => ConsoleLog(i)))
     | tag => raise(DecodeError("Unknown constructor: " ++ tag))

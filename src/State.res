@@ -229,9 +229,9 @@ module Spec = {
         let indentation = Js.String.repeat(indentationLevel, " ")
         payload->Js.Array2.joinWith("\n" ++ indentation)
       }
-      // delete the whole Spec 
+      // delete the whole Spec
       Editor.Text.delete(state.document, range)
-      // restore the original text inside that Spec 
+      // restore the original text inside that Spec
       ->Promise.flatMap(result =>
         switch result {
         | false => Promise.resolved(false)
@@ -252,12 +252,15 @@ module Spec = {
     Editor.Text.insert(state.document, point, assertion)
   }
 
-  let redecorate = state => specs => {
+  let redecorate = (state, specs) => {
     // dispose old decorations
-    state.specifications->Array.forEach(spec => spec.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose))
-    // persist new spects 
+    state.specifications->Array.forEach(spec =>
+      spec.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
+    )
+
+    // persist new spects
     state.specifications = specs
-    // apply new decorations 
+    // apply new decorations
     state.specifications->Array.forEach(spec => {
       // devise and apply new decorations
       let decorations = {
@@ -318,9 +321,20 @@ module Spec = {
           highlightBackground([startRange, endRange]),
         ]
       }
+
       // persist new decoraitons
       spec.decorations = decorations
     })
+  }
+
+  let updateLocations = (state, locations) => {
+    state.specifications->Array.forEachWithIndex((index, spec) => {
+      locations[index]->Option.forEach(loc => {
+        // Js.log(GCL.Loc.toString(spec.loc) ++ " ===>" ++ GCL.Loc.toString(loc))
+        spec.loc = loc
+      })
+    })
+    redecorate(state, state.specifications)
   }
 }
 
@@ -435,6 +449,9 @@ let handleResponseKind = (state: t, kind) =>
     displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props, warnings))
   | Inspect(pos) => updatePOs(pos)
   | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
+  | UpdateSpecPositions(locations) =>
+    Spec.updateLocations(state, locations)
+    Promise.resolved()
   | Resolve(i) =>
     state
     ->Spec.resolve(i)

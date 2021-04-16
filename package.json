@@ -3,7 +3,7 @@
 	"displayName": "Guacamole",
 	"description": "Guacamole on vscode",
 	"publisher": "scmlab",
-	"version": "0.0.13",
+	"version": "0.0.14",
 	"repository": "https://github.com/scmlab/gcl-vscode",
 	"engines": {
 		"vscode": "^1.41.0"
