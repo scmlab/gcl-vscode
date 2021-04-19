@@ -4,9 +4,7 @@ type source = string
 module Kind = {
   type t =
     | Inspect(int, int)
-    | Refine(int, string)
-    // temp hack
-    | RetreiveSpecPositions
+    | Refine(int, int)
     | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
     | ExportProofObligations
     | Debug
@@ -16,12 +14,7 @@ module Kind = {
     switch x {
     | Inspect(start, end_) =>
       object_(list{("tag", string("ReqInspect")), ("contents", (start, end_) |> tuple2(int, int))})
-    | Refine(id, payload) =>
-      object_(list{
-        ("tag", string("ReqRefine")),
-        ("contents", (id, payload) |> tuple2(int, string)),
-      })
-    | RetreiveSpecPositions => object_(list{("tag", string("ReqRetreiveSpecPositions"))})
+    | Refine(start, end_) => object_(list{("tag", string("ReqRefine")), ("contents", (start, end_) |> tuple2(int, int))})
     | Substitute(i, expr, subst) =>
       object_(list{
         ("tag", string("ReqSubstitute")),
