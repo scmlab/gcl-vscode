@@ -23,8 +23,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
       switch req {
       | ViewType.Request.UpdateConnection(method) => setConnection(_ => method)
       | Display(id, pos, props, warnings) => setDisplay(_ => (id, pos, props, warnings))
-      | UpdatePOs(pos) =>
-        setDisplay(((id, _pos, props, warnings)) => (id, pos, props, warnings))
+      | UpdatePOs(pos) => setDisplay(((id, _pos, props, warnings)) => (id, pos, props, warnings))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
       }

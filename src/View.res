@@ -238,7 +238,7 @@ module type Controller = {
   let isActivated: unit => bool
   // messaging
   let send: ViewType.Request.t => Promise.t<bool>
-  let on: (ViewType.Response.t => unit) => VSCode.Disposable.t
+  let on: (ViewType.Response.t => unit) => Promise.t<VSCode.Disposable.t>
   let focus: unit => unit
 }
 
@@ -246,15 +246,25 @@ module Controller: Controller = {
   // internal singleton
   let singleton: ref<option<View.t>> = ref(None)
 
+  // save listners registered before view activation here
+  let listenersBeforeAcvitation: array<(
+    ViewType.Response.t => unit,
+    VSCode.Disposable.t => unit,
+  )> = []
+
   let send = req =>
     switch singleton.contents {
     | None => Promise.resolved(false)
     | Some(view) => View.send(view, req)
     }
+
   let on = callback =>
     switch singleton.contents {
-    | None => VSCode.Disposable.make(() => ())
-    | Some(view) => View.on(view, callback)
+    | None =>
+      let (promise, resolve) = Promise.pending()
+      Js.Array.push((callback, resolve), listenersBeforeAcvitation)->ignore
+      promise
+    | Some(view) => View.on(view, callback)->Promise.resolved
     }
 
   let activate = extensionPath =>
@@ -262,6 +272,11 @@ module Controller: Controller = {
     | None =>
       View.make(extensionPath)->Promise.map(view => {
         singleton.contents = Some(view)
+        // register stored listeners 
+        listenersBeforeAcvitation->Js.Array2.forEach(((callback, resolve)) => {
+          let dispose = View.on(view, callback)
+          resolve(dispose)
+        })
         // free the handle when the view has been forcibly destructed
         View.onceDestroyed(view)->Promise.get(() => {
           singleton.contents = None

@@ -43,14 +43,17 @@ let handleViewResponse = response => {
   getState()->Option.forEach(state => {
     switch response {
     | ViewType.Response.Link(MouseOver(loc)) =>
+      Js.log("MouseOver")
       let key = GCL.Loc.toString(loc)
       let range = GCL.Loc.toRange(loc)
       State.Decoration.addBackground(state, key, range, "statusBar.debuggingBackground")
     | Link(MouseOut(loc)) =>
+      Js.log("MouseOut")
+
       let key = GCL.Loc.toString(loc)
       State.Decoration.remove(key)
     | Link(MouseClick(loc)) =>
-      ()
+      Js.log("MouseClick")
       let key = GCL.Loc.toString(loc)
       State.Decoration.remove(key)
     // let key = GCL.Loc.toString(loc)
@@ -64,6 +67,7 @@ let handleViewResponse = response => {
     | Substitute(id, expr, subst) =>
       // remove all decorations
       State.Decoration.removeAll()
+      Js.log("Substitute")
       // send request to the server
       sendLSPRequest(state, Request.Kind.Substitute(id, expr, subst))->ignore
     | ExportProofObligations => sendLSPRequest(state, Request.Kind.ExportProofObligations)->ignore
@@ -229,7 +233,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   })->subscribe
 
   // on events from the view
-  View.on(handleViewResponse)->subscribe
+  View.on(handleViewResponse)->Promise.get(subscribe)
 
   // on refine
   VSCode.Commands.registerCommand("guacamole.refine", () =>
