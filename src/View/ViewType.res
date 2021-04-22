@@ -143,7 +143,7 @@ module Response = {
     | "Link" => Contents(json => Link(LinkEvent.decode(json)))
     | "Substitute" =>
       Contents(
-        tuple3(int, GCL.Syntax.Expr.decode, GCL.Syntax.Expr.decodeSubst) |> map(((
+        tuple3(int, GCL.Syntax.Expr.decode, array(pair(GCL.Syntax.Name.decode, GCL.Syntax.Expr.decode))) |> map(((
           i,
           expr,
           subst,
@@ -166,7 +166,7 @@ module Response = {
         ("tag", string("Substitute")),
         (
           "contents",
-          (i, expr, subst) |> tuple3(int, GCL.Syntax.Expr.encode, GCL.Syntax.Expr.encodeSubst),
+          (i, expr, subst) |> tuple3(int, GCL.Syntax.Expr.encode, array(pair(GCL.Syntax.Name.encode, GCL.Syntax.Expr.encode))),
         ),
       })
     }

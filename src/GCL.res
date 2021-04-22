@@ -296,13 +296,13 @@ module Syntax = {
       | Const(Name.t, loc)
       | Op(Op.t, loc)
       | App(t, t, loc)
-      | Lam(string, t, loc)
+      | Lam(Name.t, t, loc)
       | Hole(loc)
       // (+ i : 0 <= i && i < N : f i)
       | Quant(t, array<Name.t>, t, t, loc)
       | Subst(t, subst)
       | Unknown(Js.Json.t)
-    and subst = Js.Dict.t<t>
+    and subst = array<(Name.t, t)>
 
     let locOf = x =>
       switch x {
@@ -347,7 +347,7 @@ module Syntax = {
         | "Const" => Contents(pair(Name.decode, Loc.decode) |> map(((x, r)) => Const(x, r)))
         | "Op" => Contents(pair(Op.decode, Loc.decode) |> map(((x, r)) => Op(x, r)))
         | "App" => Contents(tuple3(decode, decode, Loc.decode) |> map(((x, y, r)) => App(x, y, r)))
-        | "Lam" => Contents(tuple3(string, decode, Loc.decode) |> map(((x, y, r)) => Lam(x, y, r)))
+        | "Lam" => Contents(tuple3(Name.decode, decode, Loc.decode) |> map(((x, y, r)) => Lam(x, y, r)))
         | "Hole" => Contents(Loc.decode |> map(r => Hole(r)))
         | "Quant" =>
           Contents(
@@ -359,11 +359,11 @@ module Syntax = {
               l,
             )) => Quant(op, vars, p, q, l)),
           )
-        | "Subst" => Contents(pair(decode, decodeSubst) |> map(((x, y)) => Subst(x, y)))
+        | "Subst" => Contents(pair(decode, array(pair(Name.decode, decode))) |> map(((x, y)) => Subst(x, y)))
         | _ => Contents(json => Unknown(json))
         }
       )
-    and decodeSubst: decoder<subst> = json => json |> dict(decode)
+    // and decodeSubst: decoder<subst> = json => json |> dict(decode)
 
     open! Json.Encode
     open! Util.Encode
@@ -394,7 +394,7 @@ module Syntax = {
       | Lam(x, body, loc) =>
         object_(list{
           ("tag", string("Lam")),
-          ("contents", (x, body, loc) |> tuple3(string, encode, Loc.encode)),
+          ("contents", (x, body, loc) |> tuple3(Name.encode, encode, Loc.encode)),
         })
       | Hole(loc) => object_(list{("tag", string("Hole")), ("contents", loc |> Loc.encode)})
       | Quant(e, lowers, f, g, loc) =>
@@ -414,11 +414,11 @@ module Syntax = {
       | Subst(e, subst) =>
         object_(list{
           ("tag", string("Subst")),
-          ("contents", (e, subst) |> pair(encode, encodeSubst)),
+          ("contents", (e, subst) |> pair(encode, array(pair(Name.encode, encode)))),
         })
       | _ => object_(list{("tag", string("Hole")), ("contents", Loc.NoLoc |> Loc.encode)})
       }
-    and encodeSubst: encoder<subst> = json => json |> dict(encode)
+    // and encodeSubst: encoder<subst> = json => json |> dict(encode)
 
     module Precedence = {
       open VarArg
@@ -521,7 +521,7 @@ module Syntax = {
               }
             }
           }
-        | Lam(x, body, _) => Complete("\\" ++ (x ++ (" -> " ++ toString(0, body))))
+        | Lam(x, body, _) => Complete("\\" ++ (Name.toString(x) ++ (" -> " ++ toString(0, body))))
         | Hole(_) => Complete("[?]")
         | Quant(op, vars, p, q, _) =>
           Complete(

@@ -103,7 +103,7 @@ module Prec = {
       }
     | Lam(x, body, loc) =>
       Complete(
-        <Link loc> {string("\\")} {string(x)} {string(" -> ")} <Self prec=0 value=body /> </Link>,
+        <Link loc> {string("\\")} {string(Name.toString(x))} {string(" -> ")} <Self prec=0 value=body /> </Link>,
       )
     | Quant(op, vars, p, q, loc) =>
       Complete(

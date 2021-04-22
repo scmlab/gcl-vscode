@@ -34,7 +34,7 @@ let counter = ref(0)
 
 @react.component
 let make = (~expr: GCL.Syntax.Expr.t, ~makePrec, ~makePrecProps) => {
-  let subst = Js.Dict.empty()
+  let subst = []
 
   module Prec = {
     let make = makePrec
@@ -104,8 +104,8 @@ let make = (~expr: GCL.Syntax.Expr.t, ~makePrec, ~makePrecProps) => {
         </div>
       </Link>
     | Subst(expr, subst) =>
-      let expressions = Js.Dict.values(subst)->Belt.Array.map(value => <Prec prec=0 value />)
-      let variables = Js.Dict.keys(subst)->Belt.Array.map(value => <> {React.string(value)} </>)
+      let expressions = (subst)->Belt.Array.map(((_key, value)) => <Prec prec=0 value />)
+      let variables = (subst)->Belt.Array.map(((key, _value)) => <> {React.string((GCL.Syntax.Name.toString(key)))} </>)
       <Link loc=GCL.Loc.NoLoc>
         <Prec prec=0 value=expr />
         <Space />
