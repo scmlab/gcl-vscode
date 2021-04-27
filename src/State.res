@@ -386,7 +386,7 @@ let handleResponseKind = (state: t, kind) =>
           (
             "Recursive type variable",
             "Recursive type variable: " ++
-            string_of_int(var) ++
+            var ++
             "\nin type             : " ++
             GCL.Syntax.Type.toString(t),
           ),

@@ -177,7 +177,7 @@ module Error = {
     type t =
       | NotInScope(string)
       | UnifyFailed(Type.t, Type.t)
-      | RecursiveType(int, Type.t)
+      | RecursiveType(string, Type.t)
       | NotFunction(Type.t)
 
     open Json.Decode
@@ -190,7 +190,7 @@ module Error = {
           tuple3(Type.decode, Type.decode, Loc.decode) |> map(((s, t, _)) => UnifyFailed(s, t)),
         )
       | "RecursiveType" =>
-        Contents(tuple3(int, Type.decode, Loc.decode) |> map(((s, t, _)) => RecursiveType(s, t)))
+        Contents(tuple3(string, Type.decode, Loc.decode) |> map(((s, t, _)) => RecursiveType(s, t)))
       | "NotFunction" => Contents(pair(Type.decode, Loc.decode) |> map(((t, _)) => NotFunction(t)))
       | tag => raise(DecodeError("Unknown constructor: " ++ tag))
       }
