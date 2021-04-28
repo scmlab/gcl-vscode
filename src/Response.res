@@ -223,6 +223,7 @@ module Error = {
     | TypeError(TypeError.t)
     // from server
     | CannotReadFile(string)
+    | Others(string)
     // from client
     | CannotSendRequest(string)
 
@@ -238,6 +239,7 @@ module Error = {
     | "StructError" => Contents(json => StructError(json |> StructError.decode))
     | "TypeError" => Contents(json => TypeError(json |> TypeError.decode))
     | "CannotReadFile" => Contents(json => CannotReadFile(json |> string))
+    | "Others" => Contents(json => Others(json |> string))
     | tag => raise(DecodeError("Unknown constructor: " ++ tag))
     }
   )

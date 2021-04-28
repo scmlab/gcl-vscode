@@ -349,19 +349,11 @@ let handleResponseKind = (state: t, kind) =>
       | StructError(MissingAssertion) => [
           ("Missing Loop Invariant", "There should be a loop invariant before the DO construct"),
         ]
-      // | StructError(MissingBound) => [
-      //     (
-      //       "Missing Bound",
-      //       "There should be a Bound at the end of the assertion before the DO construct \" , bnd : ... }\"",
-      //     ),
-      //   ]
-      // | StructError(ExcessBound) => [
-      //     ("Excess Bound", "The bound annotation at this assertion is unnecessary"),
-      //   ]
       | StructError(MissingPostcondition) => [
           ("Missing Postcondition", "The last statement of the program should be an assertion"),
         ]
       | StructError(DigHole) => []
+      | Others(string) => [("Server Internal Error", string)]
       | CannotReadFile(string) => [("Server Internal Error", "Cannot read file\n" ++ string)]
       | CannotSendRequest(string) => [("Client Internal Error", "Cannot send request\n" ++ string)]
       | TypeError(NotInScope(name)) => [
