@@ -18,8 +18,7 @@ let handleResponse = response =>
     State.displayErrorMessages([
       ("Server Internal Error", "Cannot decode request from the client\n" ++ message),
     ])
-  | NotLoaded => 
-    State.displayErrorMessages([("Internal Error", "Program source not loaded yet")])
+  | NotLoaded => State.displayErrorMessages([("Internal Error", "Program source not loaded yet")])
   | CannotDecodeResponse(message, json) =>
     State.displayErrorMessages([
       (
@@ -137,6 +136,10 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // let devMode = false
   let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
+
+  Download.getReleases(context)->Promise.get(body => {
+    Js.log(body)
+  })
 
   // on response/notification from the server
   Connection.onResponse(result =>
