@@ -16,17 +16,20 @@ module Nd = {
       })
       promise
     }
+
+    @bs.module("fs")
+    external createWriteStream: string => NodeJs.Fs.WriteStream.t = "createWriteStream"
   }
 
   module Https = {
     @bs.module("https")
     external get: (
       {"host": string, "path": string, "headers": {"User-Agent": string}},
-      NodeJs.Http.ServerResponse.t => unit,
+      NodeJs.Http.IncomingMessage.t => unit,
     ) => unit = "get"
 
     @bs.module("https")
-    external getWithUrl: (string, NodeJs.Http.ServerResponse.t => unit) => unit = "get"
+    external getWithUrl: (string, NodeJs.Http.IncomingMessage.t => unit) => unit = "get"
 
     // @bs.module("https")
     // external get: (
@@ -70,11 +73,13 @@ module Error = {
     | ServerResponseError(Js.Exn.t)
     | NoMatchingVersion(string)
     | NotSupportedOS(string)
+    | CannotWriteFile(Js.Exn.t)
+    | CannotUnzipFile(Js.Exn.t)
 }
 
 module HTTP = {
   let gatherDataFromResponse = res => {
-    open NodeJs.Http.ServerResponse
+    open NodeJs.Http.IncomingMessage
     let (promise, resolve) = Promise.pending()
     let body = ref("")
     res->onData(buf => body := body.contents ++ NodeJs.Buffer.toString(buf))->ignore
@@ -88,21 +93,19 @@ module HTTP = {
     let (promise, resolve) = Promise.pending()
     Nd.Https.get(options, res => {
       // check the response status code first
-      let statusCode = NodeJs.Http.ServerResponse.statusCode(res)
+      let statusCode = NodeJs.Http.IncomingMessage.statusCode(res)
       switch statusCode {
       // redirect
       | 301
       | 302 =>
-        let headers = NodeJs.Http.ServerResponse.getHeaders(res)
+        let headers = NodeJs.Http.IncomingMessage.headers(res)
         switch headers.location {
         | None => resolve(Error(Error.NoRedirectLocation))
         | Some(urlAfterRedirect) =>
-          Nd.Https.getWithUrl(urlAfterRedirect, resAfterRedirect => {
-            gatherDataFromResponse(resAfterRedirect)->Promise.get(resolve)
-          })
+          Nd.Https.getWithUrl(urlAfterRedirect, resAfterRedirect => resolve(Ok(resAfterRedirect)))
         }
       // ok ?
-      | _ => gatherDataFromResponse(res)->Promise.get(resolve)
+      | _ => resolve(Ok(res))
       }
     })
     promise
@@ -153,7 +156,9 @@ module Release = {
         "User-Agent": "gcl-vscode",
       },
     }
-    HTTP.getWithRedirects(httpOptions)->Promise.flatMapOk(raw =>
+    HTTP.getWithRedirects(httpOptions)
+    ->Promise.flatMapOk(HTTP.gatherDataFromResponse)
+    ->Promise.flatMapOk(raw =>
       try {
         Promise.resolved(parseMetadata(Js.Json.parseExn(raw)))
       } catch {
@@ -205,7 +210,7 @@ let downloadLanguageServer = context => {
       let matched = release.assets->Array.keep(asset => asset.name == name)
       switch matched[0] {
       | None => Error(Error.NotSupportedOS(os))
-      | Some(asset) => Ok(asset)
+      | Some(asset) => Ok((release, asset))
       }
     })
     ->Promise.resolved
@@ -214,9 +219,8 @@ let downloadLanguageServer = context => {
   Release.getReleasesFromGitHub()
   ->Promise.flatMapOk(getMatchingRelease)
   ->Promise.flatMapOk(getMatchingAsset)
-  ->Promise.flatMapOk(asset => {
+  ->Promise.flatMapOk(((release, asset)) => {
     let url = Nd.Url.parse(asset.url)
-
     let httpOptions = {
       "host": url["host"],
       "path": url["path"],
@@ -224,52 +228,45 @@ let downloadLanguageServer = context => {
         "User-Agent": "gcl-vscode",
       },
     }
-
-    HTTP.getWithRedirects(httpOptions)
+    HTTP.getWithRedirects(httpOptions)->Promise.mapOk(res => (release, asset, res))
   })
-  // ->Promise.getOk(result => 
+  ->Promise.flatMapOk(((release, asset, res)) => {
+    let (promise, resolve) = Promise.pending()
+    // take the "macos.zip" part from names like "gcl-macos.zip"
+    let osName = Js.String2.slice(asset.name, ~from=4, ~to_=-4)
+    // the final path to store the language server
+    let outputPath = Node_path.join2(globalStoragePath, "gcl-" ++ release.tagName ++ "-" ++ osName)
+    let zipPath = outputPath ++ ".zip"
+    let zipFileStream = Nd.Fs.createWriteStream(zipPath)
+    // download the zip file to the outputPath ++ ".zip"
+    zipFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotUnzipFile(exn))))->ignore
+    zipFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
+    res->NodeJs.Http.IncomingMessage.pipe(zipFileStream)->ignore 
 
-  // open Belt
-  // let matched = releases->Array.keep(release => release.tagName == Constant.version)
-  // switch matched[0] {
-  // | None => Promise.resolved(Error(Error.NoMatchingVersion(Constant.version)))
-  // | Some(release) =>
-  //     switch Node_process.process["platform"] {
-  //     | "darwin" => Some(MacOS)
-  //     | "linux" => Some(Linux)
-  //     | "win32" => Some(Windows)
-  //     | others => Promise.resolved(Error(NotSupportedOS(others)))
-  //     }
-  //     release.assets->Array.keep(asset => asset.name == )
-  // }
+    Js.log(release)
+    Js.log(asset)
+    Js.log(outputPath)
 
-  // const opts: https.RequestOptions = {
-  //   host: srcUrl.host,
-  //   path: srcUrl.path,
-  //   protocol: srcUrl.protocol,
-  //   port: srcUrl.port,
-  //   headers: userAgentHeader,
-  // };
+    promise
+  })->Promise.tapOk(outputPath => {
+    // unzip the downloaded file 
 
-  // let assetName = "gcl-" ++ SupportedOS.toAssetSuffix(supportedOS)
+    // let zipPath = outputPath ++ ".zip"
+    // let zipFileStream = Nd.Fs.createWriteStream(zipPath)
 
-  // host: 'api.github.com',
-  // path: '/repos/haskell/haskell-language-server/releases',
+    // zipFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotUnzipFile(exn))))->ignore
+    // zipFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
+    // res->NodeJs.Http.IncomingMessage.pipe(zipFileStream)->ignore 
 
-  // let srcUrl = Nd.Url.parse(src)
+    ()
+    // Ok()
+  })->Promise.tapOk(Js.log)
 
-  // let httpOptions = {
-  //   "host": srcUrl["host"],
-  //   "path": srcUrl["path"],
-  //   "protocol": srcUrl["protocol"],
-  //   "port": srcUrl["port"],
-  //   "headers": string,
-  // }
-
-  // let httpOptions = {
-  //   "host": "api.github.com",
-  //   "path": "/repos/scmlab/gcl/releases",
-  //   "headers": string,
-  // }
-  // Nd.Https.get(httpOptions)
 }
+
+
+
+    // // res => outputFileStream
+    // outputFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotWriteFile(exn))))->ignore
+    // outputFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
+    // res->NodeJs.Http.IncomingMessage.pipe(outputFileStream)->ignore 
