@@ -19,6 +19,10 @@ module Nd = {
 
     @bs.module("fs")
     external createWriteStream: string => NodeJs.Fs.WriteStream.t = "createWriteStream"
+
+    @bs.module("fs")
+    external createWriteStreamWithOptions: (string, {"mode": int}) => NodeJs.Fs.WriteStream.t =
+      "createWriteStream"
   }
 
   module Https = {
@@ -232,6 +236,7 @@ let downloadLanguageServer = context => {
     }
     HTTP.getWithRedirects(httpOptions)->Promise.mapOk(res => (release, asset, res))
   })
+  // download the corresponding asset 
   ->Promise.flatMapOk(((release, asset, res)) => {
     let (promise, resolve) = Promise.pending()
     // take the "macos.zip" part from names like "gcl-macos.zip"
@@ -253,11 +258,14 @@ let downloadLanguageServer = context => {
 
     promise
   })
+  // unzip the downloaded file
   ->Promise.flatMapOk(outputPath => {
     let (promise, resolve) = Promise.pending()
-
-    let outputFileStream = Nd.Fs.createWriteStream(outputPath)
-    outputFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotUnzipFileWithExn(exn))))->ignore
+    // chmod 774 the executable
+    let outputFileStream = Nd.Fs.createWriteStreamWithOptions(outputPath, {"mode": 0o744})
+    outputFileStream
+    ->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotUnzipFileWithExn(exn))))
+    ->ignore
     outputFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
     // unzip the downloaded file
     let zipPath = outputPath ++ ".zip"
@@ -276,7 +284,8 @@ let downloadLanguageServer = context => {
               | None =>
                 switch result2 {
                 | None => resolve(Error(CannotUnzipFile))
-                | Some(readStream) => readStream->NodeJs.Stream.Readable.pipe(outputFileStream)->ignore
+                | Some(readStream) =>
+                  readStream->NodeJs.Stream.Readable.pipe(outputFileStream)->ignore
                 }
               }
             })
