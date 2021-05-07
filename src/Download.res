@@ -109,7 +109,7 @@ module Unzip = {
       external openReadStream: (
         t,
         Entry.t,
-        (option<Js.Exn.t>, option<NodeJs.Stream.Readable.t<NodeJs.Buffer.t>>) => unit,
+        (Js.null<Js.Exn.t>, option<NodeJs.Stream.Readable.t<NodeJs.Buffer.t>>) => unit,
       ) => unit = "openReadStream"
 
       @bs.send
@@ -117,22 +117,27 @@ module Unzip = {
     }
 
     @bs.module("yauzl")
-    external open_: (string, (option<Js.Exn.t>, option<ZipFile.t>) => unit) => unit = "open"
+    external open_: (string, (Js.null<Js.Exn.t>, option<ZipFile.t>) => unit) => unit = "open"
   }
 
   let run = (src, dest) => {
     let (promise, resolve) = Promise.pending()
+
     // chmod 774 the executable
     let fileStream = Nd.Fs.createWriteStreamWithOptions(dest, {"mode": 0o744})
     // listens on "Error" and "Close"
     fileStream
     ->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotUnzipFileWithExn(exn))))
     ->ignore
-    fileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(fileStream)))->ignore
+    fileStream
+    ->NodeJs.Fs.WriteStream.onClose(() => {
+      resolve(Ok(fileStream))
+    })
+    ->ignore
 
     // start unzipping the file
     Yauzl.open_(src, (err, result) => {
-      switch err {
+      switch Js.nullToOption(err) {
       | Some(err) => resolve(Error(Error.CannotUnzipFileWithExn(err)))
       | None =>
         switch result {
@@ -141,7 +146,7 @@ module Unzip = {
           // We only expect *one* file inside each zip
           zipFile->Yauzl.ZipFile.onEntry(entry => {
             zipFile->Yauzl.ZipFile.openReadStream(entry, (err2, result2) => {
-              switch err2 {
+              switch Js.nullToOption(err2) {
               | Some(err2) => resolve(Error(Error.CannotUnzipFileWithExn(err2)))
               | None =>
                 switch result2 {
@@ -194,7 +199,7 @@ module Release = {
     | Json.Decode.DecodeError(e) => Error(Error.ResponseDecodeError(e, json))
     }
 
-  // NOTE: no caching 
+  // NOTE: no caching
   let getReleasesFromGitHub = () => {
     // the url is fixed for now
     let httpOptions = {
@@ -304,7 +309,7 @@ let downloadLanguageServer = context => {
   ->Promise.flatMapOk(outputPath => {
     Unzip.run(outputPath ++ ".zip", outputPath)
   })
-  ->Promise.tapOk(Js.log)
+  ->Promise.tap(Js.log)
 }
 
 // // res => outputFileStream
