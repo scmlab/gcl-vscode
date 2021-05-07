@@ -44,26 +44,27 @@ module Nd = {
       "parse"
   }
 }
-// https.get(options[, callback])
 
-// module SupportedOS = {
-//   type t = MacOS | Linux | Windows
+module Yauzl = {
+  module Entry = {
+    type t
+  }
+  module ZipFile = {
+    type t
+    @bs.send
+    external openReadStream: (
+      t,
+      Entry.t,
+      (option<Js.Exn.t>, option<NodeJs.Stream.Readable.t<NodeJs.Buffer.t>>) => unit,
+    ) => unit = "openReadStream"
 
-//   let value =
-//     switch Node_process.process["platform"] {
-//     | "darwin" => Some(MacOS)
-//     | "linux" => Some(Linux)
-//     | "win32" => Some(Windows)
-//     | _ => None
-//     }
+    @bs.send
+    external onEntry: (t, @as("entry") _, Entry.t => unit) => unit = "on"
+  }
 
-//   let toAssetName = x =>
-//     switch x {
-//     | MacOS => "gcl-macos.zip"
-//     | Linux => "gcl-ubuntu.zip"
-//     | Windows => "gcl-windows.zip"
-//     }
-// }
+  @bs.module("yauzl")
+  external open_: (string, ((option<Js.Exn.t>, option<ZipFile.t>)) => unit) => unit = "open"
+}
 
 module Error = {
   type t =
@@ -74,7 +75,8 @@ module Error = {
     | NoMatchingVersion(string)
     | NotSupportedOS(string)
     | CannotWriteFile(Js.Exn.t)
-    | CannotUnzipFile(Js.Exn.t)
+    | CannotUnzipFileWithExn(Js.Exn.t)
+    | CannotUnzipFile
 }
 
 module HTTP = {
@@ -239,34 +241,55 @@ let downloadLanguageServer = context => {
     let zipPath = outputPath ++ ".zip"
     let zipFileStream = Nd.Fs.createWriteStream(zipPath)
     // download the zip file to the outputPath ++ ".zip"
-    zipFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotUnzipFile(exn))))->ignore
+    zipFileStream
+    ->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotWriteFile(exn))))
+    ->ignore
     zipFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
-    res->NodeJs.Http.IncomingMessage.pipe(zipFileStream)->ignore 
+    res->NodeJs.Http.IncomingMessage.pipe(zipFileStream)->ignore
 
     Js.log(release)
     Js.log(asset)
     Js.log(outputPath)
 
     promise
-  })->Promise.tapOk(outputPath => {
-    // unzip the downloaded file 
+  })
+  ->Promise.flatMapOk(outputPath => {
+    let (promise, resolve) = Promise.pending()
+    let outputFileStream = Nd.Fs.createWriteStream(outputPath)
+    // unzip the downloaded file
+    let zipPath = outputPath ++ ".zip"
+    Yauzl.open_(zipPath, ((err, result)) => {
+      switch err {
+      | Some(err) => resolve(Error(Error.CannotUnzipFileWithExn(err)))
+      | None =>
+        switch result {
+        | None => resolve(Error(CannotUnzipFile))
+        | Some(zipFile) =>
+          // We only expect *one* file inside each zip
+          zipFile->Yauzl.ZipFile.onEntry(entry => {
+            zipFile->Yauzl.ZipFile.openReadStream(entry, (err2, result2) => {
+              switch err {
+              | Some(err) => resolve(Error(Error.CannotUnzipFileWithExn(err)))
+              | None =>
+                switch result2 {
+                | None => resolve(Error(CannotUnzipFile))
+                | Some(readStream) => readStream->NodeJs.Stream.Readable.pipe(outputFileStream)->ignore
+                }
+              }
+            })
+          })
+        }
+      }
+    })
 
-    // let zipPath = outputPath ++ ".zip"
-    // let zipFileStream = Nd.Fs.createWriteStream(zipPath)
-
-    // zipFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotUnzipFile(exn))))->ignore
-    // zipFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
-    // res->NodeJs.Http.IncomingMessage.pipe(zipFileStream)->ignore 
-
-    ()
-    // Ok()
-  })->Promise.tapOk(Js.log)
-
+    outputFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotUnzipFileWithExn(exn))))->ignore
+    outputFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
+    promise
+  })
+  ->Promise.tapOk(Js.log)
 }
 
-
-
-    // // res => outputFileStream
-    // outputFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotWriteFile(exn))))->ignore
-    // outputFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
-    // res->NodeJs.Http.IncomingMessage.pipe(outputFileStream)->ignore 
+// // res => outputFileStream
+// outputFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotWriteFile(exn))))->ignore
+// outputFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
+// res->NodeJs.Http.IncomingMessage.pipe(outputFileStream)->ignore 
