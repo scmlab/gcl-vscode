@@ -63,7 +63,7 @@ module Yauzl = {
   }
 
   @bs.module("yauzl")
-  external open_: (string, ((option<Js.Exn.t>, option<ZipFile.t>)) => unit) => unit = "open"
+  external open_: (string, (option<Js.Exn.t>, option<ZipFile.t>) => unit) => unit = "open"
 }
 
 module Error = {
@@ -255,10 +255,13 @@ let downloadLanguageServer = context => {
   })
   ->Promise.flatMapOk(outputPath => {
     let (promise, resolve) = Promise.pending()
+
     let outputFileStream = Nd.Fs.createWriteStream(outputPath)
+    outputFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotUnzipFileWithExn(exn))))->ignore
+    outputFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
     // unzip the downloaded file
     let zipPath = outputPath ++ ".zip"
-    Yauzl.open_(zipPath, ((err, result)) => {
+    Yauzl.open_(zipPath, (err, result) => {
       switch err {
       | Some(err) => resolve(Error(Error.CannotUnzipFileWithExn(err)))
       | None =>
@@ -282,8 +285,6 @@ let downloadLanguageServer = context => {
       }
     })
 
-    outputFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotUnzipFileWithExn(exn))))->ignore
-    outputFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
     promise
   })
   ->Promise.tapOk(Js.log)
