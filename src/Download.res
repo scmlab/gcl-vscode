@@ -49,27 +49,6 @@ module Nd = {
   }
 }
 
-module Yauzl = {
-  module Entry = {
-    type t
-  }
-  module ZipFile = {
-    type t
-    @bs.send
-    external openReadStream: (
-      t,
-      Entry.t,
-      (option<Js.Exn.t>, option<NodeJs.Stream.Readable.t<NodeJs.Buffer.t>>) => unit,
-    ) => unit = "openReadStream"
-
-    @bs.send
-    external onEntry: (t, @as("entry") _, Entry.t => unit) => unit = "on"
-  }
-
-  @bs.module("yauzl")
-  external open_: (string, (option<Js.Exn.t>, option<ZipFile.t>) => unit) => unit = "open"
-}
-
 module Error = {
   type t =
     | NoRedirectLocation
@@ -118,30 +97,93 @@ module HTTP = {
   }
 }
 
+// module for unzipping downloaded files
+module Unzip = {
+  module Yauzl = {
+    module Entry = {
+      type t
+    }
+    module ZipFile = {
+      type t
+      @bs.send
+      external openReadStream: (
+        t,
+        Entry.t,
+        (option<Js.Exn.t>, option<NodeJs.Stream.Readable.t<NodeJs.Buffer.t>>) => unit,
+      ) => unit = "openReadStream"
+
+      @bs.send
+      external onEntry: (t, @as("entry") _, Entry.t => unit) => unit = "on"
+    }
+
+    @bs.module("yauzl")
+    external open_: (string, (option<Js.Exn.t>, option<ZipFile.t>) => unit) => unit = "open"
+  }
+
+  let run = (src, dest) => {
+    let (promise, resolve) = Promise.pending()
+    // chmod 774 the executable
+    let fileStream = Nd.Fs.createWriteStreamWithOptions(dest, {"mode": 0o744})
+    // listens on "Error" and "Close"
+    fileStream
+    ->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotUnzipFileWithExn(exn))))
+    ->ignore
+    fileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(fileStream)))->ignore
+
+    // start unzipping the file
+    Yauzl.open_(src, (err, result) => {
+      switch err {
+      | Some(err) => resolve(Error(Error.CannotUnzipFileWithExn(err)))
+      | None =>
+        switch result {
+        | None => resolve(Error(CannotUnzipFile))
+        | Some(zipFile) =>
+          // We only expect *one* file inside each zip
+          zipFile->Yauzl.ZipFile.onEntry(entry => {
+            zipFile->Yauzl.ZipFile.openReadStream(entry, (err2, result2) => {
+              switch err2 {
+              | Some(err2) => resolve(Error(Error.CannotUnzipFileWithExn(err2)))
+              | None =>
+                switch result2 {
+                | None => resolve(Error(CannotUnzipFile))
+                | Some(readStream) => readStream->NodeJs.Stream.Readable.pipe(fileStream)->ignore
+                }
+              }
+            })
+          })
+        }
+      }
+    })
+    promise
+  }
+}
+
 module Release = {
-  type asset = {
-    name: string,
-    url: string,
+  module Asset = {
+    type t = {
+      name: string,
+      url: string,
+    }
+
+    let decode = json => {
+      open Json.Decode
+      {
+        url: json |> field("browser_download_url", string),
+        name: json |> field("name", string),
+      }
+    }
   }
 
   type t = {
     tagName: string,
-    assets: array<asset>,
-  }
-
-  let decodeAsset = json => {
-    open Json.Decode
-    {
-      url: json |> field("browser_download_url", string),
-      name: json |> field("name", string),
-    }
+    assets: array<Asset.t>,
   }
 
   let decode = json => {
     open Json.Decode
     {
       tagName: json |> field("tag_name", string),
-      assets: json |> field("assets", array(decodeAsset)),
+      assets: json |> field("assets", array(Asset.decode)),
     }
   }
 
@@ -152,7 +194,7 @@ module Release = {
     | Json.Decode.DecodeError(e) => Error(Error.ResponseDecodeError(e, json))
     }
 
-  // please refrain from invoking this too many times
+  // NOTE: no caching 
   let getReleasesFromGitHub = () => {
     // the url is fixed for now
     let httpOptions = {
@@ -236,7 +278,7 @@ let downloadLanguageServer = context => {
     }
     HTTP.getWithRedirects(httpOptions)->Promise.mapOk(res => (release, asset, res))
   })
-  // download the corresponding asset 
+  // download the corresponding asset
   ->Promise.flatMapOk(((release, asset, res)) => {
     let (promise, resolve) = Promise.pending()
     // take the "macos.zip" part from names like "gcl-macos.zip"
@@ -260,41 +302,7 @@ let downloadLanguageServer = context => {
   })
   // unzip the downloaded file
   ->Promise.flatMapOk(outputPath => {
-    let (promise, resolve) = Promise.pending()
-    // chmod 774 the executable
-    let outputFileStream = Nd.Fs.createWriteStreamWithOptions(outputPath, {"mode": 0o744})
-    outputFileStream
-    ->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotUnzipFileWithExn(exn))))
-    ->ignore
-    outputFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
-    // unzip the downloaded file
-    let zipPath = outputPath ++ ".zip"
-    Yauzl.open_(zipPath, (err, result) => {
-      switch err {
-      | Some(err) => resolve(Error(Error.CannotUnzipFileWithExn(err)))
-      | None =>
-        switch result {
-        | None => resolve(Error(CannotUnzipFile))
-        | Some(zipFile) =>
-          // We only expect *one* file inside each zip
-          zipFile->Yauzl.ZipFile.onEntry(entry => {
-            zipFile->Yauzl.ZipFile.openReadStream(entry, (err2, result2) => {
-              switch err2 {
-              | Some(err2) => resolve(Error(Error.CannotUnzipFileWithExn(err2)))
-              | None =>
-                switch result2 {
-                | None => resolve(Error(CannotUnzipFile))
-                | Some(readStream) =>
-                  readStream->NodeJs.Stream.Readable.pipe(outputFileStream)->ignore
-                }
-              }
-            })
-          })
-        }
-      }
-    })
-
-    promise
+    Unzip.run(outputPath ++ ".zip", outputPath)
   })
   ->Promise.tapOk(Js.log)
 }
