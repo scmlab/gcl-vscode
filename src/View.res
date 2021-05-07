@@ -39,7 +39,7 @@ module Panel = {
       webview,
       VSCode.Uri.joinPath(
         extensionUri,
-        ["dist", "codicon.css"],
+        ["dist", "codicon/codicon.css"],
         // ["node_modules", "vscode-codicons", "dist", "codicon.css"],
       ),
     )->VSCode.Uri.toString
@@ -48,7 +48,7 @@ module Panel = {
       webview,
       VSCode.Uri.joinPath(
         extensionUri,
-        ["dist", "codicon.ttf"],
+        ["dist", "codicon/codicon.ttf"],
         // ["node_modules", "vscode-codicons", "dist", "codicon.ttf"],
       ),
     )->VSCode.Uri.toString

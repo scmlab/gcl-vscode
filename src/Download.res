@@ -268,8 +268,8 @@ let downloadLanguageServer = context => {
           // We only expect *one* file inside each zip
           zipFile->Yauzl.ZipFile.onEntry(entry => {
             zipFile->Yauzl.ZipFile.openReadStream(entry, (err2, result2) => {
-              switch err {
-              | Some(err) => resolve(Error(Error.CannotUnzipFileWithExn(err)))
+              switch err2 {
+              | Some(err2) => resolve(Error(Error.CannotUnzipFileWithExn(err2)))
               | None =>
                 switch result2 {
                 | None => resolve(Error(CannotUnzipFile))
