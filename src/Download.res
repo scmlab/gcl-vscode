@@ -123,7 +123,7 @@ module Unzip = {
   let run = (src, dest) => {
     let (promise, resolve) = Promise.pending()
 
-    // chmod 774 the executable
+    // chmod 744 the executable
     let fileStream = Nd.Fs.createWriteStreamWithOptions(dest, {"mode": 0o744})
     // listens on "Error" and "Close"
     fileStream
@@ -219,24 +219,9 @@ module Release = {
       }
     )
   }
-
-  // // NOTE: no caching for the moment
-  // let getReleaseMetadata = context => {
-  //   // let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
-  //   // let cachePath = Node_path.join2(globalStoragePath, "latestRelease.cache.json")
-  //   // read from the cache and see if it is too old
-  //   // Nd.Fs.readFile(cachePath)->Promise.map(result)
-  //   getReleaseMetadataFromGitHub()
-  // }
 }
 
-let downloadLanguageServer = context => {
-  // create a directory for context.globalStoragePath if it doesn't exist
-  let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
-  if !Node_fs.existsSync(globalStoragePath) {
-    Nd.Fs.mkdirSync(globalStoragePath)
-  }
-
+let getMatchingReleaseAndAsset = () => {
   let getMatchingRelease = (releases: array<Release.t>) => {
     open Belt
     let matched = releases->Array.keep(release => release.tagName == Constant.version)
@@ -272,19 +257,27 @@ let downloadLanguageServer = context => {
   Release.getReleasesFromGitHub()
   ->Promise.flatMapOk(getMatchingRelease)
   ->Promise.flatMapOk(getMatchingAsset)
-  ->Promise.flatMapOk(((release, asset)) => {
-    let url = Nd.Url.parse(asset.url)
-    let httpOptions = {
-      "host": url["host"],
-      "path": url["path"],
-      "headers": {
-        "User-Agent": "gcl-vscode",
-      },
-    }
-    HTTP.getWithRedirects(httpOptions)->Promise.mapOk(res => (release, asset, res))
-  })
+}
+
+let downloadLanguageServer = (context, (release: Release.t, asset: Release.Asset.t)) => {
+  // create a directory for context.globalStoragePath if it doesn't exist
+  let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
+  if !Node_fs.existsSync(globalStoragePath) {
+    Nd.Fs.mkdirSync(globalStoragePath)
+  }
+
+  let url = Nd.Url.parse(asset.url)
+  let httpOptions = {
+    "host": url["host"],
+    "path": url["path"],
+    "headers": {
+      "User-Agent": "gcl-vscode",
+    },
+  }
+
   // download the corresponding asset
-  ->Promise.flatMapOk(((release, asset, res)) => {
+  HTTP.getWithRedirects(httpOptions)
+  ->Promise.flatMapOk(res => {
     let (promise, resolve) = Promise.pending()
     // take the "macos.zip" part from names like "gcl-macos.zip"
     let osName = Js.String2.slice(asset.name, ~from=4, ~to_=-4)
@@ -299,18 +292,24 @@ let downloadLanguageServer = context => {
     zipFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
     res->NodeJs.Http.IncomingMessage.pipe(zipFileStream)->ignore
 
-    Js.log(release)
-    Js.log(asset)
-    Js.log(outputPath)
-
     promise
   })
   // unzip the downloaded file
   ->Promise.flatMapOk(outputPath => {
     Unzip.run(outputPath ++ ".zip", outputPath)
   })
-  ->Promise.tap(Js.log)
 }
+
+// let checkDownloadedReleases = context => {
+//   let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
+//   Js.log(globalStoragePath)
+//   NodeJs.Fs.readdirSync(globalStoragePath)
+// }
+
+// let downloadLanguageServerCached = context => {
+//   // NodeJs.Fs.existsSync
+//   ()
+// }
 
 // // res => outputFileStream
 // outputFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotWriteFile(exn))))->ignore
