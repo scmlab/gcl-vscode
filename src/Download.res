@@ -221,7 +221,7 @@ module Release = {
   }
 }
 
-let getMatchingReleaseAndAsset = () => {
+let getCurrentReleaseAndAsset = () => {
   let getMatchingRelease = (releases: array<Release.t>) => {
     open Belt
     let matched = releases->Array.keep(release => release.tagName == Constant.version)
@@ -259,12 +259,16 @@ let getMatchingReleaseAndAsset = () => {
   ->Promise.flatMapOk(getMatchingAsset)
 }
 
-let downloadLanguageServer = (context, (release: Release.t, asset: Release.Asset.t)) => {
-  // create a directory for context.globalStoragePath if it doesn't exist
+let toOutputPath = (context, (release: Release.t, asset: Release.Asset.t)) => {
   let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
-  if !Node_fs.existsSync(globalStoragePath) {
-    Nd.Fs.mkdirSync(globalStoragePath)
-  }
+  // take the "macos" part from names like "gcl-macos.zip"
+  let osName = Js.String2.slice(asset.name, ~from=4, ~to_=-4)
+  // the final path to store the language server
+  Node_path.join2(globalStoragePath, "gcl-" ++ release.tagName ++ "-" ++ osName)
+}
+
+let downloadLanguageServer = (context, (release: Release.t, asset: Release.Asset.t)) => {
+  let outputPath = toOutputPath(context, (release, asset))
 
   let url = Nd.Url.parse(asset.url)
   let httpOptions = {
@@ -279,10 +283,6 @@ let downloadLanguageServer = (context, (release: Release.t, asset: Release.Asset
   HTTP.getWithRedirects(httpOptions)
   ->Promise.flatMapOk(res => {
     let (promise, resolve) = Promise.pending()
-    // take the "macos.zip" part from names like "gcl-macos.zip"
-    let osName = Js.String2.slice(asset.name, ~from=4, ~to_=-4)
-    // the final path to store the language server
-    let outputPath = Node_path.join2(globalStoragePath, "gcl-" ++ release.tagName ++ "-" ++ osName)
     let zipPath = outputPath ++ ".zip"
     let zipFileStream = Nd.Fs.createWriteStream(zipPath)
     // download the zip file to the outputPath ++ ".zip"
@@ -306,8 +306,80 @@ let downloadLanguageServer = (context, (release: Release.t, asset: Release.Asset
 //   NodeJs.Fs.readdirSync(globalStoragePath)
 // }
 
-// let downloadLanguageServerCached = context => {
-//   // NodeJs.Fs.existsSync
+
+module State = {
+  type t =
+    | NotFound
+    | Downloaded(string)
+    | Downloading(Promise.t<string>)
+
+  // let state: ref<status> = ref(NotFound)
+
+  let make = context => {
+    // let (promise, resolve) = Promise.pending()
+    // create a directory for `context.globalStoragePath` if it doesn't exist
+    let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
+    if !Node.Fs.existsSync(globalStoragePath) {
+      Nd.Fs.mkdirSync(globalStoragePath)
+    }
+
+    // devise the expected file name of the language server and see if the OS is supported
+    let getExpectedFileName = {
+      switch Node_process.process["platform"] {
+      | "darwin" => Ok("gcl-" ++ Constant.version ++ "-macos.zip")
+      | "linux" => Ok("gcl-" ++ Constant.version ++ "-ubuntu.zip")
+      | "win32" => Ok("gcl-" ++ Constant.version ++ "-windows.zip")
+      | others => Error(Error.NotSupportedOS(others))
+      }
+    }
+
+    getExpectedFileName->Belt.Result.map(expected => {
+      // find the current asset from `context.globalStoragePath`
+      let fileNames = NodeJs.Fs.readdirSync(globalStoragePath)
+
+      let downloaded = fileNames->Js.Array2.some(actual => expected == actual)
+
+      if downloaded {
+        Downloaded(expected)
+      } else {
+        NotFound
+      }
+    })
+  }
+}
+
+
+module Module = {
+  let state : ref<option<State.t>> = ref(None)
+
+  let get = (context): Promise.t<string> => {
+    switch state.contents {
+    | None => switch State.make(context) {
+      | Ok(value) => state := Some(value)
+      | pattern2 => expression
+      }
+        
+    | pattern2 => expression
+    }
+    
+    ()
+  }
+
+}
+
+include Module 
+
+
+        // // initiate download
+        // getCurrentReleaseAndAsset()
+        // ->Promise.flatMapOk(downloadLanguageServer(context))
+        // ->Promise.mapOk(_ => ())
+
+// let downloadLanguageServerCached = (context, outputPath) => {
+//   // let downloadPath = outputPath ++ ".zip.download"
+//   // if !Node_fs.existsSync(downloadPath) {
+//   //   Nd.Fs.mkdirSync(globalStoragePath)
+//   // }
 //   ()
 // }
 

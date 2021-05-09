@@ -137,9 +137,12 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
-  Download.getMatchingReleaseAndAsset()
-  ->Promise.flatMapOk(Download.downloadLanguageServer(context))
-  ->ignore
+  // Download.getCurrentReleaseAndAsset()
+  // ->Promise.flatMapOk(Download.downloadLanguageServer(context))
+  // ->ignore
+
+  Download.Downloader.make(context)->Js.log
+    // ->Promise.getOk(x => Js.log(Download.Downloader.toString(x)))
   // Download.checkDownloadedReleases(context)->Js.log
   // ->Promise.get(body => {
   //   Js.log(body)
