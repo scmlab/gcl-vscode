@@ -341,7 +341,24 @@ let downloadLanguageServer = (context, (release: Release.t, asset: Release.Asset
   ->Promise.flatMapOk(() =>
     Nd.Fs.unlink(destPath ++ ".zip")->Promise.mapError(e => Error.CannotDeleteFile(e))
   )
-  ->Promise.mapOk(() => destPath)
+  // cleanup on error
+  ->Promise.flatMap(result =>
+    switch result {
+    | Error(error) =>
+      let remove = path => {
+        if Node.Fs.existsSync(path) {
+          Nd.Fs.unlink(path)->Promise.map(_ => ())
+        } else {
+          Promise.resolved()
+        }
+      }
+      Promise.allArray([
+        remove(destPath ++ ".zip.download"),
+        remove(destPath ++ ".zip"),
+      ])->Promise.map(_ => Error(error))
+    | Ok() => Promise.resolved(Ok(destPath))
+    }
+  )
 }
 
 module State = {
