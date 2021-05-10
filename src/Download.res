@@ -4,12 +4,38 @@ module Nd = {
     external mkdirSync: string => unit = "mkdirSync"
 
     @bs.module("fs")
-    external readFile_raw: (string, (option<Js.Exn.t>, NodeJs.Buffer.t) => unit) => unit =
+    external unlink_raw: (string, Js.null<Js.Exn.t> => unit) => unit = "unlink"
+    let unlink = path => {
+      let (promise, resolve) = Promise.pending()
+      unlink_raw(path, error => {
+        switch Js.nullToOption(error) {
+        | None => resolve(Ok())
+        | Some(error) => resolve(Error(error))
+        }
+      })
+      promise
+    }
+
+    @bs.module("fs")
+    external rename_raw: (string, string, Js.null<Js.Exn.t> => unit) => unit = "rename"
+    let rename = (old, new) => {
+      let (promise, resolve) = Promise.pending()
+      rename_raw(old, new, error => {
+        switch Js.nullToOption(error) {
+        | None => resolve(Ok())
+        | Some(error) => resolve(Error(error))
+        }
+      })
+      promise
+    }
+
+    @bs.module("fs")
+    external readFile_raw: (string, (Js.null<Js.Exn.t>, NodeJs.Buffer.t) => unit) => unit =
       "readFile"
     let readFile = path => {
       let (promise, resolve) = Promise.pending()
       readFile_raw(path, (error, buffer) => {
-        switch error {
+        switch Js.nullToOption(error) {
         | None => resolve(Ok(buffer))
         | Some(error) => resolve(Error(error))
         }
@@ -51,12 +77,18 @@ module Nd = {
 
 module Error = {
   type t =
-    | NoRedirectLocation
+    // parsing
     | ResponseParseError(string)
     | ResponseDecodeError(string, Js.Json.t)
+    // network
+    | NoRedirectLocation
     | ServerResponseError(Js.Exn.t)
+    //
     | NoMatchingVersion(string)
     | NotSupportedOS(string)
+    // file system
+    | CannotDeleteFile(Js.Exn.t)
+    | CannotRenameFile(Js.Exn.t)
     | CannotWriteFile(Js.Exn.t)
     | CannotUnzipFileWithExn(Js.Exn.t)
     | CannotUnzipFile
@@ -132,7 +164,7 @@ module Unzip = {
     ->ignore
     fileStream
     ->NodeJs.Fs.WriteStream.onClose(() => {
-      resolve(Ok(dest))
+      resolve(Ok())
     })
     ->ignore
 
@@ -260,7 +292,7 @@ let getCurrentReleaseAndAsset = () => {
   ->Promise.flatMapOk(getMatchingAsset)
 }
 
-let toOutputPath = (context, (release: Release.t, asset: Release.Asset.t)) => {
+let toDestPath = (context, (release: Release.t, asset: Release.Asset.t)) => {
   let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
   // take the "macos" part from names like "gcl-macos.zip"
   let osName = Js.String2.slice(asset.name, ~from=4, ~to_=-4)
@@ -268,10 +300,8 @@ let toOutputPath = (context, (release: Release.t, asset: Release.Asset.t)) => {
   Node_path.join2(globalStoragePath, "gcl-" ++ release.tagName ++ "-" ++ osName)
 }
 
-let downloadLanguageServer = (context, (release: Release.t, asset: Release.Asset.t)) => {
-  let outputPath = toOutputPath(context, (release, asset))
-
-  let url = Nd.Url.parse(asset.url)
+let download = (srcUrl, destPath) => {
+  let url = Nd.Url.parse(srcUrl)
   let httpOptions = {
     "host": url["host"],
     "path": url["path"],
@@ -280,32 +310,39 @@ let downloadLanguageServer = (context, (release: Release.t, asset: Release.Asset
     },
   }
 
-  // download the corresponding asset
-  HTTP.getWithRedirects(httpOptions)
-  ->Promise.flatMapOk(res => {
+  HTTP.getWithRedirects(httpOptions)->Promise.flatMapOk(res => {
     let (promise, resolve) = Promise.pending()
-    let zipPath = outputPath ++ ".zip"
-    let zipFileStream = Nd.Fs.createWriteStream(zipPath)
-    // download the zip file to the outputPath ++ ".zip"
-    zipFileStream
+    let fileStream = Nd.Fs.createWriteStream(destPath)
+    fileStream
     ->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotWriteFile(exn))))
     ->ignore
-    zipFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
-    res->NodeJs.Http.IncomingMessage.pipe(zipFileStream)->ignore
-
+    fileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok()))->ignore
+    res->NodeJs.Http.IncomingMessage.pipe(fileStream)->ignore
     promise
-  })
-  // unzip the downloaded file
-  ->Promise.flatMapOk(outputPath => {
-    Unzip.run(outputPath ++ ".zip", outputPath)
   })
 }
 
-// let checkDownloadedReleases = context => {
-//   let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
-//   Js.log(globalStoragePath)
-//   NodeJs.Fs.readdirSync(globalStoragePath)
-// }
+let downloadLanguageServer = (context, (release: Release.t, asset: Release.Asset.t)) => {
+  let destPath = toDestPath(context, (release, asset))
+  // suffix with ".download" whilst downloading
+  download(asset.url, destPath ++ ".zip.download")
+  // remove the ".download" suffix after download
+  ->Promise.flatMapOk(() =>
+    Nd.Fs.rename(
+      destPath ++ ".zip.download",
+      destPath ++ ".zip",
+    )->Promise.mapError(e => Error.CannotRenameFile(e))
+  )
+  // unzip the downloaded file
+  ->Promise.flatMapOk(() => {
+    Unzip.run(destPath ++ ".zip", destPath)
+  })
+  // remove the zip file
+  ->Promise.flatMapOk(() =>
+    Nd.Fs.unlink(destPath ++ ".zip")->Promise.mapError(e => Error.CannotDeleteFile(e))
+  )
+  ->Promise.mapOk(() => destPath)
+}
 
 module State = {
   type t =
