@@ -121,6 +121,7 @@ module Unzip = {
   }
 
   let run = (src, dest) => {
+    Js.log("[ download ][ unzip ] " ++ src ++ " => " ++ dest)
     let (promise, resolve) = Promise.pending()
 
     // chmod 744 the executable
@@ -131,7 +132,7 @@ module Unzip = {
     ->ignore
     fileStream
     ->NodeJs.Fs.WriteStream.onClose(() => {
-      resolve(Ok(fileStream))
+      resolve(Ok(dest))
     })
     ->ignore
 
@@ -306,16 +307,12 @@ let downloadLanguageServer = (context, (release: Release.t, asset: Release.Asset
 //   NodeJs.Fs.readdirSync(globalStoragePath)
 // }
 
-
 module State = {
   type t =
-    | NotFound
     | Downloaded(string)
-    | Downloading(Promise.t<string>)
+    | Downloading(Promise.t<result<string, Error.t>>)
 
-  // let state: ref<status> = ref(NotFound)
-
-  let make = context => {
+  let checkExistingDownload = context => {
     // let (promise, resolve) = Promise.pending()
     // create a directory for `context.globalStoragePath` if it doesn't exist
     let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
@@ -326,9 +323,9 @@ module State = {
     // devise the expected file name of the language server and see if the OS is supported
     let getExpectedFileName = {
       switch Node_process.process["platform"] {
-      | "darwin" => Ok("gcl-" ++ Constant.version ++ "-macos.zip")
-      | "linux" => Ok("gcl-" ++ Constant.version ++ "-ubuntu.zip")
-      | "win32" => Ok("gcl-" ++ Constant.version ++ "-windows.zip")
+      | "darwin" => Ok("gcl-" ++ Constant.version ++ "-macos")
+      | "linux" => Ok("gcl-" ++ Constant.version ++ "-ubuntu")
+      | "win32" => Ok("gcl-" ++ Constant.version ++ "-windows")
       | others => Error(Error.NotSupportedOS(others))
       }
     }
@@ -336,44 +333,56 @@ module State = {
     getExpectedFileName->Belt.Result.map(expected => {
       // find the current asset from `context.globalStoragePath`
       let fileNames = NodeJs.Fs.readdirSync(globalStoragePath)
-
       let downloaded = fileNames->Js.Array2.some(actual => expected == actual)
 
       if downloaded {
-        Downloaded(expected)
+        let path = NodeJs.Path.join2(globalStoragePath, expected)
+        Some(path)
       } else {
-        NotFound
+        None
       }
     })
   }
 }
 
-
 module Module = {
-  let state : ref<option<State.t>> = ref(None)
+  let state: ref<option<State.t>> = ref(None)
 
-  let get = (context): Promise.t<string> => {
+  let get = (context): Promise.t<result<string, Error.t>> => {
     switch state.contents {
-    | None => switch State.make(context) {
-      | Ok(value) => state := Some(value)
-      | pattern2 => expression
+    | None =>
+      // not initialized yet
+      switch State.checkExistingDownload(context) {
+      | Ok(None) =>
+        Js.log("[ download ][ init ] No existing download, fetch a new one")
+        let (promise, resolve) = Promise.pending()
+        state := Some(Downloading(promise))
+        getCurrentReleaseAndAsset()
+        ->Promise.flatMapOk(downloadLanguageServer(context))
+        ->Promise.tap(resolve)
+      | Ok(Some(path)) =>
+        Js.log("[ download ][ init ] Got existing download")
+        state := Some(Downloaded(path))
+        Promise.resolved(Ok(path))
+      | Error(error) => Promise.resolved(Error(error))
       }
-        
-    | pattern2 => expression
+    | Some(Downloaded(path)) =>
+      Js.log("[ download ] Got existing download")
+      Promise.resolved(Ok(path))
+    // returns a promise that will be resolved once the download's been completed
+    | Some(Downloading(promise)) =>
+      Js.log("[ download ] Already downloading")
+      promise
     }
-    
-    ()
   }
-
 }
 
-include Module 
+include Module
 
-
-        // // initiate download
-        // getCurrentReleaseAndAsset()
-        // ->Promise.flatMapOk(downloadLanguageServer(context))
-        // ->Promise.mapOk(_ => ())
+// // initiate download
+// getCurrentReleaseAndAsset()
+// ->Promise.flatMapOk(downloadLanguageServer(context))
+// ->Promise.mapOk(_ => ())
 
 // let downloadLanguageServerCached = (context, outputPath) => {
 //   // let downloadPath = outputPath ++ ".zip.download"

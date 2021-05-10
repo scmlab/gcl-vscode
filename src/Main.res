@@ -141,8 +141,8 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // ->Promise.flatMapOk(Download.downloadLanguageServer(context))
   // ->ignore
 
-  Download.Downloader.make(context)->Js.log
-    // ->Promise.getOk(x => Js.log(Download.Downloader.toString(x)))
+  Download.get(context)->Promise.get(Js.log)
+  // ->Promise.getOk(x => Js.log(Download.Downloader.toString(x)))
   // Download.checkDownloadedReleases(context)->Js.log
   // ->Promise.get(body => {
   //   Js.log(body)
