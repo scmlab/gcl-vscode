@@ -234,20 +234,22 @@ module Block = {
 
   open Json.Decode
   open Util.Decode
-  let decode: decoder<t> = json => json |> sum(x =>
-    switch x {
-    | "Unlabeled" => Js.log(json)
-      Contents(
-        tuple3(Inlines.decode, optional(string), optional(GCL.Range.decode)) |> map(((
-          a,
-          b,
-          c,
-        )) => Unlabeled(a, b, c)),
-      )
-    | "Header" => Contents(string |> map(s => Header(s)))
-    | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
-    }
-  )
+  let decode: decoder<t> = json =>
+    json |> sum(x =>
+      switch x {
+      | "Unlabeled" =>
+        Js.log(json)
+        Contents(
+          tuple3(Inlines.decode, optional(string), optional(GCL.Range.decode)) |> map(((
+            a,
+            b,
+            c,
+          )) => Unlabeled(a, b, c)),
+        )
+      | "Header" => Contents(string |> map(s => Header(s)))
+      | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
+      }
+    )
 
   open! Json.Encode
   let encode: encoder<t> = x =>
@@ -268,9 +270,13 @@ module Block = {
   let make = (~value: t) =>
     switch value {
     | Unlabeled(body, header, range) =>
-      Js.log(range)
+      // highlight the header with range on hover
+      let headerClassNames = switch range {
+      | None => "gcl-list-item-header"
+      | Some(_) => "gcl-list-item-header has-range"
+      }
       <li className="gcl-list-item native-key-bindings" tabIndex={-1}>
-        <span className="gcl-list-item-header">
+        <span className=headerClassNames>
           {header->Option.mapWithDefault("", x => x)->string}
           <span className="gcl-list-item-range">
             {range->Option.mapWithDefault("", GCL.Range.toString)->string}
