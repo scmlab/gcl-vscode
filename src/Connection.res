@@ -218,24 +218,24 @@ module Module: Module = {
     }
   }
 
-  // module Prebuilt = {
-  //   // see if the prebuilt is available
-  //   let probe = context => {
-  //     Download.get(context)
-  //     ->Promise.mapOk(path => ViaStdIO(name, Js.String.trim(path)))
-  //     ->Promise.mapError(e => Error.CannotConnectViaStdIO(e))
-  //   }
-  // }
+  module Prebuilt = {
+    // see if the prebuilt is available
+    let probe = context => {
+      Download.get(context)
+      ->Promise.mapOk(path => ViaPrebuilt(Config.version, Js.String.trim(path)))
+      ->Promise.mapError(e => Error.CannotDownloadPrebuilt(e))
+    }
+  }
 
   // see if the server is available
   // priorities: TCP => Prebuilt => StdIO
-  let probe = tryTCP => {
+  let probe = (tryTCP, globalStoragePath) => {
     let port = 3000
     let name = "gcl"
     if tryTCP {
-      TCP.probe(port)->Promise.flatMapError(_ => StdIO.probe(name))
+      TCP.probe(port)->Promise.flatMapError(_ => Prebuilt.probe(globalStoragePath))->Promise.flatMapError(_ => StdIO.probe(name))
     } else {
-      StdIO.probe(name)
+      Prebuilt.probe(globalStoragePath)->Promise.flatMapError(_ => StdIO.probe(name))
     }
   }
 
@@ -271,7 +271,7 @@ module Module: Module = {
     | Disconnected =>
       let (promise, resolve) = Promise.pending()
       singleton := Connecting([], promise)
-      probe(tryTCP)
+      probe(tryTCP, globalStoragePath)
       ->Promise.flatMapOk(Client.make)
       ->Promise.map(result =>
         switch result {
