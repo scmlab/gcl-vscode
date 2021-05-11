@@ -4,6 +4,7 @@ module Error = {
     // probe
     | CannotConnectViaStdIO(AgdaModeVscode.Process.PathSearch.Error.t)
     | CannotConnectViaTCP(Js.Exn.t)
+    | CannotDownloadPrebuilt(Download.Error.t)
     // connection
     | ConnectionError(Js.Exn.t)
     | CannotSendRequest(Js.Exn.t)
@@ -32,6 +33,10 @@ The system responded with the following message $(msg)`,
     | CannotConnectViaTCP(_) => (
         "Cannot connect with the server",
         "Please enter \":main -d\" in ghci",
+      )
+    | CannotDownloadPrebuilt(e) => (
+        "Cannot download prebuilt language server",
+        Download.Error.toString(e),
       )
     | ConnectionError(exn) =>
       let isECONNREFUSED =

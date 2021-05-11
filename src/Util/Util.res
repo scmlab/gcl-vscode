@@ -89,8 +89,8 @@ module React = {
     }
 }
 
-// module JsError = {
-//   let toString = (_e: Js.Exn.t) => {
-//     %raw
-//     "_e.toString()";
-//   };
+module Exn = {
+  let toString = (_e: Js.Exn.t) => {
+    %raw("_e.toString()");
+  }
+}
