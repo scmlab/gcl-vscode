@@ -5,7 +5,7 @@ open Common
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (connection, setConnection) = React.useState(_ => None)
-  let ((id, pos, props, warnings), setDisplay) = React.useState(() => (0, [], [], []))
+  let ((id, pos, props, warnings, warnings'), setDisplay) = React.useState(() => (0, [], [], [], []))
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
   let onClickLink = React.useRef(Chan.make())
   let onSubstitute = React.useRef(Chan.make())
@@ -22,8 +22,8 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     let destructor = onRequest->Chan.on(req =>
       switch req {
       | ViewType.Request.UpdateConnection(method) => setConnection(_ => method)
-      | Display(id, pos, props, warnings) => setDisplay(_ => (id, pos, props, warnings))
-      | UpdatePOs(pos) => setDisplay(((id, _pos, props, warnings)) => (id, pos, props, warnings))
+      | Display(id, pos, props, warnings, warnings') => setDisplay(_ => (id, pos, props, warnings, warnings'))
+      | UpdatePOs(pos) => setDisplay(((id, _pos, props, warnings, warnings')) => (id, pos, props, warnings, warnings'))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
       }
@@ -69,6 +69,13 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   } else {
     <div className="gcl-global-props">
       <h2> {string("Warnings")} </h2>
+      <ul className="gcl-global-property-list">
+        {warnings'
+        ->Array.mapWithIndex((i, value) =>{
+          <Element value key={string_of_int(i)} />
+        })
+        ->array}
+      </ul>
       <ul className="gcl-global-property-list">
         {warnings
         ->Array.mapWithIndex((i, warning) =>

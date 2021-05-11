@@ -19,8 +19,8 @@ let displayErrorMessage = msg =>
 let displayErrorMessages = msgs =>
   View.send(ViewType.Request.SetErrorMessages(msgs))->Promise.map(_ => ())
 
-let display = (id, pos, props, warnings) =>
-  View.send(ViewType.Request.Display(id, pos, props, warnings))->Promise.map(_ => ())
+let display = (id, pos, props, warnings, warnings') =>
+  View.send(ViewType.Request.Display(id, pos, props, warnings, warnings'))->Promise.map(_ => ())
 
 let updatePOs = pos => View.send(ViewType.Request.UpdatePOs(pos))->Promise.map(_ => ())
 
@@ -436,10 +436,11 @@ let handleResponseKind = (state: t, kind) =>
     ->Util.Promise.oneByOne
     ->Promise.flatMap(_ => displayErrorMessages(errorMessages))
 
-  | OK(i, pos, specs, props, warnings) =>
+  | OK(i, pos, specs, props, warnings, warnings') =>
+    Js.log(warnings')
     Spec.redecorate(state, specs)
     // clear error messages before display othe stuff
-    displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props, warnings))
+    displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props, warnings, warnings'))
   | Inspect(pos) => updatePOs(pos)
   | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | UpdateSpecPositions(locations) =>

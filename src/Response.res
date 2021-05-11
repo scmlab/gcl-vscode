@@ -291,6 +291,7 @@ module Kind = {
         array<Specification.t>,
         array<GlobalProp.t>,
         array<Warning.t>,
+        array<Element.t>,
       )
     | Inspect(array<ProofObligation.t>)
     | Resolve(int)
@@ -305,18 +306,20 @@ module Kind = {
     | "ResError" => Contents(array(Error.decode) |> map(errors => Error(errors)))
     | "ResOK" =>
       Contents(
-        tuple5(
+        tuple6(
           int,
           array(ProofObligation.decode),
           array(Specification.decode),
           array(GlobalProp.decode),
           array(Warning.decode),
-        ) |> map(((id, obs, specs, globalProps, warnings)) => OK(
+          array(Element.decode),
+        ) |> map(((id, obs, specs, globalProps, warnings, warnings')) => OK(
           id,
           obs,
           specs,
           globalProps,
           warnings,
+          warnings'
         )),
       )
     | "ResInspect" => Contents(array(ProofObligation.decode) |> map(pos => Inspect(pos)))

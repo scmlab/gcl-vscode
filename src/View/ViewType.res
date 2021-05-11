@@ -6,9 +6,16 @@ module ConnectionMethod = {
     switch x {
     | "ViaTCP" => Contents(int |> map(port => Connection.Client.ViaTCP(port)))
     | "ViaStdIO" =>
-      Contents(pair(string, string) |> map(((name, path)) => Connection.Client.ViaStdIO(name, path)))
+      Contents(
+        pair(string, string) |> map(((name, path)) => Connection.Client.ViaStdIO(name, path)),
+      )
     | "ViaPrebuilt" =>
-      Contents(pair(string, string) |> map(((version, path)) => Connection.Client.ViaPrebuilt(version, path)))
+      Contents(
+        pair(string, string) |> map(((version, path)) => Connection.Client.ViaPrebuilt(
+          version,
+          path,
+        )),
+      )
     | tag => raise(DecodeError("[ConnectionMethod] Unknown constructor: " ++ tag))
     }
   )
@@ -20,7 +27,11 @@ module ConnectionMethod = {
     | ViaStdIO(name, path) =>
       object_(list{("tag", string("ViaStdIO")), ("contents", (name, path) |> pair(string, string))})
     | ViaTCP(port) => object_(list{("tag", string("ViaTCP")), ("contents", port |> int)})
-    | ViaPrebuilt(version, path) => object_(list{("tag", string("ViaPrebuilt")), ("contents", (version, path) |> pair(string, string))})
+    | ViaPrebuilt(version, path) =>
+      object_(list{
+        ("tag", string("ViaPrebuilt")),
+        ("contents", (version, path) |> pair(string, string)),
+      })
     }
 }
 module Request = {
@@ -33,6 +44,7 @@ module Request = {
         array<Response.ProofObligation.t>,
         array<Response.GlobalProp.t>,
         array<Response.Warning.t>,
+        array<Element.t>,
       )
     | UpdatePOs(array<Response.ProofObligation.t>)
 
@@ -48,15 +60,15 @@ module Request = {
       Contents(array(pair(string, string)) |> map(msgs => SetErrorMessages(msgs)))
     | "Display" =>
       Contents(
-        tuple4(
+        tuple5(
           int,
           array(Response.ProofObligation.decode),
           array(Response.GlobalProp.decode),
           array(Response.Warning.decode),
-        ) |> map(((id, xs, ys, ws)) => Display(id, xs, ys, ws)),
+          array(Element.decode),
+        ) |> map(((id, xs, ys, ws, ws')) => Display(id, xs, ys, ws, ws')),
       )
-    | "UpdatePOs" =>
-      Contents(array(Response.ProofObligation.decode) |> map(pos => UpdatePOs(pos)))
+    | "UpdatePOs" => Contents(array(Response.ProofObligation.decode) |> map(pos => UpdatePOs(pos)))
     | tag => raise(DecodeError("[Request] Unknown constructor: " ++ tag))
     }
   )
@@ -79,16 +91,17 @@ module Request = {
         ("tag", string("SetErrorMessages")),
         ("contents", msgs |> array(pair(string, string))),
       })
-    | Display(id, pos, globalProps, ws) =>
+    | Display(id, pos, globalProps, ws, ws') =>
       object_(list{
         ("tag", string("Display")),
         (
           "contents",
-          (id, pos, globalProps, ws) |> tuple4(
+          (id, pos, globalProps, ws, ws') |> Util.Encode.tuple5(
             int,
             array(Response.ProofObligation.encode),
             array(Response.GlobalProp.encode),
             array(Response.Warning.encode),
+            array(Element.encode),
           ),
         ),
       })
@@ -146,11 +159,11 @@ module Response = {
     | "Link" => Contents(json => Link(LinkEvent.decode(json)))
     | "Substitute" =>
       Contents(
-        tuple3(int, GCL.Syntax.Expr.decode, array(pair(GCL.Syntax.Name.decode, GCL.Syntax.Expr.decode))) |> map(((
-          i,
-          expr,
-          subst,
-        )) => Substitute(i, expr, subst)),
+        tuple3(
+          int,
+          GCL.Syntax.Expr.decode,
+          array(pair(GCL.Syntax.Name.decode, GCL.Syntax.Expr.decode)),
+        ) |> map(((i, expr, subst)) => Substitute(i, expr, subst)),
       )
     | tag => raise(DecodeError("[Response.t] Unknown constructor: " ++ tag))
     }
@@ -169,7 +182,11 @@ module Response = {
         ("tag", string("Substitute")),
         (
           "contents",
-          (i, expr, subst) |> tuple3(int, GCL.Syntax.Expr.encode, array(pair(GCL.Syntax.Name.encode, GCL.Syntax.Expr.encode))),
+          (i, expr, subst) |> tuple3(
+            int,
+            GCL.Syntax.Expr.encode,
+            array(pair(GCL.Syntax.Name.encode, GCL.Syntax.Expr.encode)),
+          ),
         ),
       })
     }

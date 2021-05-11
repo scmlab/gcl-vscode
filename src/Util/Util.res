@@ -3,9 +3,12 @@ module Promise = {
   let rec oneByOne' = xs =>
     switch xs {
     | list{} => Promise.resolved(list{})
-    | list{x, ...xs} => x->Promise.flatMap(x' => oneByOne'(xs)->Promise.map(xs' => {
+    | list{x, ...xs} =>
+      x->Promise.flatMap(x' =>
+        oneByOne'(xs)->Promise.map(xs' => {
           list{x', ...xs'}
-        }))
+        })
+      )
     }
 
   let oneByOne = xs => xs->List.fromArray->oneByOne'->Promise.map(List.toArray)
@@ -18,14 +21,16 @@ module Decode = {
     | Contents(decoder<'a>)
     | TagOnly(decoder<'a>)
 
-  let sum = decoder => field("tag", string) |> andThen(tag =>
+  let sum = decoder =>
+    field("tag", string) |> andThen(tag =>
       switch decoder(tag) {
       | Contents(d) => field("contents", d)
       | TagOnly(d) => d
       }
     )
 
-  let maybe: decoder<'a> => decoder<option<'a>> = decoder => sum(x =>
+  let maybe: decoder<'a> => decoder<option<'a>> = decoder =>
+    sum(x =>
       switch x {
       | "Just" => Contents(json => Some(decoder(json)))
       | _ => TagOnly(_ => None)
@@ -52,12 +57,36 @@ module Decode = {
     } else {
       raise(DecodeError("Expected array, got " ++ Js.Json.stringify(json)))
     }
+
+  let tuple6 = (decodeA, decodeB, decodeC, decodeD, decodeE, decodeF, json) =>
+    if Js.Array.isArray(json) {
+      let source: array<Js.Json.t> = Obj.magic((json: Js.Json.t))
+      let length = Js.Array.length(source)
+      if length == 6 {
+        try (
+          decodeA(Js.Array.unsafe_get(source, 0)),
+          decodeB(Js.Array.unsafe_get(source, 1)),
+          decodeC(Js.Array.unsafe_get(source, 2)),
+          decodeD(Js.Array.unsafe_get(source, 3)),
+          decodeE(Js.Array.unsafe_get(source, 4)),
+          decodeF(Js.Array.unsafe_get(source, 5)),
+        ) catch {
+        | DecodeError(msg) => raise(DecodeError(msg ++ "\n\tin tuple6"))
+        }
+      } else {
+        raise(DecodeError(j`Expected array of length 6, got array of length $length`))
+      }
+    } else {
+      raise(DecodeError("Expected array, got " ++ Js.Json.stringify(json)))
+    }
 }
 
 module Encode = {
   open Json.Encode
   let tuple5 = (encodeA, encodeB, encodeC, encodeD, encodeE, (a, b, c, d, e)) =>
     jsonArray([encodeA(a), encodeB(b), encodeC(c), encodeD(d), encodeE(e)])
+  let tuple6 = (encodeA, encodeB, encodeC, encodeD, encodeE, encodeF, (a, b, c, d, e, f)) =>
+    jsonArray([encodeA(a), encodeB(b), encodeC(c), encodeD(d), encodeE(e), encodeF(f)])
 }
 
 module React = {
@@ -91,6 +120,6 @@ module React = {
 
 module Exn = {
   let toString = (_e: Js.Exn.t) => {
-    %raw("_e.toString()");
+    %raw("_e.toString()")
   }
 }
