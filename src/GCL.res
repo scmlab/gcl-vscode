@@ -1,4 +1,5 @@
 open Belt
+
 module Pos = {
   type t = Pos(string, int, int)
 
@@ -15,7 +16,7 @@ module Pos = {
 
   let toString = x =>
     switch x {
-    | Pos(_, line, column) => string_of_int(line) ++ (":" ++ string_of_int(column))
+    | Pos(_, line, column) => string_of_int(line) ++ ":" ++ string_of_int(column)
     }
 
   let translate = (by, x) =>
@@ -48,9 +49,21 @@ module Range = {
     | Range(x, Pos(_, line, column)) =>
       VSCode.Range.make(Pos.toPoint(x), VSCode.Position.make(line - 1, column))
     }
-  let toString = x =>
-    switch x {
-    | Range(x, y) => Pos.toString(x) ++ ("-" ++ Pos.toString(y))
+
+  let toString = range =>
+    switch range {
+    | Range(Pos(_, line1, col1), Pos(_, line2, col2)) =>
+      if line1 == line2 {
+        string_of_int(line1) ++ ":" ++ string_of_int(col1) ++ "-" ++ string_of_int(col2)
+      } else {
+        string_of_int(line1) ++
+        ":" ++
+        string_of_int(col1) ++
+        "-" ++
+        string_of_int(line2) ++
+        ":" ++
+        string_of_int(col2)
+      }
     }
 
   let translate = (by, x) =>
@@ -66,20 +79,13 @@ module Range = {
     | Range(x, y) => Range(Pos.translateBy(startY, startX, x), Pos.translateBy(endY, endX, y))
     }
 
-  open Util.Decode
   open Json.Decode
-  let decode: decoder<t> = sum(x =>
-    switch x {
-    | "Range" => Contents(pair(Pos.decode, Pos.decode) |> map(((x, y)) => Range(x, y)))
-    | tag => raise(DecodeError("[Range] Unknown constructor: " ++ tag))
-    }
-  )
+  let decode: decoder<t> = pair(Pos.decode, Pos.decode) |> map(((x, y)) => Range(x, y))
 
   open! Json.Encode
   let encode: encoder<t> = x =>
     switch x {
-    | Range(x, y) =>
-      object_(list{("tag", string("Range")), ("contents", (x, y) |> pair(Pos.encode, Pos.encode))})
+    | Range(x, y) => (x, y) |> pair(Pos.encode, Pos.encode)
     }
 }
 
@@ -347,7 +353,8 @@ module Syntax = {
         | "Const" => Contents(pair(Name.decode, Loc.decode) |> map(((x, r)) => Const(x, r)))
         | "Op" => Contents(pair(Op.decode, Loc.decode) |> map(((x, r)) => Op(x, r)))
         | "App" => Contents(tuple3(decode, decode, Loc.decode) |> map(((x, y, r)) => App(x, y, r)))
-        | "Lam" => Contents(tuple3(Name.decode, decode, Loc.decode) |> map(((x, y, r)) => Lam(x, y, r)))
+        | "Lam" =>
+          Contents(tuple3(Name.decode, decode, Loc.decode) |> map(((x, y, r)) => Lam(x, y, r)))
         | "Hole" => Contents(Loc.decode |> map(r => Hole(r)))
         | "Quant" =>
           Contents(
@@ -359,7 +366,8 @@ module Syntax = {
               l,
             )) => Quant(op, vars, p, q, l)),
           )
-        | "Subst" => Contents(pair(decode, array(pair(Name.decode, decode))) |> map(((x, y)) => Subst(x, y)))
+        | "Subst" =>
+          Contents(pair(decode, array(pair(Name.decode, decode))) |> map(((x, y)) => Subst(x, y)))
         | _ => Contents(json => Unknown(json))
         }
       )

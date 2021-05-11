@@ -148,12 +148,17 @@
     }
 
     .gcl-list-item-header {
-        // display: none;
         width: 100%;
 
         font-variant: small-caps;
         font-weight : bolder;
         color       : @text-color-subtle;
+    }
+
+    .gcl-list-item-range {
+        float       : right;
+        font-weight : normal;
+        font-variant: normal;
     }
 
     // .gcl-list-item-body {}
@@ -291,6 +296,9 @@
     }
 
     // Elements 
+    @indent           : 2ch;
+    @warning          : var(--vscode-editorWarning-foreground);
+    @foreground-subtle: var(--vscode-input-placeholderForeground);
 
     // the parent container of a Horizontal grouping 
     .element-horz {

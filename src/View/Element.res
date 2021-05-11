@@ -234,9 +234,9 @@ module Block = {
 
   open Json.Decode
   open Util.Decode
-  let decode: decoder<t> = sum(x =>
+  let decode: decoder<t> = json => json |> sum(x =>
     switch x {
-    | "Unlabeled" =>
+    | "Unlabeled" => Js.log(json)
       Contents(
         tuple3(Inlines.decode, optional(string), optional(GCL.Range.decode)) |> map(((
           a,
@@ -268,9 +268,13 @@ module Block = {
   let make = (~value: t) =>
     switch value {
     | Unlabeled(body, header, range) =>
+      Js.log(range)
       <li className="gcl-list-item native-key-bindings" tabIndex={-1}>
         <span className="gcl-list-item-header">
           {header->Option.mapWithDefault("", x => x)->string}
+          <span className="gcl-list-item-range">
+            {range->Option.mapWithDefault("", GCL.Range.toString)->string}
+          </span>
         </span>
         <span className="gcl-list-item-body"> <Inlines value=body /> </span>
       </li>
