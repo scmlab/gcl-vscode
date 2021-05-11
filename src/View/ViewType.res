@@ -111,13 +111,8 @@ module Request = {
 }
 
 module Response = {
-  type linkEvent =
-    | MouseOver(GCL.loc)
-    | MouseOut(GCL.loc)
-    | MouseClick(GCL.loc)
-
   type t =
-    | Link(linkEvent)
+    | Link(Link.Event.t)
     | ExportProofObligations
     | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
     | Initialized
@@ -126,34 +121,12 @@ module Response = {
   open Json.Decode
   open Util.Decode
 
-  module LinkEvent = {
-    let decode: decoder<linkEvent> = sum(x =>
-      switch x {
-      | "MouseOver" => Contents(loc => MouseOver(GCL.Loc.decode(loc)))
-      | "MouseOut" => Contents(loc => MouseOut(GCL.Loc.decode(loc)))
-      | "MouseClick" => Contents(loc => MouseClick(GCL.Loc.decode(loc)))
-      | tag => raise(DecodeError("[Response.linkEvent] Unknown constructor: " ++ tag))
-      }
-    )
-
-    open! Json.Encode
-    let encode: encoder<linkEvent> = x =>
-      switch x {
-      | MouseOver(loc) =>
-        object_(list{("tag", string("MouseOver")), ("contents", GCL.Loc.encode(loc))})
-      | MouseOut(loc) =>
-        object_(list{("tag", string("MouseOut")), ("contents", GCL.Loc.encode(loc))})
-      | MouseClick(loc) =>
-        object_(list{("tag", string("MouseClick")), ("contents", GCL.Loc.encode(loc))})
-      }
-  }
-
   let decode: decoder<t> = sum(x =>
     switch x {
     | "Initialized" => TagOnly(_ => Initialized)
     | "ExportProofObligations" => TagOnly(_ => ExportProofObligations)
     | "Destroyed" => TagOnly(_ => Destroyed)
-    | "Link" => Contents(json => Link(LinkEvent.decode(json)))
+    | "Link" => Contents(json => Link(Link.Event.decode(json)))
     | "Substitute" =>
       Contents(
         tuple3(
@@ -173,7 +146,7 @@ module Response = {
     | Initialized => object_(list{("tag", string("Initialized"))})
     | Destroyed => object_(list{("tag", string("Destroyed"))})
     | ExportProofObligations => object_(list{("tag", string("ExportProofObligations"))})
-    | Link(e) => object_(list{("tag", string("Link")), ("contents", LinkEvent.encode(e))})
+    | Link(e) => object_(list{("tag", string("Link")), ("contents", Link.Event.encode(e))})
     | Substitute(i, expr, subst) =>
       object_(list{
         ("tag", string("Substitute")),

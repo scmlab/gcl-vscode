@@ -269,19 +269,22 @@ module Block = {
   @react.component
   let make = (~value: t) =>
     switch value {
-    | Unlabeled(body, header, range) =>
-      // highlight the header with range on hover
-      let headerClassNames = switch range {
-      | None => "gcl-list-item-header"
-      | Some(_) => "gcl-list-item-header has-range"
-      }
+    | Unlabeled(body, header, None) =>
       <li className="gcl-list-item native-key-bindings" tabIndex={-1}>
-        <span className=headerClassNames>
+        <span className="gcl-list-item-header">
           {header->Option.mapWithDefault("", x => x)->string}
-          <span className="gcl-list-item-range">
-            {range->Option.mapWithDefault("", GCL.Range.toString)->string}
-          </span>
         </span>
+        <span className="gcl-list-item-body"> <Inlines value=body /> </span>
+      </li>
+    | Unlabeled(body, header, Some(range)) =>
+      // highlight the header with range on hover
+      <li className="gcl-list-item native-key-bindings" tabIndex={-1}>
+        <Link.WithRange range>
+          <span className="gcl-list-item-header has-range">
+            {header->Option.mapWithDefault("", x => x)->string}
+            <span className="gcl-list-item-range"> {string(GCL.Range.toString(range))} </span>
+          </span>
+        </Link.WithRange>
         <span className="gcl-list-item-body"> <Inlines value=body /> </span>
       </li>
     | Header(header) => <h2> {string(header)} </h2>

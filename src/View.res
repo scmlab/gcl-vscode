@@ -228,6 +228,8 @@ module View: View = {
   }
 
   let reveal = view => VSCode.WebviewPanel.reveal(view.panel, ())
+
+  // let focus = document => Window.showTextDocument(document, ~column=ViewColumn.Beside, ())->ignore
 }
 
 module type Controller = {

@@ -52,13 +52,13 @@ let handleViewResponse = response => {
     | Link(MouseClick(loc)) =>
       let key = GCL.Loc.toString(loc)
       State.Decoration.remove(key)
-    // let key = GCL.Loc.toString(loc)
-    // let range = GCL.Loc.toRange(loc)
-    // // focus on the editor
-    // focus(state)
-    // // select the source on the editor
-    // let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
-    // state.editor->VSCode.TextEditor.setSelection(selection)
+      // focus on the editor
+      State.focus(state)
+      // select the source on the editor
+      let range = GCL.Loc.toRange(loc)
+      let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
+      state.editor->VSCode.TextEditor.setSelection(selection)
+      
     // Decoration.remove(key)
     | Substitute(id, expr, subst) =>
       // remove all decorations
