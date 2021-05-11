@@ -84,7 +84,7 @@ module Inlines = {
     type rec t =
       | Icon(string, ClassNames.t)
       | Text(string, ClassNames.t)
-      // | Link(GCL.Range.t, array<t>, ClassNames.t)
+      | Link(GCL.Range.t, array<t>, ClassNames.t)
       | Horz(array<array<t>>)
       | Vert(array<array<t>>)
       | Parn(array<t>)
@@ -98,14 +98,14 @@ module Inlines = {
         switch x {
         | "Icon" => Contents(pair(string, ClassNames.decode) |> map(((s, cs)) => Icon(s, cs)))
         | "Text" => Contents(pair(string, ClassNames.decode) |> map(((s, cs)) => Text(s, cs)))
-        // | "Link" =>
-        //   Contents(
-        //     tuple3(GCL.Range.decode, array(decode()), ClassNames.decode) |> map(((
-        //       r,
-        //       xs,
-        //       cs,
-        //     )) => Link(r, xs, cs)),
-        //   )
+        | "Link" =>
+          Contents(
+            tuple3(GCL.Range.decode, array(decode()), ClassNames.decode) |> map(((
+              r,
+              xs,
+              cs,
+            )) => Link(r, xs, cs)),
+          )
         | "Horz" => Contents(array(array(decode())) |> map(xs => Horz(xs)))
         | "Vert" => Contents(array(array(decode())) |> map(xs => Vert(xs)))
         | "Parn" => Contents(array(decode()) |> map(x => Parn(x)))
@@ -129,15 +129,11 @@ module Inlines = {
           ("tag", string("Text")),
           ("contents", (s, cs) |> pair(string, ClassNames.encode)),
         })
-
-      // | Link(r, s, cs) =>
-      //   object_(list{
-      //     ("tag", string("Link")),
-      //     (
-      //       "contents",
-      //       (r, s, cs) |> tuple3(GCL.Range.encode, array(encode), ClassNames.encode),
-      //     ),
-      //   })
+      | Link(r, s, cs) =>
+        object_(list{
+          ("tag", string("Link")),
+          ("contents", (r, s, cs) |> tuple3(GCL.Range.encode, array(encode), ClassNames.encode)),
+        })
       | Horz(xs) => object_(list{("tag", string("Horz")), ("contents", xs |> array(array(encode)))})
       | Vert(xs) => object_(list{("tag", string("Vert")), ("contents", xs |> array(array(encode)))})
       | Parn(x) => object_(list{("tag", string("Parn")), ("contents", x |> array(encode))})
@@ -179,12 +175,9 @@ module Inlines = {
           let className = Array.concat(["codicon", "codicon-" ++ kind], className)
           let className = {String.concat(" ", List.fromArray(className))}
           <div className key={string_of_int(i)} />
-        // | Link(range, children, className) =>
-        //   let child = make(~value=Element(children))
-        //   <Component__Link
-        //     key={string_of_int(i)} className jump=true hover=false target=Common.Link.SrcLoc(range)>
-        //     {child}
-        //   </Component__Link>
+        | Link(range, children, _className) =>
+          let child = make(~value=Element(children))
+          <Link.WithRange range> {child} </Link.WithRange>
         | Horz(elements) =>
           let children =
             elements->Array.map(element =>
