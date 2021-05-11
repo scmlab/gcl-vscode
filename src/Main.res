@@ -187,15 +187,15 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   Events.onActivateExtension(() => {
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
     // 1. activate the view
-    View.activate(extensionPath, devMode)->Promise.get(_viewActivationResult => {
-      // 2. connect with GCL
-      Connection.make(devMode, globalStoragePath)->Promise.get(result =>
-        switch result {
-        | Ok(method) => State.updateConnection(Some(method))->ignore
-        | Error(error) => Js.log(error)
-        }
-      )
-    })
+    View.activate(extensionPath)
+
+    // 2. connect with GCL
+    Connection.make(devMode, globalStoragePath)->Promise.get(result =>
+      switch result {
+      | Ok(method) => State.updateConnection(Some(method))->ignore
+      | Error(error) => Js.log(error)
+      }
+    )
   })->subscribe
 
   // on extension deactivation

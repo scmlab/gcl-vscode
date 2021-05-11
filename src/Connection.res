@@ -59,7 +59,7 @@ The system responded with the following message $(msg)`,
     }
 }
 
-type method = ViaStdIO(string, string) | ViaTCP(int)
+type method = ViaStdIO(string, string) | ViaTCP(int) | ViaPrebuilt(string, string)
 
 module type Module = {
   // lifecycle
@@ -149,6 +149,7 @@ module Module: Module = {
       let serverOptions = switch method {
       | ViaTCP(port) => LSP.ServerOptions.makeWithStreamInfo(port)
       | ViaStdIO(name, _path) => LSP.ServerOptions.makeWithCommand(name)
+      | ViaPrebuilt(_version, path) => LSP.ServerOptions.makeWithCommand(path)
       }
 
       let clientOptions = {
