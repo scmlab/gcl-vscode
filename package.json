@@ -3,7 +3,7 @@
 	"displayName": "Guacamole",
 	"description": "Guacamole on vscode",
 	"publisher": "scmlab",
-	"version": "0.0.7",
+	"version": "0.0.18",
 	"repository": "https://github.com/scmlab/gcl-vscode",
 	"engines": {
 		"vscode": "^1.41.0"
@@ -14,7 +14,7 @@
 	"activationEvents": [
 		"onLanguage:guacamole"
 	],
-	"main": "./lib/js/src/Main.bs.js",
+	"main": "./dist/app.bundle.js",
 	"scripts": {
 		"clean": "npx bsb -clean-world",
 		"build": "npx bsb -make-world && npx lessc style/style.less dist/style.css && webpack --mode development",
@@ -80,6 +80,11 @@
 				"category": "Guacamole"
 			},
 			{
+				"command": "guacamole.restart",
+				"title": "Restart",
+				"category": "Guacamole"
+			},
+			{
 				"command": "guacamole.debug",
 				"title": "Debug",
 				"category": "Guacamole"
@@ -90,6 +95,12 @@
 				"command": "guacamole.refine",
 				"key": "ctrl+c ctrl+r",
 				"mac": "ctrl+c ctrl+r",
+				"when": "resourceExtname == .gcl"
+			},
+			{
+				"command": "guacamole.restart",
+				"key": "ctrl+x ctrl+r",
+				"mac": "ctrl+x ctrl+r",
 				"when": "resourceExtname == .gcl"
 			}
 		],

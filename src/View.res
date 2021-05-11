@@ -111,22 +111,22 @@ module Panel = {
 
     panel
   }
-
-  // let moveToRight = () => {
-  //   open VSCode.Commands
-  //   executeCommand(
-  //     #setEditorLayout({
-  //       orientation: 0,
-  //       groups: {
-  //         open Layout
-  //         [sized({groups: [simple], size: 0.5}), sized({groups: [simple], size: 0.5})]
-  //       },
-  //     }),
-  //   )->ignore
-  // }
 }
 
-module View = {
+module type View = {
+  type t
+  // lifecycle
+  let make: string => Promise.t<t>
+  let destroy: t => unit
+  // messaging
+  let send: (t, ViewType.Request.t) => Promise.t<bool>
+  let on: (t, ViewType.Response.t => unit) => VSCode.Disposable.t
+  let reveal: t => unit
+  // event
+  let onceDestroyed: t => Promise.t<unit>
+}
+
+module View: View = {
   // Request.t are queued before the view is initialized
   type status =
     | Initialized
@@ -149,6 +149,8 @@ module View = {
       let stringified = Js.Json.stringify(ViewType.Request.encode(req))
       view.panel->VSCode.WebviewPanel.webview->VSCode.Webview.postMessage(stringified)
     }
+
+  let on = (view, callback) => view.onResponse->Chan.on(callback)->VSCode.Disposable.make
 
   let make = extensionPath => {
     let view = {
@@ -179,6 +181,10 @@ module View = {
     )
     ->Js.Array.push(view.subscriptions)
     ->ignore
+
+    // only gets resolved once initizlied
+    let (promise, resolve) = Promise.pending()
+
     // on initizlied
     view.onResponse
     ->Chan.on(x =>
@@ -187,6 +193,7 @@ module View = {
         switch view.status {
         | Uninitialized(queued) =>
           view.status = Initialized
+          resolve(view)
           queued->Belt.Array.forEach(req => send(view, req)->ignore)
         | Initialized => ()
         }
@@ -197,7 +204,8 @@ module View = {
     ->Js.Array.push(view.subscriptions)
     ->ignore
 
-    view
+    // return a promise that resolves the View once it's initialized
+    promise
   }
 
   let destroy = view => {
@@ -206,7 +214,7 @@ module View = {
   }
 
   // resolves the returned promise once the view has been destroyed
-  let onceDestroyed = (view: t): Promise.t<unit> => {
+  let onceDestroyed = view => {
     let (promise, resolve) = Promise.pending()
 
     let disposable = view.onResponse->Chan.on(response =>
@@ -218,56 +226,82 @@ module View = {
 
     promise->Promise.tap(disposable)
   }
+
+  let reveal = view => VSCode.WebviewPanel.reveal(view.panel, ())
 }
 
 module type Controller = {
-  type t
-  // methods
-  let activate: string => unit
+  // life cycle
+  let activate: string => Promise.t<unit>
   let deactivate: unit => unit
+  // properties
   let isActivated: unit => bool
+  // messaging
   let send: ViewType.Request.t => Promise.t<bool>
-  let on: (ViewType.Response.t => unit) => VSCode.Disposable.t
+  let on: (ViewType.Response.t => unit) => Promise.t<VSCode.Disposable.t>
   let focus: unit => unit
 }
+
 module Controller: Controller = {
-  type t = {mutable view: option<View.t>}
-  let handle = {
-    view: None,
-  }
+  // internal singleton
+  let singleton: ref<option<View.t>> = ref(None)
+
+  // save listners registered before view activation here
+  let listenersBeforeAcvitation: array<(
+    ViewType.Response.t => unit,
+    VSCode.Disposable.t => unit,
+  )> = []
 
   let send = req =>
-    switch handle.view {
+    switch singleton.contents {
     | None => Promise.resolved(false)
     | Some(view) => View.send(view, req)
     }
+
   let on = callback =>
-    switch handle.view {
-    | None => VSCode.Disposable.make(() => ())
-    | Some(view) => view.onResponse->Chan.on(callback)->VSCode.Disposable.make
+    switch singleton.contents {
+    | None =>
+      let (promise, resolve) = Promise.pending()
+      Js.Array.push((callback, resolve), listenersBeforeAcvitation)->ignore
+      promise
+    | Some(view) => View.on(view, callback)->Promise.resolved
     }
 
-  let activate = extensionPath => {
-    let view = View.make(extensionPath)
-    handle.view = Some(view)
+  let activate = extensionPath =>
+    switch singleton.contents {
+    | None =>
+      View.make(extensionPath)->Promise.map(view => {
+        singleton.contents = Some(view)
+        // register stored listeners 
+        listenersBeforeAcvitation->Js.Array2.forEach(((callback, resolve)) => {
+          let dispose = View.on(view, callback)
+          resolve(dispose)
+        })
+        // free the handle when the view has been forcibly destructed
+        View.onceDestroyed(view)->Promise.get(() => {
+          singleton.contents = None
+        })
+        Js.log("[ view ] activated")
+      })
+    | Some(_) => Promise.resolved()
+    }
 
-    // free the handle when the view has been forcibly destructed
-    View.onceDestroyed(view)->Promise.get(() => {
-      handle.view = None
-    })
-  }
+  let deactivate = () =>
+    switch singleton.contents {
+    | Some(view) =>
+      View.destroy(view)
+      singleton.contents = None
+      Js.log("[ view ] deactivated")
+    | None => ()
+    }
 
-  let deactivate = () => {
-    handle.view->Option.forEach(View.destroy)
-    handle.view = None
-  }
-
-  let isActivated = () => handle.view->Option.isSome
+  let isActivated = () => singleton.contents->Option.isSome
 
   let focus = () =>
-    handle.view->Option.forEach(view => {
-      VSCode.WebviewPanel.reveal(view.panel, ())
-    })
+    switch singleton.contents {
+    | Some(view) => View.reveal(view)
+    | None => ()
+    }
 }
 
 include Controller

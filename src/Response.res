@@ -105,8 +105,11 @@ module Specification = {
     id: int,
     pre: Syntax.Pred.t,
     post: Syntax.Pred.t,
-    loc: loc,
+    mutable loc: loc,
+    mutable decorations: array<VSCode.TextEditorDecorationType.t>,
   }
+
+  let destroy = self => self.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
 
   open Json.Decode
   let decode: decoder<t> = json => {
@@ -114,6 +117,7 @@ module Specification = {
     pre: json |> field("specPreCond", Syntax.Pred.decode),
     post: json |> field("specPostCond", Syntax.Pred.decode),
     loc: json |> field("specLoc", Loc.decode),
+    decorations: [],
   }
 }
 
@@ -173,7 +177,7 @@ module Error = {
     type t =
       | NotInScope(string)
       | UnifyFailed(Type.t, Type.t)
-      | RecursiveType(int, Type.t)
+      | RecursiveType(string, Type.t)
       | NotFunction(Type.t)
 
     open Json.Decode
@@ -186,7 +190,7 @@ module Error = {
           tuple3(Type.decode, Type.decode, Loc.decode) |> map(((s, t, _)) => UnifyFailed(s, t)),
         )
       | "RecursiveType" =>
-        Contents(tuple3(int, Type.decode, Loc.decode) |> map(((s, t, _)) => RecursiveType(s, t)))
+        Contents(tuple3(string, Type.decode, Loc.decode) |> map(((s, t, _)) => RecursiveType(s, t)))
       | "NotFunction" => Contents(pair(Type.decode, Loc.decode) |> map(((t, _)) => NotFunction(t)))
       | tag => raise(DecodeError("Unknown constructor: " ++ tag))
       }
@@ -219,6 +223,7 @@ module Error = {
     | TypeError(TypeError.t)
     // from server
     | CannotReadFile(string)
+    | Others(string)
     // from client
     | CannotSendRequest(string)
 
@@ -234,6 +239,7 @@ module Error = {
     | "StructError" => Contents(json => StructError(json |> StructError.decode))
     | "TypeError" => Contents(json => TypeError(json |> TypeError.decode))
     | "CannotReadFile" => Contents(json => CannotReadFile(json |> string))
+    | "Others" => Contents(json => Others(json |> string))
     | tag => raise(DecodeError("Unknown constructor: " ++ tag))
     }
   )
@@ -269,17 +275,27 @@ module Warning = {
   open! Json.Encode
   let encode: encoder<t> = x =>
     switch x {
-    | MissingBound(loc) => object_(list{("tag", string("MissingBound")), ("contents", loc |> Loc.encode)})
-    | ExcessBound(loc) => object_(list{("tag", string("ExcessBound")), ("contents", loc |> Loc.encode)})
+    | MissingBound(loc) =>
+      object_(list{("tag", string("MissingBound")), ("contents", loc |> Loc.encode)})
+    | ExcessBound(loc) =>
+      object_(list{("tag", string("ExcessBound")), ("contents", loc |> Loc.encode)})
     }
 }
 
 module Kind = {
   type t =
     | Error(array<Error.t>)
-    | OK(int, array<ProofObligation.t>, array<Specification.t>, array<GlobalProp.t>, array<Warning.t>)
+    | OK(
+        int,
+        array<ProofObligation.t>,
+        array<Specification.t>,
+        array<GlobalProp.t>,
+        array<Warning.t>,
+      )
+    | Inspect(array<ProofObligation.t>)
     | Resolve(int)
     | Substitute(int, Syntax.Expr.t)
+    | UpdateSpecPositions(array<Loc.t>)
     | ConsoleLog(string)
 
   open Json.Decode
@@ -295,10 +311,18 @@ module Kind = {
           array(Specification.decode),
           array(GlobalProp.decode),
           array(Warning.decode),
-        ) |> map(((id, obs, specs, globalProps, warnings)) => OK(id, obs, specs, globalProps, warnings)),
+        ) |> map(((id, obs, specs, globalProps, warnings)) => OK(
+          id,
+          obs,
+          specs,
+          globalProps,
+          warnings,
+        )),
       )
+    | "ResInspect" => Contents(array(ProofObligation.decode) |> map(pos => Inspect(pos)))
     | "ResSubstitute" =>
       Contents(pair(int, Syntax.Expr.decode) |> map(((i, expr)) => Substitute(i, expr)))
+    | "ResUpdateSpecPositions" => Contents(array(Loc.decode) |> map(locs => UpdateSpecPositions(locs)))
     | "ResResolve" => Contents(int |> map(i => Resolve(i)))
     | "ResConsoleLog" => Contents(string |> map(i => ConsoleLog(i)))
     | tag => raise(DecodeError("Unknown constructor: " ++ tag))

@@ -4,11 +4,11 @@ module ConnectionMethod = {
 
   let decode: decoder<Connection.method> = sum(x =>
     switch x {
-    | "ViaTCP" => Contents(int |> map(port => Connection.ViaTCP(port)))
+    | "ViaTCP" => Contents(int |> map(port => Connection.Client.ViaTCP(port)))
     | "ViaStdIO" =>
-      Contents(pair(string, string) |> map(((name, path)) => Connection.ViaStdIO(name, path)))
+      Contents(pair(string, string) |> map(((name, path)) => Connection.Client.ViaStdIO(name, path)))
     | "ViaPrebuilt" =>
-      Contents(pair(string, string) |> map(((version, path)) => Connection.ViaPrebuilt(version, path)))
+      Contents(pair(string, string) |> map(((version, path)) => Connection.Client.ViaPrebuilt(version, path)))
     | tag => raise(DecodeError("[ConnectionMethod] Unknown constructor: " ++ tag))
     }
   )
@@ -28,7 +28,13 @@ module Request = {
     | UpdateConnection(option<Connection.method>)
     | Substitute(int, GCL.Syntax.Expr.t)
     | SetErrorMessages(array<(string, string)>)
-    | Display(int, array<Response.ProofObligation.t>, array<Response.GlobalProp.t>, array<Response.Warning.t>)
+    | Display(
+        int,
+        array<Response.ProofObligation.t>,
+        array<Response.GlobalProp.t>,
+        array<Response.Warning.t>,
+      )
+    | UpdatePOs(array<Response.ProofObligation.t>)
 
   open Json.Decode
   open Util.Decode
@@ -49,6 +55,8 @@ module Request = {
           array(Response.Warning.decode),
         ) |> map(((id, xs, ys, ws)) => Display(id, xs, ys, ws)),
       )
+    | "UpdatePOs" =>
+      Contents(array(Response.ProofObligation.decode) |> map(pos => UpdatePOs(pos)))
     | tag => raise(DecodeError("[Request] Unknown constructor: " ++ tag))
     }
   )
@@ -83,6 +91,11 @@ module Request = {
             array(Response.Warning.encode),
           ),
         ),
+      })
+    | UpdatePOs(pos) =>
+      object_(list{
+        ("tag", string("UpdatePOs")),
+        ("contents", pos |> array(Response.ProofObligation.encode)),
       })
     }
 }
@@ -133,7 +146,7 @@ module Response = {
     | "Link" => Contents(json => Link(LinkEvent.decode(json)))
     | "Substitute" =>
       Contents(
-        tuple3(int, GCL.Syntax.Expr.decode, GCL.Syntax.Expr.decodeSubst) |> map(((
+        tuple3(int, GCL.Syntax.Expr.decode, array(pair(GCL.Syntax.Name.decode, GCL.Syntax.Expr.decode))) |> map(((
           i,
           expr,
           subst,
@@ -156,7 +169,7 @@ module Response = {
         ("tag", string("Substitute")),
         (
           "contents",
-          (i, expr, subst) |> tuple3(int, GCL.Syntax.Expr.encode, GCL.Syntax.Expr.encodeSubst),
+          (i, expr, subst) |> tuple3(int, GCL.Syntax.Expr.encode, array(pair(GCL.Syntax.Name.encode, GCL.Syntax.Expr.encode))),
         ),
       })
     }

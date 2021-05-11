@@ -4,11 +4,9 @@ type t = {
   mutable editor: VSCode.TextEditor.t,
   mutable document: VSCode.TextDocument.t,
   mutable filePath: string,
+  globalStoragePath: string,
   // state
   mutable specifications: array<Response.Specification.t>,
-  mutable specificationDecorations: array<VSCode.TextEditorDecorationType.t>,
-  devMode: bool,
-  globalStoragePath: string,
   // garbage
   mutable subscriptions: array<VSCode.Disposable.t>,
 }
@@ -24,13 +22,15 @@ let displayErrorMessages = msgs =>
 let display = (id, pos, props, warnings) =>
   View.send(ViewType.Request.Display(id, pos, props, warnings))->Promise.map(_ => ())
 
+let updatePOs = pos => View.send(ViewType.Request.UpdatePOs(pos))->Promise.map(_ => ())
+
 let updateConnection = status => View.send(UpdateConnection(status))->Promise.map(_ => ())
 
 let focus = state =>
   VSCode.Window.showTextDocument(state.document, ~column=VSCode.ViewColumn.Beside, ())->ignore
 
 let sendLSPRequest = (state, kind) => {
-  Connection.sendRequest(state.devMode, state.globalStoragePath, Request.Req(state.filePath, kind))
+  Connection.sendRequest(state.globalStoragePath, Request.Req(state.filePath, kind))
 }
 
 module HandleError = {
@@ -215,29 +215,35 @@ module Spec = {
   }
 
   let resolve = (state, i) => {
-    let specs = state.specifications->Array.keep(spec => spec.id == i)
-    specs[0]->Option.forEach(spec => {
-      let range = GCL.Loc.toRange(spec.loc)
-      let start = VSCode.Range.start(range)
+    // find the corresponding Spec
 
+    let spec = (state.specifications->Array.keep(spec => spec.id == i))[0]
+    switch spec {
+    | None => Promise.resolved()
+    | Some(spec) =>
+      let range = GCL.Loc.toRange(spec.loc)
+      // get text inside the Spec
+      let start = VSCode.Range.start(range)
       let indentedPayload = {
         let payload = getPayload(state.document, spec)
         let indentationLevel = VSCode.Position.character(start)
         let indentation = Js.String.repeat(indentationLevel, " ")
         payload->Js.Array2.joinWith("\n" ++ indentation)
       }
-
-      // delete text
+      // delete the whole Spec
       Editor.Text.delete(state.document, range)
+      // restore the original text inside that Spec
       ->Promise.flatMap(result =>
         switch result {
         | false => Promise.resolved(false)
         | true => Editor.Text.insert(state.document, start, indentedPayload)
         }
       )
-      ->Promise.get(_ => ())
-    })
-    Promise.resolved()
+      // remove decorations
+      ->Promise.map(_ => {
+        spec.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
+      })
+    }
   }
 
   let insert = (state, lineNo, expr) => {
@@ -247,22 +253,27 @@ module Spec = {
     Editor.Text.insert(state.document, point, assertion)
   }
 
-  let decorate = state => {
-    // remove previous decorations
-    state.specificationDecorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
-    // generate new decorations
-    let decorations =
-      state.specifications
-      ->Array.map(spec => {
+  let redecorate = (state, specs) => {
+    // dispose old decorations
+    state.specifications->Array.forEach(spec =>
+      spec.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
+    )
+
+    // persist new spects
+    state.specifications = specs
+    // apply new decorations
+    state.specifications->Array.forEach(spec => {
+      // devise and apply new decorations
+      let decorations = {
         let range = GCL.Loc.toRange(spec.loc)
         let startPosition = VSCode.Range.start(range)
         let endPosition = VSCode.Range.end_(range)
-        // range of {!
+        // range of [!
         let startRange = VSCode.Range.make(
           startPosition,
           VSCode.Position.translate(startPosition, 0, 2),
         )
-        // range of !}
+        // range of !]
         let endRange = VSCode.Range.make(VSCode.Position.translate(endPosition, 0, -2), endPosition)
         // helper function for trimming long predicates
         let trim = s =>
@@ -281,7 +292,10 @@ module Spec = {
           let backgroundColor = VSCode.StringOr.others(
             VSCode.ThemeColor.make("editor.wordHighlightStrongBackground"),
           )
-          let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ())
+          let rangeBehavior = VSCode.DecorationRangeBehavior.toEnum(
+            VSCode.DecorationRangeBehavior.ClosedClosed,
+          )
+          let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ~rangeBehavior, ())
           let decoration = VSCode.Window.createTextEditorDecorationType(options)
           state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
           decoration
@@ -294,22 +308,34 @@ module Spec = {
             ~color,
             (),
           )
-          let options = VSCode.DecorationRenderOptions.t(~after, ())
+          let rangeBehavior = VSCode.DecorationRangeBehavior.toEnum(
+            VSCode.DecorationRangeBehavior.ClosedClosed,
+          )
+          let options = VSCode.DecorationRenderOptions.t(~after, ~rangeBehavior, ())
           let decoration = VSCode.Window.createTextEditorDecorationType(options)
           state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
           decoration
         }
-
         [
           overlayText(isQQ ? "" : preCondText, [startRange]),
           overlayText(postCondText, [endRange]),
           highlightBackground([startRange, endRange]),
         ]
-      })
-      ->Array.concatMany
+      }
 
-    // persist new decorations
-    state.specificationDecorations = decorations
+      // persist new decoraitons
+      spec.decorations = decorations
+    })
+  }
+
+  let updateLocations = (state, locations) => {
+    state.specifications->Array.forEachWithIndex((index, spec) => {
+      locations[index]->Option.forEach(loc => {
+        // Js.log(GCL.Loc.toString(spec.loc) ++ " ===>" ++ GCL.Loc.toString(loc))
+        spec.loc = loc
+      })
+    })
+    redecorate(state, state.specifications)
   }
 }
 
@@ -324,19 +350,11 @@ let handleResponseKind = (state: t, kind) =>
       | StructError(MissingAssertion) => [
           ("Missing Loop Invariant", "There should be a loop invariant before the DO construct"),
         ]
-      // | StructError(MissingBound) => [
-      //     (
-      //       "Missing Bound",
-      //       "There should be a Bound at the end of the assertion before the DO construct \" , bnd : ... }\"",
-      //     ),
-      //   ]
-      // | StructError(ExcessBound) => [
-      //     ("Excess Bound", "The bound annotation at this assertion is unnecessary"),
-      //   ]
       | StructError(MissingPostcondition) => [
           ("Missing Postcondition", "The last statement of the program should be an assertion"),
         ]
       | StructError(DigHole) => []
+      | Others(string) => [("Server Internal Error", string)]
       | CannotReadFile(string) => [("Server Internal Error", "Cannot read file\n" ++ string)]
       | CannotSendRequest(string) => [("Client Internal Error", "Cannot send request\n" ++ string)]
       | TypeError(NotInScope(name)) => [
@@ -361,7 +379,7 @@ let handleResponseKind = (state: t, kind) =>
           (
             "Recursive type variable",
             "Recursive type variable: " ++
-            string_of_int(var) ++
+            var ++
             "\nin type             : " ++
             GCL.Syntax.Type.toString(t),
           ),
@@ -384,9 +402,9 @@ let handleResponseKind = (state: t, kind) =>
         | None => Promise.resolved()
         | Some(site) =>
           let range = Response.Error.Site.toRange(site, state.specifications, GCL.Loc.toRange)
-          // replace the question mark "?" with a hole "{!  !}"
+          // replace the question mark "?" with a hole "[!  !]"
           let indent = Js.String.repeat(VSCode.Position.character(VSCode.Range.start(range)), " ")
-          let holeText = "{!\n" ++ indent ++ "\n" ++ indent ++ "!}"
+          let holeText = "[!\n" ++ indent ++ "\n" ++ indent ++ "!]"
           let holeRange = VSCode.Range.make(
             VSCode.Range.start(range),
             VSCode.Position.translate(VSCode.Range.start(range), 0, 1),
@@ -419,11 +437,14 @@ let handleResponseKind = (state: t, kind) =>
     ->Promise.flatMap(_ => displayErrorMessages(errorMessages))
 
   | OK(i, pos, specs, props, warnings) =>
-    state.specifications = specs
-    Spec.decorate(state)
+    Spec.redecorate(state, specs)
     // clear error messages before display othe stuff
     displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props, warnings))
+  | Inspect(pos) => updatePOs(pos)
   | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
+  | UpdateSpecPositions(locations) =>
+    Spec.updateLocations(state, locations)
+    Promise.resolved()
   | Resolve(i) =>
     state
     ->Spec.resolve(i)
@@ -474,18 +495,16 @@ module Decoration: Decoration = {
     })
 }
 
-let make = (devMode, globalStoragePath, editor) => {
+let make = (globalStoragePath, editor) => {
   let document = VSCode.TextEditor.document(editor)
   let filePath = VSCode.TextDocument.fileName(document)
   let state = {
     editor: editor,
     document: document,
     filePath: filePath,
+    globalStoragePath: globalStoragePath,
     // state
     specifications: [],
-    specificationDecorations: [],
-    devMode: devMode,
-    globalStoragePath: globalStoragePath,
     // garbage
     subscriptions: [],
   }
@@ -496,4 +515,6 @@ let make = (devMode, globalStoragePath, editor) => {
 let destroy = state => {
   state.subscriptions->Array.forEach(VSCode.Disposable.dispose)
   state.subscriptions = []
+  state.specifications->Array.forEach(Response.Specification.destroy)
+  state.specifications = []
 }

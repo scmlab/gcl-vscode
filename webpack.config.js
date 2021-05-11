@@ -28,7 +28,7 @@ module.exports = [
                     { from: 'asset/codicon', to: 'codicon' },
                 ],
             }),
-        ],
+        ]
     },
     {
         target: "node",

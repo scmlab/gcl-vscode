@@ -2,30 +2,13 @@
 open React
 
 @react.component
-let make = (~method: option<Connection.method>) => {
-  let method = switch method {
-  | Some(ViaTCP(_)) => <>
-      <div id="gcl-dev-panel-status" className="connected">
-        <i className="codicon codicon-circle-large-filled" />
-        <span> {string("connected (tcp)")} </span>
-      </div>
-    </>
-  | Some(ViaStdIO(_)) => <>
-      <div id="gcl-dev-panel-status" className="connected">
-        <i className="codicon codicon-circle-large-filled" />
-        <span> {string("connected (stdio)")} </span>
-      </div>
-    </>
-  | Some(ViaPrebuilt(version, _)) => <>
-      <div id="gcl-dev-panel-status" className="connected">
-        <i className="codicon codicon-circle-large-filled" />
-        <span> {string(version)} </span>
-      </div>
-    </>
+let make = (~method: option<Connection.method>) =>
+  switch method {
+  | Some(ViaTCP(_)) => <div id="gcl-connection-status"> {string("TCP")} </div>
+  | Some(ViaStdIO(_)) => <div id="gcl-connection-status"/>
+  | Some(ViaPrebuilt(version, _)) => <div id="gcl-connection-status"> {string(version)} </div>
   | None =>
-    <div id="gcl-dev-panel-status" className="disconnected">
+    <div id="gcl-connection-status" className="disconnected">
       <i className="codicon codicon-circle-large-filled" /> <span> {string("disconnected")} </span>
     </div>
   }
-  <div className="gcl-dev-panel"> <div id="gcl-dev-panel-header"> {string("dev mode")} </div> method </div>
-}

@@ -1,254 +1,89 @@
+module Client = Connection__Client
+module Error = Connection__Error
+
 open Belt
-module Error = {
-  type t =
-    // probe
-    | CannotConnectViaStdIO(AgdaModeVscode.Process.PathSearch.Error.t)
-    | CannotConnectViaTCP(Js.Exn.t)
-    | CannotDownloadPrebuilt(Download.Error.t)
-    // connection
-    | ConnectionError(Js.Exn.t)
-    | CannotSendRequest(Js.Exn.t)
-    // decoding
-    | CannotDecodeResponse(string, Js.Json.t)
-
-  let toString = error =>
-    switch error {
-    | CannotConnectViaStdIO(e) =>
-      let (_header, body) = switch e {
-      | ProcessHanging(name) => (
-          "Process not responding when looking for \"" ++ (name ++ "\""),
-          j`Please restart the process`,
-        )
-      | NotSupported(os) => (
-          "Auto search failed",
-          j`currently auto path searching is not supported on $(os)`,
-        )
-      | NotFound(name, msg) => (
-          "Auto search failed when looking for \"" ++ (name ++ "\""),
-          j`Please place the executable in the PATH.
-The system responded with the following message $(msg)`,
-        )
-      }
-      ("Cannot locate \"gcl\"", body ++ "\nPlease make sure that the executable is in the path")
-    | CannotConnectViaTCP(_) => (
-        "Cannot connect with the server",
-        "Please enter \":main -d\" in ghci",
-      )
-    | CannotDownloadPrebuilt(e) => (
-        "Cannot download prebuilt language server",
-        Download.Error.toString(e),
-      )
-    | ConnectionError(exn) =>
-      let isECONNREFUSED =
-        Js.Exn.message(exn)->Option.mapWithDefault(
-          false,
-          Js.String.startsWith("connect ECONNREFUSED"),
-        )
-
-      isECONNREFUSED
-        ? ("LSP Connection Error", "Please enter \":main -d\" in ghci")
-        : ("LSP Client Error", Js.Exn.message(exn)->Option.getWithDefault(""))
-    | CannotSendRequest(exn) => (
-        "PANIC: Cannot send request",
-        "Please file an issue\n" ++ Js.Exn.message(exn)->Option.getWithDefault(""),
-      )
-    | CannotDecodeResponse(msg, json) => (
-        "PANIC: Cannot decode response",
-        "Please file an issue\n\n" ++ msg ++ "\n" ++ Json.stringify(json),
-      )
-    }
-}
-
-type method = ViaStdIO(string, string) | ViaTCP(int) | ViaPrebuilt(string, string)
 
 module type Module = {
+  type method = Client.method
   // lifecycle
-  let make: bool => string => Promise.t<result<method, Error.t>>
-  let destroy: unit => Promise.t<unit>
+  let start: string => Promise.t<result<Client.method, Error.t>>
+  let stop: unit => Promise.t<unit>
   // input / output / event
-  let sendRequest: (bool, string, Request.t) => Promise.t<result<Response.t, Error.t>>
+  let sendRequest: (string, Request.t) => Promise.t<result<Response.t, Error.t>>
   let onResponse: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
   let onError: (Error.t => unit) => VSCode.Disposable.t
-  // properties
-  let getMethod: unit => option<method>
 }
 
 module Module: Module = {
-  module StdIO = {
-    // see if "gcl" is available
-    let probe = name => {
-      AgdaModeVscode.Process.PathSearch.run(name)
-      ->Promise.mapOk(path => ViaStdIO(name, Js.String.trim(path)))
-      ->Promise.mapError(e => Error.CannotConnectViaStdIO(e))
-    }
-  }
+  type method = Client.method
 
-  module TCP = {
-    module Socket = {
-      type t
-      // methods
-      @bs.send external destroy: t => t = "destroy"
-      // events
-      @bs.send
-      external on: (t, @bs.string [#error(Js.Exn.t => unit) | #timeout(unit => unit)]) => t = "on"
+  module Probe = {
+    module StdIO = {
+      // see if "gcl" is available
+      let probe = name => {
+        AgdaModeVscode.Process.PathSearch.run(name)
+        ->Promise.mapOk(path => Client.ViaStdIO(name, Js.String.trim(path)))
+        ->Promise.mapError(e => Error.CannotConnectViaStdIO(e))
+      }
     }
 
-    @bs.module("net")
-    external connect: (int, unit => unit) => Socket.t = "connect"
-
-    // see if the TCP port is available
-    let probe = port => {
-      let (promise, resolve) = Promise.pending()
-      // connect and resolve `Ok()`` on success
-      let socket = connect(port, () => resolve(Ok()))
-      // resolve `Error(CannotConnect(Js.Exn.t))` on error
-      socket->Socket.on(#error(exn => resolve(Error(Error.CannotConnectViaTCP(exn)))))->ignore
-      // destroy the connection afterwards
-      promise->Promise.mapOk(() => {
-        Socket.destroy(socket)->ignore
-        ViaTCP(port)
-      })
-    }
-  }
-
-  module Client = {
-    open VSCode
-
-    type t = {
-      client: LSP.LanguageClient.t,
-      subscription: VSCode.Disposable.t,
-      method: method,
-    }
-
-    // for emitting errors
-    let errorChan: Chan.t<Js.Exn.t> = Chan.make()
-    // for emitting data
-    let dataChan: Chan.t<Js.Json.t> = Chan.make()
-
-    let onError = callback =>
-      errorChan->Chan.on(e => callback(Error.ConnectionError(e)))->VSCode.Disposable.make
-    let onResponse = callback => dataChan->Chan.on(callback)->VSCode.Disposable.make
-
-    let sendRequest = (self, data) =>
-      self.client
-      ->LSP.LanguageClient.onReady
-      ->Promise.Js.toResult
-      ->Promise.flatMapOk(() => {
-        self.client->LSP.LanguageClient.sendRequest("guacamole", data)->Promise.Js.toResult
-      })
-      ->Promise.mapError(exn => Error.CannotSendRequest(exn))
-
-    let destroy = self => {
-      self.subscription->VSCode.Disposable.dispose->ignore
-      self.client->LSP.LanguageClient.stop->Promise.Js.toResult->Promise.map(_ => ())
-    }
-
-    let make = method => {
-      // let emittedError = ref(false)
-
-      let serverOptions = switch method {
-      | ViaTCP(port) => LSP.ServerOptions.makeWithStreamInfo(port)
-      | ViaStdIO(name, _path) => LSP.ServerOptions.makeWithCommand(name)
-      | ViaPrebuilt(_version, path) => LSP.ServerOptions.makeWithCommand(path)
+    module TCP = {
+      module Socket = {
+        type t
+        // methods
+        @bs.send external destroy: t => t = "destroy"
+        // events
+        @bs.send
+        external on: (t, @bs.string [#error(Js.Exn.t => unit) | #timeout(unit => unit)]) => t = "on"
       }
 
-      let clientOptions = {
-        // Register the server for plain text documents
-        let documentSelector: DocumentSelector.t = [
-          StringOr.others({
-            open DocumentFilter
-            {
-              scheme: Some("file"),
-              pattern: None,
-              language: Some("guacamole"),
-            }
-          }),
-        ]
+      @bs.module("net")
+      external connect: (int, unit => unit) => Socket.t = "connect"
 
-        // Notify the server about file changes to '.clientrc files contained in the workspace
-        let synchronize: FileSystemWatcher.t = Workspace.createFileSystemWatcher(
-          %raw("'**/.clientrc'"),
-          ~ignoreCreateEvents=false,
-          ~ignoreChangeEvents=false,
-          ~ignoreDeleteEvents=false,
-        )
-
-        let errorHandler: LSP.ErrorHandler.t = LSP.ErrorHandler.make(
-          ~error=(exn, _msg, _count) => {
-            errorChan->Chan.emit(exn)
-            Shutdown
-          },
-          ~closed=() => {
-            DoNotRestart
-          },
-        )
-        LSP.LanguageClientOptions.make(documentSelector, synchronize, errorHandler)
+      // see if the TCP port is available
+      let probe = port => {
+        let (promise, resolve) = Promise.pending()
+        // connect and resolve `Ok()`` on success
+        let socket = connect(port, () => resolve(Ok()))
+        // resolve `Error(CannotConnect(Js.Exn.t))` on error
+        socket->Socket.on(#error(exn => resolve(Error(Error.CannotConnectViaTCP(exn)))))->ignore
+        // destroy the connection afterwards
+        promise->Promise.mapOk(() => {
+          Socket.destroy(socket)->ignore
+          Client.ViaTCP(port)
+        })
       }
+    }
 
-      // Create the language client
-      let languageClient = LSP.LanguageClient.make(
-        "guacamoleLanguageServer",
-        "Guacamole Language Server",
-        serverOptions,
-        clientOptions,
-      )
-
-      let self = {
-        client: languageClient,
-        subscription: languageClient->LSP.LanguageClient.start,
-        method: method,
+    module Prebuilt = {
+      // see if the prebuilt is available
+      let probe = context => {
+        Connection__Prebuilt.get(context)
+        ->Promise.mapOk(path => Client.ViaPrebuilt(Config.version, Js.String.trim(path)))
+        ->Promise.mapError(e => Error.CannotConnectViaPrebuilt(e))
       }
+    }
 
-      // Let `LanguageClient.onReady` and `errorChan->Chan.once` race
-      Promise.race(list{
-        self.client->LSP.LanguageClient.onReady->Promise.Js.toResult,
-        errorChan->Chan.once->Promise.map(err => Error(err)),
-      })
-      ->Promise.map(result =>
-        switch result {
-        | Error(error) => Error(error)
-        | Ok() =>
-          self.client->LSP.LanguageClient.onNotification("guacamole", json =>
-            dataChan->Chan.emit(json)
-          )
-          Ok(self)
-        }
-      )
-      ->Promise.mapError(e => Error.ConnectionError(e))
+    // see if the server is available
+    // priorities: TCP => Prebuilt => StdIO
+    let probe = globalStoragePath => {
+      let port = 3000
+      let name = "gcl"
+      TCP.probe(port)
+      ->Promise.flatMapError(_ => Prebuilt.probe(globalStoragePath))
+      ->Promise.flatMapError(_ => StdIO.probe(name))
     }
   }
 
-  module Prebuilt = {
-    // see if the prebuilt is available
-    let probe = context => {
-      Download.get(context)
-      ->Promise.mapOk(path => ViaPrebuilt(Config.version, Js.String.trim(path)))
-      ->Promise.mapError(e => Error.CannotDownloadPrebuilt(e))
-    }
-  }
-
-  // see if the server is available
-  // priorities: TCP => Prebuilt => StdIO
-  let probe = (tryTCP, globalStoragePath) => {
-    let port = 3000
-    let name = "gcl"
-    if tryTCP {
-      TCP.probe(port)->Promise.flatMapError(_ => Prebuilt.probe(globalStoragePath))->Promise.flatMapError(_ => StdIO.probe(name))
-    } else {
-      Prebuilt.probe(globalStoragePath)->Promise.flatMapError(_ => StdIO.probe(name))
-    }
-  }
-
-  // for internal bookkeeping
+  // internal singleton
   type state =
     | Disconnected
     | Connecting(
         // pending requests & callbacks
         array<(Request.t, result<Response.t, Error.t> => unit)>,
-        Promise.t<result<method, Error.t>>,
+        Promise.t<result<Client.method, Error.t>>,
       )
     | Connected(Client.t)
-
   let singleton: ref<state> = ref(Disconnected)
 
   let getPendingRequests = () =>
@@ -264,14 +99,14 @@ module Module: Module = {
     | exception Json.Decode.DecodeError(msg) => Error(Error.CannotDecodeResponse(msg, json))
     }
 
-  let make = (tryTCP, globalStoragePath) =>
+  let start = globalStoragePath =>
     switch singleton.contents {
-    | Connected(client) => Promise.resolved(Ok(client.method))
+    | Connected(client) => Promise.resolved(Ok(Client.getMethod(client)))
     | Connecting(_, promise) => promise
     | Disconnected =>
       let (promise, resolve) = Promise.pending()
       singleton := Connecting([], promise)
-      probe(tryTCP, globalStoragePath)
+      Probe.probe(globalStoragePath)
       ->Promise.flatMapOk(Client.make)
       ->Promise.map(result =>
         switch result {
@@ -288,25 +123,28 @@ module Module: Module = {
             ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
             ->Promise.get(callback)
           })
-          resolve(Ok(client.method))
-          Ok(client.method)
+          resolve(Ok(Client.getMethod(client)))
+          Js.log("[ connection ] established")
+          Ok(Client.getMethod(client))
         }
       )
     }
 
-  let rec destroy = () =>
+  let rec stop = () =>
     switch singleton.contents {
     | Connected(client) =>
       // update the status
       singleton := Disconnected
+      Js.log("[ connection ] severed")
       Client.destroy(client)
-    | Connecting(_, promise) => promise->Promise.flatMap(_ => destroy())
+    | Connecting(_, promise) => promise->Promise.flatMap(_ => stop())
     | Disconnected => Promise.resolved()
     }
 
-  let rec sendRequest = (tryTCP, globalStoragePath, request) =>
+  let rec sendRequest = (globalStoragePath, request) =>
     switch singleton.contents {
-    | Disconnected => make(tryTCP, globalStoragePath)->Promise.flatMapOk(_ => sendRequest(tryTCP, globalStoragePath, request))
+    | Disconnected =>
+      start(globalStoragePath)->Promise.flatMapOk(_ => sendRequest(globalStoragePath, request))
     | Connecting(queue, _) =>
       let (promise, resolve) = Promise.pending()
       Js.Array.push((request, resolve), queue)->ignore
@@ -320,12 +158,6 @@ module Module: Module = {
   let onResponse = handler => Client.onResponse(json => handler(decodeResponse(json)))
 
   let onError = Client.onError
-
-  let getMethod = () =>
-    switch singleton.contents {
-    | Connected(client) => Some(client.method)
-    | _ => None
-    }
 }
 
 include Module

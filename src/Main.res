@@ -50,7 +50,6 @@ let handleViewResponse = response => {
       let key = GCL.Loc.toString(loc)
       State.Decoration.remove(key)
     | Link(MouseClick(loc)) =>
-      ()
       let key = GCL.Loc.toString(loc)
       State.Decoration.remove(key)
     // let key = GCL.Loc.toString(loc)
@@ -133,9 +132,7 @@ module Events = {
 }
 
 let activate = (context: VSCode.ExtensionContext.t) => {
-  let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
   let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
-
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
   // on response/notification from the server
@@ -160,10 +157,8 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
     let state = switch Registry.get(filePath) {
     | None =>
-      let state = State.make(devMode, globalStoragePath, editor)
+      let state = State.make(globalStoragePath, editor)
       Registry.add(filePath, state)
-
-      // registerInset()
       state
     | Some(state) =>
       // after switching tabs, the old editor would be "_disposed"
@@ -171,6 +166,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       state.editor = editor
       state.document = editor->VSCode.TextEditor.document
       state.filePath = filePath
+      State.Spec.redecorate(state, state.specifications)
       state
     }
 
@@ -185,12 +181,11 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // on extension activation
   Events.onActivateExtension(() => {
-    let extensionPath = VSCode.ExtensionContext.extensionPath(context)
     // 1. activate the view
+    let extensionPath = VSCode.ExtensionContext.extensionPath(context)
     View.activate(extensionPath)
-
-    // 2. connect with GCL
-    Connection.make(devMode, globalStoragePath)->Promise.get(result =>
+    ->Promise.flatMap(() => Connection.start(globalStoragePath))
+    ->Promise.get(result =>
       switch result {
       | Ok(method) => State.updateConnection(Some(method))->ignore
       | Error(error) => Js.log(error)
@@ -202,7 +197,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   Events.onDeactivateExtension(_ => {
     View.deactivate()
     previouslyActivatedState := None
-    Connection.destroy()->ignore
+    Connection.stop()->ignore
   })->subscribe
 
   // on change cursor position/selection
@@ -234,18 +229,45 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   })->subscribe
 
   // on events from the view
-  View.on(handleViewResponse)->subscribe
+  View.on(handleViewResponse)->Promise.get(subscribe)
 
   // on refine
   VSCode.Commands.registerCommand("guacamole.refine", () =>
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
-      state
-      ->State.Spec.fromCursorPosition
-      ->Option.mapWithDefault(Promise.resolved(), spec => {
-        let payload = State.Spec.getPayload(state.document, spec)
-        let payload = payload->Js.Array2.joinWith("\n")
-        sendLSPRequest(state, Refine(spec.id, payload))
-      })
+      let selection = state.editor->VSCode.TextEditor.selection
+      let start = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.start(selection))
+      let end_ = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.end_(selection))
+      sendLSPRequest(state, Refine(start, end_))
+    })
+  )->subscribe
+
+  // on restart
+  VSCode.Commands.registerCommand("guacamole.restart", () =>
+    getState()->Option.mapWithDefault(Promise.resolved(), state => {
+      previouslyActivatedState.contents = None
+      let editor = state.editor
+      let filePath = state.filePath
+      // destroy
+      Registry.destroy(filePath)
+      // make
+      let state = State.make(globalStoragePath, editor)
+      Registry.add(filePath, state)
+      previouslyActivatedState := Some(state)
+      // reactivate the view
+      let extensionPath = VSCode.ExtensionContext.extensionPath(context)
+      View.deactivate()
+      View.activate(extensionPath)
+      // reconnect with GCL
+      ->Promise.flatMap(Connection.stop)
+      ->Promise.flatMap(() => Connection.start(globalStoragePath))
+      ->Promise.get(result =>
+        switch result {
+        | Ok(method) => State.updateConnection(Some(method))->ignore
+        | Error(error) => Js.log(error)
+        }
+      )
+
+      Promise.resolved()
     })
   )->subscribe
 

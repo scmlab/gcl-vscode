@@ -71,81 +71,17 @@
     }
 
 
-    .gcl-dev-panel {
-        padding   : @component-padding;
-        background: @background2;
-        display   : flex;
+    #gcl-connection-status {
+        // place it at the top right corner 
+        position: absolute;
+        top: @component-padding * 2;
+        right: @component-padding* 2;
 
-        line-height: 2em;
-
-        #gcl-dev-panel-header {
-            font-variant: small-caps;
-            font-weight : bolder;
-            color       : @text-color-subtle;
-        }
-
-        #gcl-dev-panel-method {
-            margin     : 0 1em;
-            padding    : 0 1em;
-            flex-grow  : 0;
-            display    : flex;
-            align-items: center;
-
-
-            font-variant: small-caps;
-            font-weight : bolder;
-
-            .codicon {
-                margin-right: 0.25em
-            }
-        }
-
-        #gcl-dev-panel-status {
-            margin     : 0 1em;
-            padding    : 0 1em;
-            flex-grow  : 0;
-            display    : flex;
-            align-items: center;
-
-
-            font-variant: small-caps;
-            font-weight : bolder;
-
-            .codicon {
-                margin-right: 0.25em
-            }
-
-            &.disconnected {
-                color: @red;
-            }
-
-            &.connecting {
-                color: @yellow;
-            }
-
-            &.connected {
-                color: @green;
-            }
-
-            // make it like a button 
-            cursor             : pointer;
-            -webkit-user-select: none;
-            user-select        : none;
-        }
-
-
-
-        // line-height: 2em;
-
-        // display: flex;
-        // .codicon {
-        //     line-height: 2em;
-        //     align-items: center;
-        // }
-
-        // span {
-        //     line-height: 2em;
-        // }
+        // text style 
+        font-size: 75%;
+        font-weight: bold;
+        font-variant: small-caps;
+        color       : @text-color-subtle;
     }
 
     .gcl-proof-obligation,

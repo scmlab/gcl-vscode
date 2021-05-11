@@ -4,7 +4,7 @@ type source = string
 module Kind = {
   type t =
     | Inspect(int, int)
-    | Refine(int, string)
+    | Refine(int, int)
     | Substitute(int, GCL.Syntax.Expr.t, GCL.Syntax.Expr.subst)
     | ExportProofObligations
     | Debug
@@ -14,17 +14,18 @@ module Kind = {
     switch x {
     | Inspect(start, end_) =>
       object_(list{("tag", string("ReqInspect")), ("contents", (start, end_) |> tuple2(int, int))})
-    | Refine(id, payload) =>
-      object_(list{
-        ("tag", string("ReqRefine")),
-        ("contents", (id, payload) |> tuple2(int, string)),
-      })
+    | Refine(start, end_) =>
+      object_(list{("tag", string("ReqRefine")), ("contents", (start, end_) |> tuple2(int, int))})
     | Substitute(i, expr, subst) =>
       object_(list{
         ("tag", string("ReqSubstitute")),
         (
           "contents",
-          (i, expr, subst) |> tuple3(int, GCL.Syntax.Expr.encode, GCL.Syntax.Expr.encodeSubst),
+          (i, expr, subst) |> tuple3(
+            int,
+            GCL.Syntax.Expr.encode,
+            array(pair(GCL.Syntax.Name.encode, GCL.Syntax.Expr.encode)),
+          ),
         ),
       })
     | Debug => object_(list{("tag", string("ReqDebug"))})
