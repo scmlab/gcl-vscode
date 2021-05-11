@@ -13,7 +13,21 @@ module Error = {
   let toString = error =>
     switch error {
     | CannotConnectViaStdIO(e) =>
-      let (_header, body) = AgdaModeVscode.Process.PathSearch.Error.toString(e)
+      let (_header, body) = switch e {
+      | ProcessHanging(name) => (
+          "Process not responding when looking for \"" ++ (name ++ "\""),
+          j`Please restart the process`,
+        )
+      | NotSupported(os) => (
+          "Auto search failed",
+          j`currently auto path searching is not supported on $(os)`,
+        )
+      | NotFound(name, msg) => (
+          "Auto search failed when looking for \"" ++ (name ++ "\""),
+          j`If you know where the executable of GCL is located, please fill it in "guacamole.gclPath" in the Settings.
+The system responded with the following message $(msg)`,
+        )
+      }
       ("Cannot locate \"gcl\"", body ++ "\nPlease make sure that the executable is in the path")
     | CannotConnectViaTCP(_) => (
         "Cannot connect with the server",
