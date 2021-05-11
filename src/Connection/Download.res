@@ -92,6 +92,7 @@ module Error = {
     | CannotWriteFile(Js.Exn.t)
     | CannotUnzipFileWithExn(Js.Exn.t)
     | CannotUnzipFile
+
 }
 
 module HTTP = {
