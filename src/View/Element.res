@@ -270,20 +270,20 @@ module Block = {
   let make = (~value: t) =>
     switch value {
     | Unlabeled(body, header, None) =>
-      <li className="gcl-list-item native-key-bindings" tabIndex={-1}>
+      <li className="element-block-unlabeled native-key-bindings" tabIndex={-1}>
         <span className="gcl-list-item-header">
           {header->Option.mapWithDefault("", x => x)->string}
         </span>
         <span className="gcl-list-item-body"> <Inlines value=body /> </span>
       </li>
     | Unlabeled(body, header, Some(range)) =>
-      // highlight the header with range on hover
-      <li className="gcl-list-item native-key-bindings" tabIndex={-1}>
+      <li className="element-block-unlabeled native-key-bindings" tabIndex={-1}>
+        // highlight the header with range on hover
         <Link.WithRange range>
-          <span className="gcl-list-item-header has-range">
+          <div className="gcl-list-item-header has-range">
             {header->Option.mapWithDefault("", x => x)->string}
             <span className="gcl-list-item-range"> {string(GCL.Range.toString(range))} </span>
-          </span>
+          </div>
         </Link.WithRange>
         <span className="gcl-list-item-body"> <Inlines value=body /> </span>
       </li>
