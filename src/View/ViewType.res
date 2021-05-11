@@ -43,8 +43,7 @@ module Request = {
         int,
         array<Response.ProofObligation.t>,
         array<Response.GlobalProp.t>,
-        array<Response.Warning.t>,
-        array<Element.t>,
+        array<Element.Block.t>,
       )
     | UpdatePOs(array<Response.ProofObligation.t>)
 
@@ -60,13 +59,12 @@ module Request = {
       Contents(array(pair(string, string)) |> map(msgs => SetErrorMessages(msgs)))
     | "Display" =>
       Contents(
-        tuple5(
+        tuple4(
           int,
           array(Response.ProofObligation.decode),
           array(Response.GlobalProp.decode),
-          array(Response.Warning.decode),
-          array(Element.decode),
-        ) |> map(((id, xs, ys, ws, ws')) => Display(id, xs, ys, ws, ws')),
+          array(Element.Block.decode),
+        ) |> map(((id, xs, ys, ws)) => Display(id, xs, ys, ws)),
       )
     | "UpdatePOs" => Contents(array(Response.ProofObligation.decode) |> map(pos => UpdatePOs(pos)))
     | tag => raise(DecodeError("[Request] Unknown constructor: " ++ tag))
@@ -91,17 +89,16 @@ module Request = {
         ("tag", string("SetErrorMessages")),
         ("contents", msgs |> array(pair(string, string))),
       })
-    | Display(id, pos, globalProps, ws, ws') =>
+    | Display(id, pos, globalProps, ws) =>
       object_(list{
         ("tag", string("Display")),
         (
           "contents",
-          (id, pos, globalProps, ws, ws') |> Util.Encode.tuple5(
+          (id, pos, globalProps, ws) |> tuple4(
             int,
             array(Response.ProofObligation.encode),
             array(Response.GlobalProp.encode),
-            array(Response.Warning.encode),
-            array(Element.encode),
+            array(Element.Block.encode),
           ),
         ),
       })

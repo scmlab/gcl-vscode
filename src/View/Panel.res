@@ -5,7 +5,7 @@ open Common
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (connection, setConnection) = React.useState(_ => None)
-  let ((id, pos, props, warnings, warnings'), setDisplay) = React.useState(() => (0, [], [], [], []))
+  let ((id, pos, props, warnings), setDisplay) = React.useState(() => (0, [], [], []))
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
   let onClickLink = React.useRef(Chan.make())
   let onSubstitute = React.useRef(Chan.make())
@@ -22,8 +22,8 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     let destructor = onRequest->Chan.on(req =>
       switch req {
       | ViewType.Request.UpdateConnection(method) => setConnection(_ => method)
-      | Display(id, pos, props, warnings, warnings') => setDisplay(_ => (id, pos, props, warnings, warnings'))
-      | UpdatePOs(pos) => setDisplay(((id, _pos, props, warnings, warnings')) => (id, pos, props, warnings, warnings'))
+      | Display(id, pos, props, warnings) => setDisplay(_ => (id, pos, props, warnings))
+      | UpdatePOs(pos) => setDisplay(((id, _pos, props, warnings)) => (id, pos, props, warnings))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
       }
@@ -70,30 +70,10 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     <div className="gcl-global-props">
       <h2> {string("Warnings")} </h2>
       <ul className="gcl-global-property-list">
-        {warnings'
-        ->Array.mapWithIndex((i, value) =>{
-          <Element value key={string_of_int(i)} />
-        })
-        ->array}
-      </ul>
-      <ul className="gcl-global-property-list">
         {warnings
-        ->Array.mapWithIndex((i, warning) =>
-          switch warning {
-          | MissingBound(_loc) =>
-            <Item
-              header={"Bound Missing"}
-              body={"Bound missing at the end of the assertion before the DO construct \" , bnd : ... }\""}
-              key={string_of_int(i)}
-            />
-          | ExcessBound(_loc) =>
-            <Item
-              header={"Excess Bound"}
-              body={"The bound annotation at this assertion is unnecessary"}
-              key={string_of_int(i)}
-            />
-          }
-        )
+        ->Array.mapWithIndex((i, value) =>{
+          <Element.Block value key={string_of_int(i)} />
+        })
         ->array}
       </ul>
     </div>

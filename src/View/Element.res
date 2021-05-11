@@ -69,7 +69,7 @@ module type Module = {
   let encode: t => Js.Json.t
 }
 
-module Module = {
+module Inlines = {
   module ClassNames = {
     type t = array<string>
 
@@ -222,8 +222,58 @@ module Module = {
     switch x {
     | Element(elemss) => elemss |> array(Inline.encode)
     }
-}
-include Module
 
-@react.component
-let make = (~value: t) => Module.make(~value)
+  @react.component
+  let make = (~value: t) => make(~value)
+}
+
+module Block = {
+  type t =
+    | Unlabeled(Inlines.t, option<string>, option<GCL.Range.t>)
+    | Header(string)
+
+  open Json.Decode
+  open Util.Decode
+  let decode: decoder<t> = sum(x =>
+    switch x {
+    | "Unlabeled" =>
+      Contents(
+        tuple3(Inlines.decode, optional(string), optional(GCL.Range.decode)) |> map(((
+          a,
+          b,
+          c,
+        )) => Unlabeled(a, b, c)),
+      )
+    | "Header" => Contents(string |> map(s => Header(s)))
+    | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
+    }
+  )
+
+  open! Json.Encode
+  let encode: encoder<t> = x =>
+    switch x {
+    | Unlabeled(a, b, c) =>
+      object_(list{
+        ("tag", string("Unlabeled")),
+        (
+          "contents",
+          (a, b, c) |> tuple3(Inlines.encode, nullable(string), nullable(GCL.Range.encode)),
+        ),
+      })
+    | Header(xs) => object_(list{("tag", string("Header")), ("contents", xs |> string)})
+    }
+
+  open! React
+  @react.component
+  let make = (~value: t) =>
+    switch value {
+    | Unlabeled(body, header, range) =>
+      <li className="gcl-list-item native-key-bindings" tabIndex={-1}>
+        <span className="gcl-list-item-header">
+          {header->Option.mapWithDefault("", x => x)->string}
+        </span>
+        <span className="gcl-list-item-body"> <Inlines value=body /> </span>
+      </li>
+    | Header(header) => <h2> {string(header)} </h2>
+    }
+}
