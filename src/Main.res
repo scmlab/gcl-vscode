@@ -133,20 +133,10 @@ module Events = {
 }
 
 let activate = (context: VSCode.ExtensionContext.t) => {
-  // let devMode = false
   let devMode = VSCode.ExtensionContext.extensionMode(context) == VSCode.ExtensionMode.Development
+  let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
+
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
-
-  // Download.getCurrentReleaseAndAsset()
-  // ->Promise.flatMapOk(Download.downloadLanguageServer(context))
-  // ->ignore
-
-  Download.get(context)->Promise.get(Js.log)
-  // ->Promise.getOk(x => Js.log(Download.Downloader.toString(x)))
-  // Download.checkDownloadedReleases(context)->Js.log
-  // ->Promise.get(body => {
-  //   Js.log(body)
-  // })
 
   // on response/notification from the server
   Connection.onResponse(result =>
@@ -170,7 +160,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
     let state = switch Registry.get(filePath) {
     | None =>
-      let state = State.make(devMode, editor)
+      let state = State.make(devMode, globalStoragePath, editor)
       Registry.add(filePath, state)
 
       // registerInset()
@@ -199,7 +189,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     // 1. activate the view
     View.activate(extensionPath, devMode)->Promise.get(_viewActivationResult => {
       // 2. connect with GCL
-      Connection.make(devMode)->Promise.get(result =>
+      Connection.make(devMode, globalStoragePath)->Promise.get(result =>
         switch result {
         | Ok(method) => State.updateConnection(Some(method))->ignore
         | Error(error) => Js.log(error)

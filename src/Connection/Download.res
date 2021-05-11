@@ -171,7 +171,6 @@ module Unzip = {
   }
 
   let run = (src, dest) => {
-    Js.log("[ download ][ unzip ] " ++ src ++ " => " ++ dest)
     let (promise, resolve) = Promise.pending()
 
     // chmod 744 the executable
@@ -279,18 +278,17 @@ module Metadata = {
     version: string,
   }
 
-  let getCurrentVersion = context => {
+  let getCurrentVersion = globalStoragePath => {
     let getCurrentRelease = (releases: array<Release.t>) => {
       open Belt
-      let matched = releases->Array.keep(release => release.tagName == Constant.version)
+      let matched = releases->Array.keep(release => release.tagName == Config.version)
       switch matched[0] {
-      | None => Promise.resolved(Error(Error.NoMatchingVersion(Constant.version)))
+      | None => Promise.resolved(Error(Error.NoMatchingVersion(Config.version)))
       | Some(release) => Promise.resolved(Ok(release))
       }
     }
 
-    let toDestPath = (context, release: Release.t, asset: Asset.t) => {
-      let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
+    let toDestPath = (globalStoragePath, release: Release.t, asset: Asset.t) => {
       // take the "macos" part from names like "gcl-macos.zip"
       let osName = Js.String2.slice(asset.name, ~from=4, ~to_=-4)
       // the final path to store the language server
@@ -317,7 +315,7 @@ module Metadata = {
         | Some(asset) =>
           Ok({
             srcUrl: asset.url,
-            destPath: toDestPath(context, release, asset),
+            destPath: toDestPath(globalStoragePath, release, asset),
             version: release.tagName,
           })
         }
@@ -332,7 +330,7 @@ module Metadata = {
 }
 
 module Module: {
-  let get: VSCode.ExtensionContext.t => Promise.t<result<string, Error.t>>
+  let get: string => Promise.t<result<string, Error.t>>
 } = {
   type state =
     | Downloaded(string)
@@ -398,10 +396,8 @@ module Module: {
     )
   }
 
-  let checkExistingDownload = context => {
-    // let (promise, resolve) = Promise.pending()
+  let checkExistingDownload = globalStoragePath => {
     // create a directory for `context.globalStoragePath` if it doesn't exist
-    let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
     if !Node.Fs.existsSync(globalStoragePath) {
       Nd.Fs.mkdirSync(globalStoragePath)
     }
@@ -409,9 +405,9 @@ module Module: {
     // devise the expected file name of the language server and see if the OS is supported
     let getExpectedFileName = {
       switch Node_process.process["platform"] {
-      | "darwin" => Ok("gcl-" ++ Constant.version ++ "-macos")
-      | "linux" => Ok("gcl-" ++ Constant.version ++ "-ubuntu")
-      | "win32" => Ok("gcl-" ++ Constant.version ++ "-windows")
+      | "darwin" => Ok("gcl-" ++ Config.version ++ "-macos")
+      | "linux" => Ok("gcl-" ++ Config.version ++ "-ubuntu")
+      | "win32" => Ok("gcl-" ++ Config.version ++ "-windows")
       | others => Error(Error.NotSupportedOS(others))
       }
     }
@@ -432,30 +428,26 @@ module Module: {
 
   let state: ref<option<state>> = ref(None)
 
-  let get = (context): Promise.t<result<string, Error.t>> => {
+  let get = (globalStoragePath): Promise.t<result<string, Error.t>> => {
     switch state.contents {
     | None =>
       // not initialized yet
-      switch checkExistingDownload(context) {
+      switch checkExistingDownload(globalStoragePath) {
       | Ok(None) =>
-        Js.log("[ download ][ init ] No existing download, fetch a new one")
         let (promise, resolve) = Promise.pending()
         state := Some(InFlight(promise))
-        Metadata.getCurrentVersion(context)
+        Metadata.getCurrentVersion(globalStoragePath)
         ->Promise.flatMapOk(downloadLanguageServer)
         ->Promise.tap(resolve)
       | Ok(Some(path)) =>
-        Js.log("[ download ][ init ] Got existing download")
         state := Some(Downloaded(path))
         Promise.resolved(Ok(path))
       | Error(error) => Promise.resolved(Error(error))
       }
     | Some(Downloaded(path)) =>
-      Js.log("[ download ] Got existing download")
       Promise.resolved(Ok(path))
     // returns a promise that will be resolved once the download's been completed
     | Some(InFlight(promise)) =>
-      Js.log("[ download ] Already downloading")
       promise
     }
   }

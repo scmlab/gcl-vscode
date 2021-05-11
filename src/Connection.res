@@ -25,7 +25,7 @@ module Error = {
         )
       | NotFound(name, msg) => (
           "Auto search failed when looking for \"" ++ (name ++ "\""),
-          j`If you know where the executable of GCL is located, please fill it in "guacamole.gclPath" in the Settings.
+          j`Please place the executable in the PATH.
 The system responded with the following message $(msg)`,
         )
       }
@@ -63,10 +63,10 @@ type method = ViaStdIO(string, string) | ViaTCP(int)
 
 module type Module = {
   // lifecycle
-  let make: bool => Promise.t<result<method, Error.t>>
+  let make: bool => string => Promise.t<result<method, Error.t>>
   let destroy: unit => Promise.t<unit>
   // input / output / event
-  let sendRequest: (bool, Request.t) => Promise.t<result<Response.t, Error.t>>
+  let sendRequest: (bool, string, Request.t) => Promise.t<result<Response.t, Error.t>>
   let onResponse: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
   let onError: (Error.t => unit) => VSCode.Disposable.t
   // properties
@@ -217,7 +217,17 @@ module Module: Module = {
     }
   }
 
+  // module Prebuilt = {
+  //   // see if the prebuilt is available
+  //   let probe = context => {
+  //     Download.get(context)
+  //     ->Promise.mapOk(path => ViaStdIO(name, Js.String.trim(path)))
+  //     ->Promise.mapError(e => Error.CannotConnectViaStdIO(e))
+  //   }
+  // }
+
   // see if the server is available
+  // priorities: TCP => Prebuilt => StdIO
   let probe = tryTCP => {
     let port = 3000
     let name = "gcl"
@@ -253,7 +263,7 @@ module Module: Module = {
     | exception Json.Decode.DecodeError(msg) => Error(Error.CannotDecodeResponse(msg, json))
     }
 
-  let make = tryTCP =>
+  let make = (tryTCP, globalStoragePath) =>
     switch singleton.contents {
     | Connected(client) => Promise.resolved(Ok(client.method))
     | Connecting(_, promise) => promise
@@ -293,9 +303,9 @@ module Module: Module = {
     | Disconnected => Promise.resolved()
     }
 
-  let rec sendRequest = (tryTCP, request) =>
+  let rec sendRequest = (tryTCP, globalStoragePath, request) =>
     switch singleton.contents {
-    | Disconnected => make(tryTCP)->Promise.flatMapOk(_ => sendRequest(tryTCP, request))
+    | Disconnected => make(tryTCP, globalStoragePath)->Promise.flatMapOk(_ => sendRequest(tryTCP, globalStoragePath, request))
     | Connecting(queue, _) =>
       let (promise, resolve) = Promise.pending()
       Js.Array.push((request, resolve), queue)->ignore
