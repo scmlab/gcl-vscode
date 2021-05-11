@@ -196,7 +196,7 @@ module Unzip = {
   }
 }
 
-module Release = {
+module Metadata = {
   module Asset = {
     type t = {
       name: string,
@@ -212,159 +212,173 @@ module Release = {
     }
   }
 
+  module Release = {
+    type t = {
+      tagName: string,
+      assets: array<Asset.t>,
+    }
+
+    let decode = json => {
+      open Json.Decode
+      {
+        tagName: json |> field("tag_name", string),
+        assets: json |> field("assets", array(Asset.decode)),
+      }
+    }
+
+    let parseMetadata = json =>
+      try {
+        Ok(json |> Json.Decode.array(decode))
+      } catch {
+      | Json.Decode.DecodeError(e) => Error(Error.ResponseDecodeError(e, json))
+      }
+
+    // NOTE: no caching
+    let getReleasesFromGitHub = () => {
+      // the url is fixed for now
+      let httpOptions = {
+        "host": "api.github.com",
+        "path": "/repos/scmlab/gcl/releases",
+        "headers": {
+          "User-Agent": "gcl-vscode",
+        },
+      }
+      HTTP.getWithRedirects(httpOptions)
+      ->Promise.flatMapOk(HTTP.gatherDataFromResponse)
+      ->Promise.flatMapOk(raw =>
+        try {
+          Promise.resolved(parseMetadata(Js.Json.parseExn(raw)))
+        } catch {
+        | _ => Promise.resolved(Error(Error.ResponseParseError(raw)))
+        }
+      )
+    }
+  }
+
   type t = {
-    tagName: string,
-    assets: array<Asset.t>,
+    srcUrl: string,
+    destPath: string,
+    version: string,
   }
 
-  let decode = json => {
-    open Json.Decode
-    {
-      tagName: json |> field("tag_name", string),
-      assets: json |> field("assets", array(Asset.decode)),
+  let getCurrentVersion = context => {
+    let getCurrentRelease = (releases: array<Release.t>) => {
+      open Belt
+      let matched = releases->Array.keep(release => release.tagName == Constant.version)
+      switch matched[0] {
+      | None => Promise.resolved(Error(Error.NoMatchingVersion(Constant.version)))
+      | Some(release) => Promise.resolved(Ok(release))
+      }
     }
+
+    let toDestPath = (context, release: Release.t, asset: Asset.t) => {
+      let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
+      // take the "macos" part from names like "gcl-macos.zip"
+      let osName = Js.String2.slice(asset.name, ~from=4, ~to_=-4)
+      // the final path to store the language server
+      Node_path.join2(globalStoragePath, "gcl-" ++ release.tagName ++ "-" ++ osName)
+    }
+
+    let getCurrentAsset = (release: Release.t) => {
+      open Belt
+      // expected asset name
+      let os = Node_process.process["platform"]
+      let expectedName = switch os {
+      | "darwin" => Ok("gcl-macos.zip")
+      | "linux" => Ok("gcl-ubuntu.zip")
+      | "win32" => Ok("gcl-windows.zip")
+      | others => Error(Error.NotSupportedOS(others))
+      }
+
+      // find the corresponding asset
+      expectedName
+      ->Result.flatMap(name => {
+        let matched = release.assets->Array.keep(asset => asset.name == name)
+        switch matched[0] {
+        | None => Error(Error.NotSupportedOS(os))
+        | Some(asset) =>
+          Ok({
+            srcUrl: asset.url,
+            destPath: toDestPath(context, release, asset),
+            version: release.tagName,
+          })
+        }
+      })
+      ->Promise.resolved
+    }
+
+    Release.getReleasesFromGitHub()
+    ->Promise.flatMapOk(getCurrentRelease)
+    ->Promise.flatMapOk(getCurrentAsset)
   }
+}
 
-  let parseMetadata = json =>
-    try {
-      Ok(json |> Json.Decode.array(decode))
-    } catch {
-    | Json.Decode.DecodeError(e) => Error(Error.ResponseDecodeError(e, json))
-    }
+module Module: {
+  let get: VSCode.ExtensionContext.t => Promise.t<result<string, Error.t>>
+} = {
+  type state =
+    | Downloaded(string)
+    | InFlight(Promise.t<result<string, Error.t>>)
 
-  // NOTE: no caching
-  let getReleasesFromGitHub = () => {
-    // the url is fixed for now
+  let download = (srcUrl, destPath) => {
+    let url = Nd.Url.parse(srcUrl)
     let httpOptions = {
-      "host": "api.github.com",
-      "path": "/repos/scmlab/gcl/releases",
+      "host": url["host"],
+      "path": url["path"],
       "headers": {
         "User-Agent": "gcl-vscode",
       },
     }
-    HTTP.getWithRedirects(httpOptions)
-    ->Promise.flatMapOk(HTTP.gatherDataFromResponse)
-    ->Promise.flatMapOk(raw =>
-      try {
-        Promise.resolved(parseMetadata(Js.Json.parseExn(raw)))
-      } catch {
-      | _ => Promise.resolved(Error(Error.ResponseParseError(raw)))
+
+    HTTP.getWithRedirects(httpOptions)->Promise.flatMapOk(res => {
+      let (promise, resolve) = Promise.pending()
+      let fileStream = Nd.Fs.createWriteStream(destPath)
+      fileStream
+      ->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotWriteFile(exn))))
+      ->ignore
+      fileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok()))->ignore
+      res->NodeJs.Http.IncomingMessage.pipe(fileStream)->ignore
+      promise
+    })
+  }
+
+  let downloadLanguageServer = (metadata: Metadata.t) => {
+    // suffix with ".download" whilst downloading
+    download(metadata.srcUrl, metadata.destPath ++ ".zip.download")
+    // remove the ".download" suffix after download
+    ->Promise.flatMapOk(() =>
+      Nd.Fs.rename(
+        metadata.destPath ++ ".zip.download",
+        metadata.destPath ++ ".zip",
+      )->Promise.mapError(e => Error.CannotRenameFile(e))
+    )
+    // unzip the downloaded file
+    ->Promise.flatMapOk(() => {
+      Unzip.run(metadata.destPath ++ ".zip", metadata.destPath)
+    })
+    // remove the zip file
+    ->Promise.flatMapOk(() =>
+      Nd.Fs.unlink(metadata.destPath ++ ".zip")->Promise.mapError(e => Error.CannotDeleteFile(e))
+    )
+    // cleanup on error
+    ->Promise.flatMap(result =>
+      switch result {
+      | Error(error) =>
+        let remove = path => {
+          if Node.Fs.existsSync(path) {
+            Nd.Fs.unlink(path)->Promise.map(_ => ())
+          } else {
+            Promise.resolved()
+          }
+        }
+        Promise.allArray([
+          remove(metadata.destPath ++ ".zip.download"),
+          remove(metadata.destPath ++ ".zip"),
+        ])->Promise.map(_ => Error(error))
+      | Ok() => Promise.resolved(Ok(metadata.destPath))
       }
     )
   }
-}
-
-let getCurrentReleaseAndAsset = () => {
-  let getMatchingRelease = (releases: array<Release.t>) => {
-    open Belt
-    let matched = releases->Array.keep(release => release.tagName == Constant.version)
-    switch matched[0] {
-    | None => Promise.resolved(Error(Error.NoMatchingVersion(Constant.version)))
-    | Some(release) => Promise.resolved(Ok(release))
-    }
-  }
-
-  let getMatchingAsset = (release: Release.t) => {
-    open Belt
-    // expected asset name
-    let os = Node_process.process["platform"]
-    let expectedName = switch os {
-    | "darwin" => Ok("gcl-macos.zip")
-    | "linux" => Ok("gcl-ubuntu.zip")
-    | "win32" => Ok("gcl-windows.zip")
-    | others => Error(Error.NotSupportedOS(others))
-    }
-
-    // find the corresponding asset
-    expectedName
-    ->Result.flatMap(name => {
-      let matched = release.assets->Array.keep(asset => asset.name == name)
-      switch matched[0] {
-      | None => Error(Error.NotSupportedOS(os))
-      | Some(asset) => Ok((release, asset))
-      }
-    })
-    ->Promise.resolved
-  }
-
-  Release.getReleasesFromGitHub()
-  ->Promise.flatMapOk(getMatchingRelease)
-  ->Promise.flatMapOk(getMatchingAsset)
-}
-
-let toDestPath = (context, (release: Release.t, asset: Release.Asset.t)) => {
-  let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
-  // take the "macos" part from names like "gcl-macos.zip"
-  let osName = Js.String2.slice(asset.name, ~from=4, ~to_=-4)
-  // the final path to store the language server
-  Node_path.join2(globalStoragePath, "gcl-" ++ release.tagName ++ "-" ++ osName)
-}
-
-let download = (srcUrl, destPath) => {
-  let url = Nd.Url.parse(srcUrl)
-  let httpOptions = {
-    "host": url["host"],
-    "path": url["path"],
-    "headers": {
-      "User-Agent": "gcl-vscode",
-    },
-  }
-
-  HTTP.getWithRedirects(httpOptions)->Promise.flatMapOk(res => {
-    let (promise, resolve) = Promise.pending()
-    let fileStream = Nd.Fs.createWriteStream(destPath)
-    fileStream
-    ->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotWriteFile(exn))))
-    ->ignore
-    fileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok()))->ignore
-    res->NodeJs.Http.IncomingMessage.pipe(fileStream)->ignore
-    promise
-  })
-}
-
-let downloadLanguageServer = (context, (release: Release.t, asset: Release.Asset.t)) => {
-  let destPath = toDestPath(context, (release, asset))
-  // suffix with ".download" whilst downloading
-  download(asset.url, destPath ++ ".zip.download")
-  // remove the ".download" suffix after download
-  ->Promise.flatMapOk(() =>
-    Nd.Fs.rename(
-      destPath ++ ".zip.download",
-      destPath ++ ".zip",
-    )->Promise.mapError(e => Error.CannotRenameFile(e))
-  )
-  // unzip the downloaded file
-  ->Promise.flatMapOk(() => {
-    Unzip.run(destPath ++ ".zip", destPath)
-  })
-  // remove the zip file
-  ->Promise.flatMapOk(() =>
-    Nd.Fs.unlink(destPath ++ ".zip")->Promise.mapError(e => Error.CannotDeleteFile(e))
-  )
-  // cleanup on error
-  ->Promise.flatMap(result =>
-    switch result {
-    | Error(error) =>
-      let remove = path => {
-        if Node.Fs.existsSync(path) {
-          Nd.Fs.unlink(path)->Promise.map(_ => ())
-        } else {
-          Promise.resolved()
-        }
-      }
-      Promise.allArray([
-        remove(destPath ++ ".zip.download"),
-        remove(destPath ++ ".zip"),
-      ])->Promise.map(_ => Error(error))
-    | Ok() => Promise.resolved(Ok(destPath))
-    }
-  )
-}
-
-module State = {
-  type t =
-    | Downloaded(string)
-    | Downloading(Promise.t<result<string, Error.t>>)
 
   let checkExistingDownload = context => {
     // let (promise, resolve) = Promise.pending()
@@ -397,22 +411,20 @@ module State = {
       }
     })
   }
-}
 
-module Module = {
-  let state: ref<option<State.t>> = ref(None)
+  let state: ref<option<state>> = ref(None)
 
   let get = (context): Promise.t<result<string, Error.t>> => {
     switch state.contents {
     | None =>
       // not initialized yet
-      switch State.checkExistingDownload(context) {
+      switch checkExistingDownload(context) {
       | Ok(None) =>
         Js.log("[ download ][ init ] No existing download, fetch a new one")
         let (promise, resolve) = Promise.pending()
-        state := Some(Downloading(promise))
-        getCurrentReleaseAndAsset()
-        ->Promise.flatMapOk(downloadLanguageServer(context))
+        state := Some(InFlight(promise))
+        Metadata.getCurrentVersion(context)
+        ->Promise.flatMapOk(downloadLanguageServer)
         ->Promise.tap(resolve)
       | Ok(Some(path)) =>
         Js.log("[ download ][ init ] Got existing download")
@@ -424,7 +436,7 @@ module Module = {
       Js.log("[ download ] Got existing download")
       Promise.resolved(Ok(path))
     // returns a promise that will be resolved once the download's been completed
-    | Some(Downloading(promise)) =>
+    | Some(InFlight(promise)) =>
       Js.log("[ download ] Already downloading")
       promise
     }
@@ -432,21 +444,3 @@ module Module = {
 }
 
 include Module
-
-// // initiate download
-// getCurrentReleaseAndAsset()
-// ->Promise.flatMapOk(downloadLanguageServer(context))
-// ->Promise.mapOk(_ => ())
-
-// let downloadLanguageServerCached = (context, outputPath) => {
-//   // let downloadPath = outputPath ++ ".zip.download"
-//   // if !Node_fs.existsSync(downloadPath) {
-//   //   Nd.Fs.mkdirSync(globalStoragePath)
-//   // }
-//   ()
-// }
-
-// // res => outputFileStream
-// outputFileStream->NodeJs.Fs.WriteStream.onError(exn => resolve(Error(Error.CannotWriteFile(exn))))->ignore
-// outputFileStream->NodeJs.Fs.WriteStream.onClose(() => resolve(Ok(outputPath)))->ignore
-// res->NodeJs.Http.IncomingMessage.pipe(outputFileStream)->ignore 
