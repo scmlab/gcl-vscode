@@ -223,6 +223,7 @@ module Inlines = {
 module Block = {
   type t =
     | Block(option<string>, option<GCL.Range.t>, Inlines.t)
+    | PO(option<string>, Inlines.t, Inlines.t)
     | Header(string)
 
   let block = (header, range, body) => Block(header, range, body)
@@ -240,6 +241,14 @@ module Block = {
             c,
           )) => Block(a, b, c)),
         )
+      | "PO" =>
+        Contents(
+          tuple3(optional(string), Inlines.decode, Inlines.decode) |> map(((a, b, c)) => PO(
+            a,
+            b,
+            c,
+          )),
+        )
       | "Header" => Contents(string |> map(s => Header(s)))
       | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
       }
@@ -255,6 +264,11 @@ module Block = {
           "contents",
           (a, b, c) |> tuple3(nullable(string), nullable(GCL.Range.encode), Inlines.encode),
         ),
+      })
+    | PO(a, b, c) =>
+      object_(list{
+        ("tag", string("PO")),
+        ("contents", (a, b, c) |> tuple3(nullable(string), Inlines.encode, Inlines.encode)),
       })
     | Header(xs) => object_(list{("tag", string("Header")), ("contents", xs |> string)})
     }
@@ -299,6 +313,19 @@ module Block = {
     //   </Link.WithRange>
     //   <span className="gcl-list-item-body"> <Inlines value=body /> </span>
     // </li>
+    | PO(header, pre, post) =>
+      let header = switch header {
+      | None => <> </>
+      | Some(header) => <div className="element-block-header"> {string(header)} </div>
+      }
+      <li className="element-block">
+        {header}
+        <div className="element-po-body">
+          <div className="element-po-pre"> <Inlines value=pre /> </div>
+          <span className="element-po-arrow"> {string(j`⇒`)} </span>
+          <div className="element-po-post"> <Inlines value=post /> </div>
+        </div>
+      </li>
     | Header(header) => <li className="element-header"> <h3> {string(header)} </h3> </li>
     // <h2> {string(header)} </h2>
     }

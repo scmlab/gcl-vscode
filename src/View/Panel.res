@@ -74,7 +74,6 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     </ul>
   }
 
-
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
       <ReqID.Provider value=Some(id)>

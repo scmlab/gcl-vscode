@@ -21,6 +21,20 @@
     // font-family: Menlo, Monaco, 'Courier New', monospace;
     font-size: 125%;
 
+
+    #gcl-connection-status {
+        // place it at the top right corner 
+        position: absolute;
+        top     : @padding * 2;
+        right   : @padding* 2;
+
+        // text style 
+        font-size   : 75%;
+        font-weight : bold;
+        font-variant: small-caps;
+        color       : @foreground-tenuous;
+    }
+
     .codicon {
         vertical-align: middle;
     }
@@ -61,12 +75,40 @@
 
     li .element-block-body {
         white-space: pre-wrap;
-        padding: @padding;
+        padding    : @padding;
     }
+
+    li .element-po-body {
+        white-space: pre-wrap;
+
+        overflow-y: scroll;
+        padding   : @padding;
+
+
+        display        : flex;
+        flex-wrap      : wrap;
+        justify-content: space-between;
+        align-items    : flex-start;
+
+        .element-po-pre {
+            width: 45%
+        }
+
+        .element-po-arrow {
+            width     : 10%;
+            text-align: center;
+        }
+
+        .element-po-post {
+            width: 45%
+        }
+
+    }
+
 
     li .element-block-header {
         margin-left: @padding/2;
-        padding: @padding @padding 0 @padding;
+        padding    : @padding @padding 0 @padding;
 
         font-variant: small-caps;
         font-weight : bolder;
