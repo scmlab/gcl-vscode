@@ -344,8 +344,7 @@ let handleResponseKind = (state: t, kind) =>
   | Response.Kind.Error(errors) =>
     let errorToMessage = (error: Response.Error.t) => {
       switch error {
-      | Response.Error.LexicalError => [("Lexical Error", "Response.Error.Site.toString(site)")]
-      | SyntacticError(messages) => [("Parse Error", messages->Js.String.concatMany("\n"))]
+      | Response.Error.SyntacticError(messages) => [("Parse Error", messages->Js.String.concatMany("\n"))]
       | StructError(MissingAssertion) => [
           ("Missing Loop Invariant", "There should be a loop invariant before the DO construct"),
         ]

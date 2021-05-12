@@ -174,7 +174,6 @@ module Error = {
 
   type t =
     // from server, GCL related
-    | LexicalError
     | SyntacticError(array<string>)
     | StructError(StructError.t)
     | TypeError(TypeError.t)
@@ -188,7 +187,6 @@ module Error = {
   open Util.Decode
   let decode: decoder<t> = sum(x =>
     switch x {
-    | "LexicalError" => TagOnly(_ => LexicalError)
     | "SyntacticError" =>
       Contents(
         array(pair(Loc.decode, string)) |> map(pairs => SyntacticError(pairs->Array.map(snd))),
