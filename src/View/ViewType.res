@@ -43,7 +43,6 @@ module Request = {
     | Display(
         int,
         array<Response.ProofObligation.t>,
-        array<Response.GlobalProp.t>,
         array<Element.Block.t>,
       )
     | UpdatePOs(array<Response.ProofObligation.t>)
@@ -62,12 +61,11 @@ module Request = {
       Contents(array(Element.Block.decode) |> map(blocks => DisplayBlocks(blocks)))
     | "Display" =>
       Contents(
-        tuple4(
+        tuple3(
           int,
           array(Response.ProofObligation.decode),
-          array(Response.GlobalProp.decode),
           array(Element.Block.decode),
-        ) |> map(((id, xs, ys, ws)) => Display(id, xs, ys, ws)),
+        ) |> map(((id, xs, ws)) => Display(id, xs, ws)),
       )
     | "UpdatePOs" => Contents(array(Response.ProofObligation.decode) |> map(pos => UpdatePOs(pos)))
     | tag => raise(DecodeError("[Request] Unknown constructor: " ++ tag))
@@ -97,15 +95,14 @@ module Request = {
         ("tag", string("DisplayBlocks")),
         ("contents", blocks |> array(Element.Block.encode)),
       })
-    | Display(id, pos, globalProps, ws) =>
+    | Display(id, pos, ws) =>
       object_(list{
         ("tag", string("Display")),
         (
           "contents",
-          (id, pos, globalProps, ws) |> tuple4(
+          (id, pos, ws) |> tuple3(
             int,
             array(Response.ProofObligation.encode),
-            array(Response.GlobalProp.encode),
             array(Element.Block.encode),
           ),
         ),

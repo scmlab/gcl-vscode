@@ -138,13 +138,11 @@ module Kind = {
         int,
         array<ProofObligation.t>,
         array<Specification.t>,
-        array<GlobalProp.t>,
         array<Element.Block.t>,
       )
     | Inspect(array<ProofObligation.t>)
     | Resolve(int)
     | Substitute(int, Syntax.Expr.t)
-    | UpdateSpecPositions(array<Loc.t>)
     | ConsoleLog(string)
 
   open Json.Decode
@@ -154,24 +152,21 @@ module Kind = {
     | "ResDisplay" => Contents(array(Element.Block.decode) |> map(errors => Display(errors)))
     | "ResOK" =>
       Contents(
-        tuple5(
+        tuple4(
           int,
           array(ProofObligation.decode),
           array(Specification.decode),
-          array(GlobalProp.decode),
           array(Element.Block.decode),
-        ) |> map(((id, obs, specs, globalProps, warnings)) => OK(
+        ) |> map(((id, obs, specs, blocks)) => OK(
           id,
           obs,
           specs,
-          globalProps,
-          warnings
+          blocks
         )),
       )
     | "ResInspect" => Contents(array(ProofObligation.decode) |> map(pos => Inspect(pos)))
     | "ResSubstitute" =>
       Contents(pair(int, Syntax.Expr.decode) |> map(((i, expr)) => Substitute(i, expr)))
-    | "ResUpdateSpecPositions" => Contents(array(Loc.decode) |> map(locs => UpdateSpecPositions(locs)))
     | "ResResolve" => Contents(int |> map(i => Resolve(i)))
     | "ResConsoleLog" => Contents(string |> map(i => ConsoleLog(i)))
     | tag => raise(DecodeError("Unknown constructor: " ++ tag))

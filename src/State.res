@@ -16,8 +16,8 @@ let subscribe = (disposable, state) => disposable->Js.Array.push(state.subscript
 let displayBlocks = blocks =>
   View.send(ViewType.Request.DisplayBlocks(blocks))->Promise.map(_ => ())
 
-let display = (id, pos, props, warnings) =>
-  View.send(ViewType.Request.Display(id, pos, props, warnings))->Promise.map(_ => ())
+let display = (id, pos, blocks) =>
+  View.send(ViewType.Request.Display(id, pos, blocks))->Promise.map(_ => ())
 
 let updatePOs = pos => View.send(ViewType.Request.UpdatePOs(pos))->Promise.map(_ => ())
 
@@ -339,16 +339,13 @@ module Spec = {
 let handleResponseKind = (state: t, kind) =>
   switch kind {
   | Response.Kind.Display(blocks) => displayBlocks(blocks)
-  | OK(i, pos, specs, props, warnings) =>
+  | OK(i, pos, specs, blocks) =>
     Spec.redecorate(state, specs)
     // clear error messages before display othe stuff
-    display(i, pos, props, warnings)
+    display(i, pos, blocks)
     // displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props, warnings))
   | Inspect(pos) => updatePOs(pos)
   | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
-  | UpdateSpecPositions(locations) =>
-    Spec.updateLocations(state, locations)
-    Promise.resolved()
   | Resolve(i) =>
     state
     ->Spec.resolve(i)

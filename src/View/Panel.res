@@ -5,7 +5,7 @@ open Common
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (connection, setConnection) = React.useState(_ => None)
-  let ((id, pos, props, warningBlocks), setDisplay) = React.useState(() => (0, [], [], []))
+  let ((id, pos, warningBlocks), setDisplay) = React.useState(() => (0, [], []))
   let (blocks, setBlocks) = React.useState(_ => [])
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
   let onClickLink = React.useRef(Chan.make())
@@ -24,8 +24,8 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
       switch req {
       | ViewType.Request.UpdateConnection(method) => setConnection(_ => method)
       | DisplayBlocks(blocks) => setBlocks(_ => blocks)
-      | Display(id, pos, props, blocks) => setDisplay(_ => (id, pos, props, blocks))
-      | UpdatePOs(pos) => setDisplay(((id, _pos, props, blocks)) => (id, pos, props, blocks))
+      | Display(id, pos, blocks) => setDisplay(_ => (id, pos, blocks))
+      | UpdatePOs(pos) => setDisplay(((id, _pos, blocks)) => (id, pos, blocks))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
       }
@@ -102,7 +102,6 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
         errorMessagesBlock
         warningBlocks
         <ProofObligations id pos onExport />
-        <GlobalProps id props />
       </section>
     </Link.Provider>
   </Subst.Provider>
