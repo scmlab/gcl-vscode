@@ -224,6 +224,8 @@ module Block = {
   type t =
     | Unlabeled(Inlines.t, option<string>, option<GCL.Range.t>)
     | Header(string)
+  
+  let toString = _ => "<will not be implemented>"
 
   open Json.Decode
   open Util.Decode

@@ -351,7 +351,7 @@ let handleResponseKind = (state: t, kind) =>
       | StructError(MissingPostcondition) => [
           ("Missing Postcondition", "The last statement of the program should be an assertion"),
         ]
-      | Others(string) => [("Server Internal Error", string)]
+      | Others(block) => [("Server Internal Error", Element.Block.toString(block))]
       | CannotReadFile(string) => [("Server Internal Error", "Cannot read file\n" ++ string)]
       | CannotSendRequest(string) => [("Client Internal Error", "Cannot send request\n" ++ string)]
       | TypeError(NotInScope(name)) => [
