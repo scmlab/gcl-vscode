@@ -136,10 +136,9 @@ module Kind = {
     | Display(array<Element.Block.t>)
     | OK(
         int,
-        array<ProofObligation.t>,
         array<Element.Block.t>,
       )
-    | Inspect(array<ProofObligation.t>)
+    | Inspect(array<Element.Block.t>)
     | Resolve(int)
     | Substitute(int, Syntax.Expr.t)
     | ConsoleLog(string)
@@ -151,17 +150,15 @@ module Kind = {
     | "ResDisplay" => Contents(array(Element.Block.decode) |> map(errors => Display(errors)))
     | "ResOK" =>
       Contents(
-        tuple3(
+        tuple2(
           int,
-          array(ProofObligation.decode),
           array(Element.Block.decode),
-        ) |> map(((id, obs, blocks)) => OK(
+        ) |> map(((id, blocks)) => OK(
           id,
-          obs,
           blocks
         )),
       )
-    | "ResInspect" => Contents(array(ProofObligation.decode) |> map(pos => Inspect(pos)))
+    | "ResInspect" => Contents(array(Element.Block.decode) |> map(pos => Inspect(pos)))
     | "ResSubstitute" =>
       Contents(pair(int, Syntax.Expr.decode) |> map(((i, expr)) => Substitute(i, expr)))
     | "ResResolve" => Contents(int |> map(i => Resolve(i)))

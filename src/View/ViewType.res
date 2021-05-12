@@ -42,10 +42,9 @@ module Request = {
     | DisplayBlocks(array<Element.Block.t>)
     | Display(
         int,
-        array<Response.ProofObligation.t>,
         array<Element.Block.t>,
       )
-    | UpdatePOs(array<Response.ProofObligation.t>)
+    // | UpdatePOs(array<Response.ProofObligation.t>)
 
   open Json.Decode
   open Util.Decode
@@ -61,13 +60,12 @@ module Request = {
       Contents(array(Element.Block.decode) |> map(blocks => DisplayBlocks(blocks)))
     | "Display" =>
       Contents(
-        tuple3(
+        tuple2(
           int,
-          array(Response.ProofObligation.decode),
           array(Element.Block.decode),
-        ) |> map(((id, xs, ws)) => Display(id, xs, ws)),
+        ) |> map(((id, blocks)) => Display(id, blocks)),
       )
-    | "UpdatePOs" => Contents(array(Response.ProofObligation.decode) |> map(pos => UpdatePOs(pos)))
+    // | "UpdatePOs" => Contents(array(Response.ProofObligation.decode) |> map(pos => UpdatePOs(pos)))
     | tag => raise(DecodeError("[Request] Unknown constructor: " ++ tag))
     }
   )
@@ -95,23 +93,22 @@ module Request = {
         ("tag", string("DisplayBlocks")),
         ("contents", blocks |> array(Element.Block.encode)),
       })
-    | Display(id, pos, ws) =>
+    | Display(id, ws) =>
       object_(list{
         ("tag", string("Display")),
         (
           "contents",
-          (id, pos, ws) |> tuple3(
+          (id, ws) |> tuple2(
             int,
-            array(Response.ProofObligation.encode),
             array(Element.Block.encode),
           ),
         ),
       })
-    | UpdatePOs(pos) =>
-      object_(list{
-        ("tag", string("UpdatePOs")),
-        ("contents", pos |> array(Response.ProofObligation.encode)),
-      })
+    // | UpdatePOs(pos) =>
+    //   object_(list{
+    //     ("tag", string("UpdatePOs")),
+    //     ("contents", pos |> array(Response.ProofObligation.encode)),
+    //   })
     }
 }
 

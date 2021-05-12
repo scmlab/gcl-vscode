@@ -5,7 +5,7 @@ open Common
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (connection, setConnection) = React.useState(_ => None)
-  let ((id, pos, warningBlocks), setDisplay) = React.useState(() => (0, [], []))
+  let ((id, warningBlocks), setDisplay) = React.useState(() => (0, []))
   let (blocks, setBlocks) = React.useState(_ => [])
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
   let onClickLink = React.useRef(Chan.make())
@@ -24,8 +24,8 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
       switch req {
       | ViewType.Request.UpdateConnection(method) => setConnection(_ => method)
       | DisplayBlocks(blocks) => setBlocks(_ => blocks)
-      | Display(id, pos, blocks) => setDisplay(_ => (id, pos, blocks))
-      | UpdatePOs(pos) => setDisplay(((id, _pos, blocks)) => (id, pos, blocks))
+      | Display(id, blocks) => setDisplay(_ => (id, blocks))
+      // | UpdatePOs(pos) => setDisplay(((id, blocks)) => (id, blocks))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
       }
@@ -49,7 +49,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     ),
   ), [])
 
-  let onExport = () => onResponse->Chan.emit(ExportProofObligations)
+  // let onExport = () => onResponse->Chan.emit(ExportProofObligations)
 
   let className = "gcl-panel native-key-bindings"
 
@@ -65,14 +65,14 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
       </ul>
     </div>
   }
-  
+
   let blocks = if Array.length(blocks) == 0 {
     <> </>
   } else {
     <div className="gcl-global-props">
       <ul className="gcl-global-property-list">
         {blocks
-        ->Array.mapWithIndex((i, value) =>{
+        ->Array.mapWithIndex((i, value) => {
           <Element.Block value key={string_of_int(i)} />
         })
         ->array}
@@ -86,7 +86,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     <div className="gcl-global-props">
       <ul className="gcl-global-property-list">
         {warningBlocks
-        ->Array.mapWithIndex((i, value) =>{
+        ->Array.mapWithIndex((i, value) => {
           <Element.Block value key={string_of_int(i)} />
         })
         ->array}
@@ -96,13 +96,15 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
 
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
-      <section className tabIndex={-1}>
-        <DevPanel method=connection />
-        blocks
-        errorMessagesBlock
-        warningBlocks
-        <ProofObligations id pos onExport />
-      </section>
+      <ReqID.Provider value=Some(id)>
+        <section className tabIndex={-1}>
+          <DevPanel method=connection />
+          blocks
+          errorMessagesBlock
+          warningBlocks
+          // <ProofObligations id pos onExport />
+        </section>
+      </ReqID.Provider>
     </Link.Provider>
   </Subst.Provider>
 }
