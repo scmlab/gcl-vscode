@@ -133,13 +133,7 @@ module GlobalProp = {
 
 module Kind = {
   type t =
-    | Display(array<Element.Block.t>)
-    | OK(
-        int,
-        array<Element.Block.t>,
-      )
-    | Inspect(array<Element.Block.t>)
-    | Resolve(int)
+    | Display(int, array<Element.Block.t>)
     | Substitute(int, Syntax.Expr.t)
     | ConsoleLog(string)
 
@@ -147,21 +141,18 @@ module Kind = {
   open Util.Decode
   let decode: decoder<t> = sum(x =>
     switch x {
-    | "ResDisplay" => Contents(array(Element.Block.decode) |> map(errors => Display(errors)))
-    | "ResOK" =>
+    | "ResDisplay" =>
       Contents(
         tuple2(
           int,
           array(Element.Block.decode),
-        ) |> map(((id, blocks)) => OK(
+        ) |> map(((id, blocks)) => Display(
           id,
           blocks
         )),
       )
-    | "ResInspect" => Contents(array(Element.Block.decode) |> map(pos => Inspect(pos)))
     | "ResSubstitute" =>
       Contents(pair(int, Syntax.Expr.decode) |> map(((i, expr)) => Substitute(i, expr)))
-    | "ResResolve" => Contents(int |> map(i => Resolve(i)))
     | "ResConsoleLog" => Contents(string |> map(i => ConsoleLog(i)))
     | tag => raise(DecodeError("Unknown constructor: " ++ tag))
     }

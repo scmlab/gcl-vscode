@@ -11,7 +11,7 @@ let handleResponse = response =>
       kinds->Array.map(State.handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())
     })
   | CannotSendRequest(message) =>
-    State.displayBlocks([
+    State.display(0, [
       Element.Block.block(
         Some("Client Internal Error"),
         None,
@@ -19,7 +19,7 @@ let handleResponse = response =>
       ),
     ])
   | CannotDecodeRequest(message) =>
-    State.displayBlocks([
+    State.display(0, [
       Element.Block.block(
         Some("Server Internal Error"),
         None,
@@ -27,7 +27,7 @@ let handleResponse = response =>
       ),
     ])
   | NotLoaded =>
-    State.displayBlocks([
+    State.display(0, [
       Element.Block.block(
         Some("Internal Error"),
         None,
@@ -35,7 +35,7 @@ let handleResponse = response =>
       ),
     ])
   | CannotDecodeResponse(message, json) =>
-    State.displayBlocks([
+    State.display(0, [
       Element.Block.block(
         Some("Client Internal Error"),
         None,
@@ -51,7 +51,7 @@ let sendLSPRequest = (state, kind) => {
     switch result {
     | Error(error) =>
       let (header, body) = Connection.Error.toString(error)
-      State.displayBlocks([Element.Block.block(Some(header), None, Element.Inlines.string(body))])
+      State.display(0, [Element.Block.block(Some(header), None, Element.Inlines.string(body))])
     | Ok(response) => handleResponse(response)
     }
   )
@@ -161,7 +161,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     | Ok(response) => handleResponse(response)->ignore
     | Error(error) =>
       let (header, body) = Connection.Error.toString(error)
-      State.displayBlocks([
+      State.display(0, [
         Element.Block.block(Some(header), None, Element.Inlines.string(body)),
       ])->ignore
     }
@@ -170,7 +170,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on LSP client-server error
   Connection.onError(error => {
     let (header, body) = Connection.Error.toString(error)
-    State.displayBlocks([
+    State.display(0, [
       Element.Block.block(Some(header), None, Element.Inlines.string(body)),
     ])->ignore
   })->subscribe

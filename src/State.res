@@ -13,9 +13,6 @@ type t = {
 
 let subscribe = (disposable, state) => disposable->Js.Array.push(state.subscriptions)->ignore
 
-let displayBlocks = blocks =>
-  View.send(ViewType.Request.DisplayBlocks(blocks))->Promise.map(_ => ())
-
 let display = (id, blocks) =>
   View.send(ViewType.Request.Display(id, blocks))->Promise.map(_ => ())
 
@@ -336,19 +333,11 @@ module Spec = {
 
 let handleResponseKind = (state: t, kind) =>
   switch kind {
-  | Response.Kind.Display(blocks) => displayBlocks(blocks)
-  | OK(i, blocks) =>
+  | Response.Kind.Display(i, blocks) =>
     // Spec.redecorate(state, specs)
     // clear error messages before display othe stuff
     display(i, blocks)
-    // displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props, warnings))
-  | Inspect(pos) => displayBlocks(pos)
   | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
-  | Resolve(i) =>
-    state
-    ->Spec.resolve(i)
-    ->Promise.flatMap(_ => state.document->VSCode.TextDocument.save)
-    ->Promise.map(_ => ())
   | ConsoleLog(s) =>
     Js.log(s)
     Promise.resolved()

@@ -1,13 +1,11 @@
 open Belt
 open React
-open Common
 
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (connection, setConnection) = React.useState(_ => None)
-  let ((id, warningBlocks), setDisplay) = React.useState(() => (0, []))
-  let (blocks, setBlocks) = React.useState(_ => [])
-  let (errorMessages, setErrorMessages) = React.useState(_ => [])
+  let ((id, blocks), setDisplay) = React.useState(() => (0, []))
+  // let (errorMessages, setErrorMessages) = React.useState(_ => [])
   let onClickLink = React.useRef(Chan.make())
   let onSubstitute = React.useRef(Chan.make())
 
@@ -23,10 +21,8 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     let destructor = onRequest->Chan.on(req =>
       switch req {
       | ViewType.Request.UpdateConnection(method) => setConnection(_ => method)
-      | DisplayBlocks(blocks) => setBlocks(_ => blocks)
       | Display(id, blocks) => setDisplay(_ => (id, blocks))
-      // | UpdatePOs(pos) => setDisplay(((id, blocks)) => (id, blocks))
-      | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
+      // | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
       | Substitute(i, expr) => onSubstitute.current->Chan.emit(Subst.Response(i, expr))
       }
     )
@@ -53,18 +49,18 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
 
   let className = "gcl-panel native-key-bindings"
 
-  let errorMessagesBlock = if Array.length(errorMessages) == 0 {
-    <> </>
-  } else {
-    <div className="gcl-global-props">
-      <h2> {string("Error Messages")} </h2>
-      <ul className="gcl-global-property-list">
-        {errorMessages
-        ->Array.mapWithIndex((i, (header, body)) => <Item header body key={string_of_int(i)} />)
-        ->array}
-      </ul>
-    </div>
-  }
+  // let errorMessagesBlock = if Array.length(errorMessages) == 0 {
+  //   <> </>
+  // } else {
+  //   <div className="gcl-global-props">
+  //     <h2> {string("Error Messages")} </h2>
+  //     <ul className="gcl-global-property-list">
+  //       {errorMessages
+  //       ->Array.mapWithIndex((i, (header, body)) => <Item header body key={string_of_int(i)} />)
+  //       ->array}
+  //     </ul>
+  //   </div>
+  // }
 
   let blocks = if Array.length(blocks) == 0 {
     <> </>
@@ -80,19 +76,6 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     </div>
   }
 
-  let warningBlocks = if Array.length(warningBlocks) == 0 {
-    <> </>
-  } else {
-    <div className="gcl-global-props">
-      <ul className="gcl-global-property-list">
-        {warningBlocks
-        ->Array.mapWithIndex((i, value) => {
-          <Element.Block value key={string_of_int(i)} />
-        })
-        ->array}
-      </ul>
-    </div>
-  }
 
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
@@ -100,8 +83,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
         <section className tabIndex={-1}>
           <DevPanel method=connection />
           blocks
-          errorMessagesBlock
-          warningBlocks
+          // errorMessagesBlock
           // <ProofObligations id pos onExport />
         </section>
       </ReqID.Provider>
