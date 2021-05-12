@@ -63,6 +63,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
       </ul>
     </div>
   }
+  
   let blocks = if Array.length(blocks) == 0 {
     <> </>
   } else {

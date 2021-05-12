@@ -132,47 +132,6 @@ module GlobalProp = {
 }
 
 module Error = {
-  module Site = {
-    type t =
-      | Source(loc) // the error happened somewhere in the source file
-      | Hole(loc, int) // the error happened somewhere in a hole
-      | Others // the error happened elsewhere (e.g. when decoding JSON)
-
-    let toLoc = (site, specifications): loc => {
-      open Specification
-      switch site {
-      | Source(loc) => loc
-      | Hole(loc, i) =>
-        let specs = specifications->Array.keep(spec => spec.id == i)
-
-        specs[0]->Option.mapWithDefault(loc, spec =>
-          spec.loc |> Loc.translate(loc) |> Loc.translateBy(1, 0, 1, 0)
-        )
-      | Others => NoLoc
-      }
-    }
-
-    let toRange = (site, specifications, locToRange) => toLoc(site, specifications) |> locToRange
-
-    let toString = site =>
-      switch site {
-      | Source(loc) => "at " ++ Loc.toString(loc)
-      | Hole(loc, i) => "at " ++ (Loc.toString(loc) ++ (" in #" ++ string_of_int(i)))
-      | Others => ""
-      }
-
-    open Json.Decode
-    open Util.Decode
-
-    let decode: decoder<t> = sum(x =>
-      switch x {
-      | "Global" => Contents(json => Source(json |> Loc.decode))
-      | "Local" => Contents(pair(Loc.decode, int) |> map(((r, i)) => Hole(r, i)))
-      | tag => raise(DecodeError("Unknown constructor: " ++ tag))
-      }
-    )
-  }
-
   module TypeError = {
     type t =
       | NotInScope(string)
@@ -201,7 +160,6 @@ module Error = {
     type t =
       | MissingAssertion
       | MissingPostcondition
-      | DigHole
 
     open Json.Decode
     open Util.Decode
@@ -209,13 +167,12 @@ module Error = {
       switch x {
       | "MissingAssertion" => Contents(_ => MissingAssertion)
       | "MissingPostcondition" => Contents(_ => MissingPostcondition)
-      | "DigHole" => Contents(_ => DigHole)
       | tag => raise(DecodeError("Unknown constructor: " ++ tag))
       }
     )
   }
 
-  type kind =
+  type t =
     // from server, GCL related
     | LexicalError
     | SyntacticError(array<string>)
@@ -229,7 +186,7 @@ module Error = {
 
   open Json.Decode
   open Util.Decode
-  let decodeKind: decoder<kind> = sum(x =>
+  let decode: decoder<t> = sum(x =>
     switch x {
     | "LexicalError" => TagOnly(_ => LexicalError)
     | "SyntacticError" =>
@@ -244,17 +201,8 @@ module Error = {
     }
   )
 
-  type t = Error(Site.t, kind)
-
-  let decode: decoder<t> = pair(Site.decode, decodeKind) |> map(((site, kind)) => Error(site, kind))
-
   let fromJsError = (error: 'a): string => %raw("function (e) {return e.toString()}")(error)
 
-  let matchDigHole = error =>
-    switch error {
-    | Error(site, StructError(DigHole)) => Some(site)
-    | _ => None
-    }
 }
 
 module Kind = {

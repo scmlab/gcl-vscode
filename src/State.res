@@ -343,9 +343,8 @@ let handleResponseKind = (state: t, kind) =>
   switch kind {
   | Response.Kind.Error(errors) =>
     let errorToMessage = (error: Response.Error.t) => {
-      let Response.Error.Error(site, kind) = error
-      switch kind {
-      | Response.Error.LexicalError => [("Lexical Error", Response.Error.Site.toString(site))]
+      switch error {
+      | Response.Error.LexicalError => [("Lexical Error", "Response.Error.Site.toString(site)")]
       | SyntacticError(messages) => [("Parse Error", messages->Js.String.concatMany("\n"))]
       | StructError(MissingAssertion) => [
           ("Missing Loop Invariant", "There should be a loop invariant before the DO construct"),
@@ -353,7 +352,6 @@ let handleResponseKind = (state: t, kind) =>
       | StructError(MissingPostcondition) => [
           ("Missing Postcondition", "The last statement of the program should be an assertion"),
         ]
-      | StructError(DigHole) => []
       | Others(string) => [("Server Internal Error", string)]
       | CannotReadFile(string) => [("Server Internal Error", "Cannot read file\n" ++ string)]
       | CannotSendRequest(string) => [("Client Internal Error", "Cannot send request\n" ++ string)]
@@ -363,7 +361,7 @@ let handleResponseKind = (state: t, kind) =>
             "The identifier \"" ++
             name ++
             "\" " ++
-            Response.Error.Site.toString(site) ++ " is not in scope",
+            "Response.Error.Site.toString(site)" ++ " is not in scope",
           ),
         ]
       | TypeError(UnifyFailed(s, t)) => [
@@ -393,48 +391,8 @@ let handleResponseKind = (state: t, kind) =>
       }
     }
 
-    let errorToSideEffects = error => {
-      let Response.Error.Error(_site, kind) = error
-      switch kind {
-      | Response.Error.StructError(DigHole) =>
-        let sites = errors->Array.keepMap(Response.Error.matchDigHole)
-        switch sites[0] {
-        | None => Promise.resolved()
-        | Some(site) =>
-          let range = Response.Error.Site.toRange(site, state.specifications, GCL.Loc.toRange)
-          // replace the question mark "?" with a hole "[!  !]"
-          let indent = Js.String.repeat(VSCode.Position.character(VSCode.Range.start(range)), " ")
-          let holeText = "[!\n" ++ indent ++ "\n" ++ indent ++ "!]"
-          let holeRange = VSCode.Range.make(
-            VSCode.Range.start(range),
-            VSCode.Position.translate(VSCode.Range.start(range), 0, 1),
-          )
-
-          state.document
-          ->Editor.Text.replace(holeRange, holeText)
-          ->Promise.map(_ => {
-            // set the cursor inside the hole
-            let selectionRange = VSCode.Range.make(
-              VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
-              VSCode.Position.translate(VSCode.Range.start(range), 1, 0),
-            )
-            Editor.Selection.set(state.editor, selectionRange)
-          })
-          ->Promise.flatMap(_ => {
-            // save the editor to trigger the server
-            state.document->VSCode.TextDocument.save
-          })
-          ->Promise.map(_ => ())
-        }
-      | _ => Promise.resolved()
-      }
-    }
-    //
     let errorMessages = errors->Array.map(errorToMessage)->Array.concatMany
-    errors
-    ->Array.map(errorToSideEffects)
-    ->Util.Promise.oneByOne
-    ->Promise.flatMap(_ => displayErrorMessages(errorMessages))
+    displayErrorMessages(errorMessages)
 
   | OK(i, pos, specs, props, warnings) =>
     Spec.redecorate(state, specs)
