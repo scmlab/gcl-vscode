@@ -13,12 +13,6 @@ type t = {
 
 let subscribe = (disposable, state) => disposable->Js.Array.push(state.subscriptions)->ignore
 
-let displayErrorMessage = msg =>
-  View.send(ViewType.Request.SetErrorMessages([msg]))->Promise.map(_ => ())
-
-let displayErrorMessages = msgs =>
-  View.send(ViewType.Request.SetErrorMessages(msgs))->Promise.map(_ => ())
-
 let displayBlocks = blocks =>
   View.send(ViewType.Request.DisplayBlocks(blocks))->Promise.map(_ => ())
 
@@ -348,7 +342,8 @@ let handleResponseKind = (state: t, kind) =>
   | OK(i, pos, specs, props, warnings) =>
     Spec.redecorate(state, specs)
     // clear error messages before display othe stuff
-    displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props, warnings))
+    display(i, pos, props, warnings)
+    // displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props, warnings))
   | Inspect(pos) => updatePOs(pos)
   | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | UpdateSpecPositions(locations) =>

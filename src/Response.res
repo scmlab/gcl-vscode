@@ -1,6 +1,6 @@
 open Belt
 open GCL
-open GCL.Syntax
+
 module Origin = {
   type t =
     | AtAbort(loc)
@@ -129,78 +129,6 @@ module GlobalProp = {
 
   open Json.Encode
   let encode: encoder<t> = Syntax.Expr.encode
-}
-
-module Error = {
-  module TypeError = {
-    type t =
-      | NotInScope(string)
-      | UnifyFailed(Type.t, Type.t)
-      | RecursiveType(string, Type.t)
-      | NotFunction(Type.t)
-
-    open Json.Decode
-    open Util.Decode
-    let decode: decoder<t> = sum(x =>
-      switch x {
-      | "NotInScope" => Contents(pair(string, Loc.decode) |> map(((s, _)) => NotInScope(s)))
-      | "UnifyFailed" =>
-        Contents(
-          tuple3(Type.decode, Type.decode, Loc.decode) |> map(((s, t, _)) => UnifyFailed(s, t)),
-        )
-      | "RecursiveType" =>
-        Contents(tuple3(string, Type.decode, Loc.decode) |> map(((s, t, _)) => RecursiveType(s, t)))
-      | "NotFunction" => Contents(pair(Type.decode, Loc.decode) |> map(((t, _)) => NotFunction(t)))
-      | tag => raise(DecodeError("Unknown constructor: " ++ tag))
-      }
-    )
-  }
-
-  module StructError = {
-    type t =
-      | MissingAssertion
-      | MissingPostcondition
-
-    open Json.Decode
-    open Util.Decode
-    let decode: decoder<t> = sum(x =>
-      switch x {
-      | "MissingAssertion" => Contents(_ => MissingAssertion)
-      | "MissingPostcondition" => Contents(_ => MissingPostcondition)
-      | tag => raise(DecodeError("Unknown constructor: " ++ tag))
-      }
-    )
-  }
-
-  type t =
-    // from server, GCL related
-    | SyntacticError(array<string>)
-    | StructError(StructError.t)
-    | TypeError(TypeError.t)
-    // from server
-    | CannotReadFile(string)
-    | Others(string)
-    // from client
-    | CannotSendRequest(string)
-
-  open Json.Decode
-  open Util.Decode
-  let decode: decoder<t> = sum(x =>
-    switch x {
-    | "SyntacticError" =>
-      Contents(
-        array(pair(Loc.decode, string)) |> map(pairs => SyntacticError(pairs->Array.map(snd))),
-      )
-    | "StructError" => Contents(json => StructError(json |> StructError.decode))
-    | "TypeError" => Contents(json => TypeError(json |> TypeError.decode))
-    | "CannotReadFile" => Contents(json => CannotReadFile(json |> string))
-    | "Others" => Contents(json => Others(json |> string))
-    | tag => raise(DecodeError("Unknown constructor: " ++ tag))
-    }
-  )
-
-  let fromJsError = (error: 'a): string => %raw("function (e) {return e.toString()}")(error)
-
 }
 
 module Kind = {

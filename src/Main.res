@@ -11,19 +11,37 @@ let handleResponse = response =>
       kinds->Array.map(State.handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())
     })
   | CannotSendRequest(message) =>
-    State.displayErrorMessages([
-      ("Client Internal Error", "Cannot send request to the server\n" ++ message),
+    State.displayBlocks([
+      Element.Block.block(
+        Some("Client Internal Error"),
+        None,
+        Element.Inlines.string("Cannot send request to the server\n" ++ message),
+      ),
     ])
   | CannotDecodeRequest(message) =>
-    State.displayErrorMessages([
-      ("Server Internal Error", "Cannot decode request from the client\n" ++ message),
+    State.displayBlocks([
+      Element.Block.block(
+        Some("Server Internal Error"),
+        None,
+        Element.Inlines.string("Cannot decode request from the client\n" ++ message),
+      ),
     ])
-  | NotLoaded => State.displayErrorMessages([("Internal Error", "Program source not loaded yet")])
+  | NotLoaded =>
+    State.displayBlocks([
+      Element.Block.block(
+        Some("Internal Error"),
+        None,
+        Element.Inlines.string("Program source not loaded yet"),
+      ),
+    ])
   | CannotDecodeResponse(message, json) =>
-    State.displayErrorMessages([
-      (
-        "Client Internal Error",
-        "Cannot decode response from the server\n" ++ message ++ "\n" ++ Js.Json.stringify(json),
+    State.displayBlocks([
+      Element.Block.block(
+        Some("Client Internal Error"),
+        None,
+        Element.Inlines.string(
+          "Cannot decode response from the server\n" ++ message ++ "\n" ++ Js.Json.stringify(json),
+        ),
       ),
     ])
   }
@@ -31,7 +49,9 @@ let handleResponse = response =>
 let sendLSPRequest = (state, kind) => {
   State.sendLSPRequest(state, kind)->Promise.flatMap(result =>
     switch result {
-    | Error(error) => Connection.Error.toString(error)->State.displayErrorMessage
+    | Error(error) =>
+      let (header, body) = Connection.Error.toString(error)
+      State.displayBlocks([Element.Block.block(Some(header), None, Element.Inlines.string(body))])
     | Ok(response) => handleResponse(response)
     }
   )
@@ -58,7 +78,7 @@ let handleViewResponse = response => {
       let range = GCL.Loc.toRange(loc)
       let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
       state.editor->VSCode.TextEditor.setSelection(selection)
-      
+
     // Decoration.remove(key)
     | Substitute(id, expr, subst) =>
       // remove all decorations
@@ -140,15 +160,19 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     switch result {
     | Ok(response) => handleResponse(response)->ignore
     | Error(error) =>
-      let message = Connection.Error.toString(error)
-      State.displayErrorMessage(message)->ignore
+      let (header, body) = Connection.Error.toString(error)
+      State.displayBlocks([
+        Element.Block.block(Some(header), None, Element.Inlines.string(body)),
+      ])->ignore
     }
   )->subscribe
 
   // on LSP client-server error
   Connection.onError(error => {
-    let message = Connection.Error.toString(error)
-    State.displayErrorMessage(message)->ignore
+    let (header, body) = Connection.Error.toString(error)
+    State.displayBlocks([
+      Element.Block.block(Some(header), None, Element.Inlines.string(body)),
+    ])->ignore
   })->subscribe
 
   // on open
