@@ -339,8 +339,8 @@ module Spec = {
 let handleResponseKind = (state: t, kind) =>
   switch kind {
   | Response.Kind.Display(blocks) => displayBlocks(blocks)
-  | OK(i, pos, specs, blocks) =>
-    Spec.redecorate(state, specs)
+  | OK(i, pos, blocks) =>
+    // Spec.redecorate(state, specs)
     // clear error messages before display othe stuff
     display(i, pos, blocks)
     // displayErrorMessages([])->Promise.flatMap(() => display(i, pos, props, warnings))

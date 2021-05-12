@@ -137,7 +137,6 @@ module Kind = {
     | OK(
         int,
         array<ProofObligation.t>,
-        array<Specification.t>,
         array<Element.Block.t>,
       )
     | Inspect(array<ProofObligation.t>)
@@ -152,15 +151,13 @@ module Kind = {
     | "ResDisplay" => Contents(array(Element.Block.decode) |> map(errors => Display(errors)))
     | "ResOK" =>
       Contents(
-        tuple4(
+        tuple3(
           int,
           array(ProofObligation.decode),
-          array(Specification.decode),
           array(Element.Block.decode),
-        ) |> map(((id, obs, specs, blocks)) => OK(
+        ) |> map(((id, obs, blocks)) => OK(
           id,
           obs,
-          specs,
           blocks
         )),
       )
