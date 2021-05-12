@@ -133,7 +133,7 @@ module GlobalProp = {
 
 module Kind = {
   type t =
-    | Error(array<Element.Block.t>)
+    | Display(array<Element.Block.t>)
     | OK(
         int,
         array<ProofObligation.t>,
@@ -151,7 +151,7 @@ module Kind = {
   open Util.Decode
   let decode: decoder<t> = sum(x =>
     switch x {
-    | "ResError" => Contents(array(Element.Block.decode) |> map(errors => Error(errors)))
+    | "ResDisplay" => Contents(array(Element.Block.decode) |> map(errors => Display(errors)))
     | "ResOK" =>
       Contents(
         tuple5(
