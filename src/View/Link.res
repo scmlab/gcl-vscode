@@ -61,6 +61,6 @@ module WithRange = {
     let onMouseOver = _ => link->Chan.emit(MouseOver(loc))
     let onMouseOut = _ => link->Chan.emit(MouseOut(loc))
     let onClick = _ => link->Chan.emit(MouseClick(loc))
-    <div className="expr-link" onMouseOver onMouseOut onClick> children </div>
+    <div className="element-link" onMouseOver onMouseOut onClick> children </div>
   }
 }
