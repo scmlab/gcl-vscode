@@ -222,24 +222,23 @@ module Inlines = {
 
 module Block = {
   type t =
-    | Unlabeled(Inlines.t, option<string>, option<GCL.Range.t>)
+    | Block(option<string>, option<GCL.Range.t>, Inlines.t)
     | Header(string)
 
-  let block = (header, range, body) => Unlabeled(body, header, range)
+  let block = (header, range, body) => Block(header, range, body)
 
   open Json.Decode
   open Util.Decode
   let decode: decoder<t> = json =>
     json |> sum(x =>
       switch x {
-      | "Unlabeled" =>
-        Js.log(json)
+      | "Block" =>
         Contents(
-          tuple3(Inlines.decode, optional(string), optional(GCL.Range.decode)) |> map(((
+          tuple3(optional(string), optional(GCL.Range.decode), Inlines.decode) |> map(((
             a,
             b,
             c,
-          )) => Unlabeled(a, b, c)),
+          )) => Block(a, b, c)),
         )
       | "Header" => Contents(string |> map(s => Header(s)))
       | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
@@ -249,12 +248,12 @@ module Block = {
   open! Json.Encode
   let encode: encoder<t> = x =>
     switch x {
-    | Unlabeled(a, b, c) =>
+    | Block(a, b, c) =>
       object_(list{
-        ("tag", string("Unlabeled")),
+        ("tag", string("Block")),
         (
           "contents",
-          (a, b, c) |> tuple3(Inlines.encode, nullable(string), nullable(GCL.Range.encode)),
+          (a, b, c) |> tuple3(nullable(string), nullable(GCL.Range.encode), Inlines.encode),
         ),
       })
     | Header(xs) => object_(list{("tag", string("Header")), ("contents", xs |> string)})
@@ -264,24 +263,43 @@ module Block = {
   @react.component
   let make = (~value: t) =>
     switch value {
-    | Unlabeled(body, header, None) =>
-      <li className="element-block-unlabeled native-key-bindings" tabIndex={-1}>
-        <span className="gcl-list-item-header">
-          {header->Option.mapWithDefault("", x => x)->string}
-        </span>
-        <span className="gcl-list-item-body"> <Inlines value=body /> </span>
+    | Block(None, None, body) =>
+      <li className="element-block">
+        <div className="element-block-body"> <Inlines value=body /> </div>
       </li>
-    | Unlabeled(body, header, Some(range)) =>
-      <li className="element-block-unlabeled native-key-bindings" tabIndex={-1}>
-        // highlight the header with range on hover
-        <Link.WithRange range>
-          <div className="gcl-list-item-header has-range">
-            {header->Option.mapWithDefault("", x => x)->string}
-            <span className="gcl-list-item-range"> {string(GCL.Range.toString(range))} </span>
-          </div>
-        </Link.WithRange>
-        <span className="gcl-list-item-body"> <Inlines value=body /> </span>
+    | Block(Some(header), None, body) =>
+      <li className="element-block">
+        <div className="element-block-header"> {string(header)} </div>
+        <div className="element-block-body"> <Inlines value=body /> </div>
       </li>
-    | Header(header) => <h2> {string(header)} </h2>
+    | Block(None, Some(range), body) =>
+      <li className="element-block">
+        <div className="element-block-body"> <Inlines value=body /> </div>
+      </li>
+    | Block(Some(header), Some(range), body) =>
+      <li className="element-block">
+        <div className="element-block-header"> {string(header)} </div>
+        <div className="element-block-body"> <Inlines value=body /> </div>
+      </li>
+
+    // <li className="element-block-unlabeled native-key-bindings" tabIndex={-1}>
+    //   <span className="gcl-list-item-header">
+    //     {header->Option.mapWithDefault("", x => x)->string}
+    //   </span>
+    //   <span className="gcl-list-item-body"> <Inlines value=body /> </span>
+    // </li>
+
+    // <li className="element-block-unlabeled native-key-bindings" tabIndex={-1}>
+    //   // highlight the header with range on hover
+    //   <Link.WithRange range>
+    //     <div className="gcl-list-item-header has-range">
+    //       {header->Option.mapWithDefault("", x => x)->string}
+    //       <span className="gcl-list-item-range"> {string(GCL.Range.toString(range))} </span>
+    //     </div>
+    //   </Link.WithRange>
+    //   <span className="gcl-list-item-body"> <Inlines value=body /> </span>
+    // </li>
+    | Header(header) => <li className="element-header"> <h3> {string(header)} </h3> </li>
+    // <h2> {string(header)} </h2>
     }
 }

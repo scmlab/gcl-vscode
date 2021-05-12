@@ -65,15 +65,13 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   let blocks = if Array.length(blocks) == 0 {
     <> </>
   } else {
-    <div className="gcl-global-props">
-      <ul className="gcl-global-property-list">
-        {blocks
-        ->Array.mapWithIndex((i, value) => {
-          <Element.Block value key={string_of_int(i)} />
-        })
-        ->array}
-      </ul>
-    </div>
+    <ul>
+      {blocks
+      ->Array.mapWithIndex((i, value) => {
+        <Element.Block value key={string_of_int(i)} />
+      })
+      ->array}
+    </ul>
   }
 
 
@@ -83,7 +81,6 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
         <section className tabIndex={-1}>
           <DevPanel method=connection />
           blocks
-          // errorMessagesBlock
           // <ProofObligations id pos onExport />
         </section>
       </ReqID.Provider>
