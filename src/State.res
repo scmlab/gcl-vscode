@@ -19,6 +19,9 @@ let displayErrorMessage = msg =>
 let displayErrorMessages = msgs =>
   View.send(ViewType.Request.SetErrorMessages(msgs))->Promise.map(_ => ())
 
+let displayBlocks = blocks =>
+  View.send(ViewType.Request.DisplayBlocks(blocks))->Promise.map(_ => ())
+
 let display = (id, pos, props, warnings) =>
   View.send(ViewType.Request.Display(id, pos, props, warnings))->Promise.map(_ => ())
 
@@ -341,58 +344,7 @@ module Spec = {
 
 let handleResponseKind = (state: t, kind) =>
   switch kind {
-  | Response.Kind.Error(errors) =>
-    let errorToMessage = (error: Response.Error.t) => {
-      switch error {
-      | Response.Error.SyntacticError(messages) => [("Parse Error", messages->Js.String.concatMany("\n"))]
-      | StructError(MissingAssertion) => [
-          ("Missing Loop Invariant", "There should be a loop invariant before the DO construct"),
-        ]
-      | StructError(MissingPostcondition) => [
-          ("Missing Postcondition", "The last statement of the program should be an assertion"),
-        ]
-      | Others(block) => [("Server Internal Error", Element.Block.toString(block))]
-      | CannotReadFile(string) => [("Server Internal Error", "Cannot read file\n" ++ string)]
-      | CannotSendRequest(string) => [("Client Internal Error", "Cannot send request\n" ++ string)]
-      | TypeError(NotInScope(name)) => [
-          (
-            "Not In Scope",
-            "The identifier \"" ++
-            name ++
-            "\" " ++
-            "Response.Error.Site.toString(site)" ++ " is not in scope",
-          ),
-        ]
-      | TypeError(UnifyFailed(s, t)) => [
-          (
-            "Cannot unify types",
-            "Cannot unify: " ++
-            GCL.Syntax.Type.toString(s) ++
-            "\nwith        : " ++
-            GCL.Syntax.Type.toString(t),
-          ),
-        ]
-      | TypeError(RecursiveType(var, t)) => [
-          (
-            "Recursive type variable",
-            "Recursive type variable: " ++
-            var ++
-            "\nin type             : " ++
-            GCL.Syntax.Type.toString(t),
-          ),
-        ]
-      | TypeError(NotFunction(t)) => [
-          (
-            "Not a function",
-            "The type " ++ GCL.Syntax.Type.toString(t) ++ " is not a function type",
-          ),
-        ]
-      }
-    }
-
-    let errorMessages = errors->Array.map(errorToMessage)->Array.concatMany
-    displayErrorMessages(errorMessages)
-
+  | Response.Kind.Error(errors) => displayBlocks(errors)
   | OK(i, pos, specs, props, warnings) =>
     Spec.redecorate(state, specs)
     // clear error messages before display othe stuff

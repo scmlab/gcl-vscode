@@ -5,7 +5,8 @@ open Common
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (connection, setConnection) = React.useState(_ => None)
-  let ((id, pos, props, blocks), setDisplay) = React.useState(() => (0, [], [], []))
+  let ((id, pos, props, warningBlocks), setDisplay) = React.useState(() => (0, [], [], []))
+  let (blocks, setBlocks) = React.useState(_ => [])
   let (errorMessages, setErrorMessages) = React.useState(_ => [])
   let onClickLink = React.useRef(Chan.make())
   let onSubstitute = React.useRef(Chan.make())
@@ -22,6 +23,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     let destructor = onRequest->Chan.on(req =>
       switch req {
       | ViewType.Request.UpdateConnection(method) => setConnection(_ => method)
+      | DisplayBlocks(blocks) => setBlocks(_ => blocks)
       | Display(id, pos, props, blocks) => setDisplay(_ => (id, pos, props, blocks))
       | UpdatePOs(pos) => setDisplay(((id, _pos, props, blocks)) => (id, pos, props, blocks))
       | SetErrorMessages(msgs) => setErrorMessages(_ => msgs)
@@ -78,12 +80,27 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     </div>
   }
 
+  let warningBlocks = if Array.length(warningBlocks) == 0 {
+    <> </>
+  } else {
+    <div className="gcl-global-props">
+      <ul className="gcl-global-property-list">
+        {warningBlocks
+        ->Array.mapWithIndex((i, value) =>{
+          <Element.Block value key={string_of_int(i)} />
+        })
+        ->array}
+      </ul>
+    </div>
+  }
+
   <Subst.Provider value=onSubstitute.current>
     <Link.Provider value=onClickLink.current>
       <section className tabIndex={-1}>
         <DevPanel method=connection />
-        errorMessagesBlock
         blocks
+        errorMessagesBlock
+        warningBlocks
         <ProofObligations id pos onExport />
         <GlobalProps id props />
       </section>

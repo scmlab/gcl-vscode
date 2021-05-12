@@ -179,7 +179,7 @@ module Error = {
     | TypeError(TypeError.t)
     // from server
     | CannotReadFile(string)
-    | Others(Element.Block.t)
+    | Others(string)
     // from client
     | CannotSendRequest(string)
 
@@ -194,7 +194,7 @@ module Error = {
     | "StructError" => Contents(json => StructError(json |> StructError.decode))
     | "TypeError" => Contents(json => TypeError(json |> TypeError.decode))
     | "CannotReadFile" => Contents(json => CannotReadFile(json |> string))
-    | "Others" => Contents(json => Others(json |> Element.Block.decode))
+    | "Others" => Contents(json => Others(json |> string))
     | tag => raise(DecodeError("Unknown constructor: " ++ tag))
     }
   )
@@ -205,7 +205,7 @@ module Error = {
 
 module Kind = {
   type t =
-    | Error(array<Error.t>)
+    | Error(array<Element.Block.t>)
     | OK(
         int,
         array<ProofObligation.t>,
@@ -223,7 +223,7 @@ module Kind = {
   open Util.Decode
   let decode: decoder<t> = sum(x =>
     switch x {
-    | "ResError" => Contents(array(Error.decode) |> map(errors => Error(errors)))
+    | "ResError" => Contents(array(Element.Block.decode) |> map(errors => Error(errors)))
     | "ResOK" =>
       Contents(
         tuple5(

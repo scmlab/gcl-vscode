@@ -39,6 +39,7 @@ module Request = {
     | UpdateConnection(option<Connection.method>)
     | Substitute(int, GCL.Syntax.Expr.t)
     | SetErrorMessages(array<(string, string)>)
+    | DisplayBlocks(array<Element.Block.t>)
     | Display(
         int,
         array<Response.ProofObligation.t>,
@@ -57,6 +58,8 @@ module Request = {
       Contents(pair(int, GCL.Syntax.Expr.decode) |> map(((x, y)) => Substitute(x, y)))
     | "SetErrorMessages" =>
       Contents(array(pair(string, string)) |> map(msgs => SetErrorMessages(msgs)))
+    | "DisplayBlocks" =>
+      Contents(array(Element.Block.decode) |> map(blocks => DisplayBlocks(blocks)))
     | "Display" =>
       Contents(
         tuple4(
@@ -88,6 +91,11 @@ module Request = {
       object_(list{
         ("tag", string("SetErrorMessages")),
         ("contents", msgs |> array(pair(string, string))),
+      })
+    | DisplayBlocks(blocks) =>
+      object_(list{
+        ("tag", string("DisplayBlocks")),
+        ("contents", blocks |> array(Element.Block.encode)),
       })
     | Display(id, pos, globalProps, ws) =>
       object_(list{
