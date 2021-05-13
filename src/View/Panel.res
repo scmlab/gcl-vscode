@@ -49,19 +49,6 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
 
   let className = "gcl-panel native-key-bindings"
 
-  // let errorMessagesBlock = if Array.length(errorMessages) == 0 {
-  //   <> </>
-  // } else {
-  //   <div className="gcl-global-props">
-  //     <h2> {string("Error Messages")} </h2>
-  //     <ul className="gcl-global-property-list">
-  //       {errorMessages
-  //       ->Array.mapWithIndex((i, (header, body)) => <Item header body key={string_of_int(i)} />)
-  //       ->array}
-  //     </ul>
-  //   </div>
-  // }
-
   let blocks = if Array.length(blocks) == 0 {
     <> </>
   } else {
@@ -80,7 +67,6 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
         <section className tabIndex={-1}>
           <DevPanel method=connection />
           blocks
-          // <ProofObligations id pos onExport />
         </section>
       </ReqID.Provider>
     </Link.Provider>
