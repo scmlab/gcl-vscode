@@ -22,7 +22,7 @@
     font-size: 125%;
 
     // prevents the view from reacting when being focused
-    outline: none !important;
+    outline   : none !important;
     box-shadow: none;
 
     #gcl-connection-status {
@@ -110,10 +110,16 @@
     li .element-block-header {
         margin-left: @padding/2;
         padding    : @padding @padding 0 @padding;
-        
-        color: @foreground-tenuous;
+
+        color       : @foreground-tenuous;
         font-variant: small-caps;
         font-weight : bolder;
+
+        .element-block-header-range {
+            font-variant: normal;
+            font-weight : normal;
+            float       : right;
+        }
     }
 
     ul {

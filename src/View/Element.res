@@ -223,7 +223,7 @@ module Inlines = {
 module Block = {
   type t =
     | Block(option<string>, option<GCL.Range.t>, Inlines.t)
-    | PO(option<string>, Inlines.t, Inlines.t)
+    | PO(option<string>, option<GCL.Range.t>, Inlines.t, Inlines.t)
     | Header(string)
 
   let block = (header, range, body) => Block(header, range, body)
@@ -243,11 +243,12 @@ module Block = {
         )
       | "PO" =>
         Contents(
-          tuple3(optional(string), Inlines.decode, Inlines.decode) |> map(((a, b, c)) => PO(
-            a,
-            b,
-            c,
-          )),
+          tuple4(
+            optional(string),
+            optional(GCL.Range.decode),
+            Inlines.decode,
+            Inlines.decode,
+          ) |> map(((a, b, c, d)) => PO(a, b, c, d)),
         )
       | "Header" => Contents(string |> map(s => Header(s)))
       | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
@@ -265,10 +266,18 @@ module Block = {
           (a, b, c) |> tuple3(nullable(string), nullable(GCL.Range.encode), Inlines.encode),
         ),
       })
-    | PO(a, b, c) =>
+    | PO(a, b, c, d) =>
       object_(list{
         ("tag", string("PO")),
-        ("contents", (a, b, c) |> tuple3(nullable(string), Inlines.encode, Inlines.encode)),
+        (
+          "contents",
+          (a, b, c, d) |> tuple4(
+            nullable(string),
+            nullable(GCL.Range.encode),
+            Inlines.encode,
+            Inlines.encode,
+          ),
+        ),
       })
     | Header(xs) => object_(list{("tag", string("Header")), ("contents", xs |> string)})
     }
@@ -277,46 +286,56 @@ module Block = {
   @react.component
   let make = (~value: t) =>
     switch value {
-    | Block(None, None, body) =>
-      <li className="element-block">
-        <div className="element-block-body"> <Inlines value=body /> </div>
-      </li>
-    | Block(Some(header), None, body) =>
-      <li className="element-block">
-        <div className="element-block-header"> {string(header)} </div>
-        <div className="element-block-body"> <Inlines value=body /> </div>
-      </li>
-    | Block(None, Some(range), body) =>
-      <li className="element-block">
-        <div className="element-block-body"> <Inlines value=body /> </div>
-      </li>
-    | Block(Some(header), Some(range), body) =>
-      <li className="element-block">
-        <div className="element-block-header"> {string(header)} </div>
-        <div className="element-block-body"> <Inlines value=body /> </div>
-      </li>
-
-    // <li className="element-block-unlabeled native-key-bindings" tabIndex={-1}>
-    //   <span className="gcl-list-item-header">
-    //     {header->Option.mapWithDefault("", x => x)->string}
-    //   </span>
-    //   <span className="gcl-list-item-body"> <Inlines value=body /> </span>
-    // </li>
-
-    // <li className="element-block-unlabeled native-key-bindings" tabIndex={-1}>
-    //   // highlight the header with range on hover
-    //   <Link.WithRange range>
-    //     <div className="gcl-list-item-header has-range">
-    //       {header->Option.mapWithDefault("", x => x)->string}
-    //       <span className="gcl-list-item-range"> {string(GCL.Range.toString(range))} </span>
-    //     </div>
-    //   </Link.WithRange>
-    //   <span className="gcl-list-item-body"> <Inlines value=body /> </span>
-    // </li>
-    | PO(header, pre, post) =>
+    | Block(header, None, body) =>
       let header = switch header {
       | None => <> </>
       | Some(header) => <div className="element-block-header"> {string(header)} </div>
+      }
+      <li className="element-block">
+        {header} <div className="element-block-body"> <Inlines value=body /> </div>
+      </li>
+    | Block(header, Some(range), body) =>
+      let header = switch header {
+      | None => <> </>
+      | Some(header) =>
+        <Link.WithRange range>
+          <div className="element-block-header">
+            {string(header)}
+            <span className="element-block-header-range">
+              {string(GCL.Range.toString(range))}
+            </span>
+          </div>
+        </Link.WithRange>
+      }
+      <li className="element-block">
+        {header} <div className="element-block-body"> <Inlines value=body /> </div>
+      </li>
+    | PO(header, None, pre, post) =>
+      let header = switch header {
+      | None => <> </>
+      | Some(header) => <div className="element-block-header"> {string(header)} </div>
+      }
+      <li className="element-block">
+        {header}
+        <div className="element-po-body">
+          <div className="element-po-pre"> <Inlines value=pre /> </div>
+          <span className="element-po-arrow"> {string(j`⇒`)} </span>
+          <div className="element-po-post"> <Inlines value=post /> </div>
+        </div>
+      </li>
+
+    | PO(header, Some(range), pre, post) =>
+      let header = switch header {
+      | None => <> </>
+      | Some(header) =>
+        <Link.WithRange range>
+          <div className="element-block-header">
+            {string(header)}
+            <span className="element-block-header-range">
+              {string(GCL.Range.toString(range))}
+            </span>
+          </div>
+        </Link.WithRange>
       }
       <li className="element-block">
         {header}
