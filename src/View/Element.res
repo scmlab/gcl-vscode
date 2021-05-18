@@ -176,6 +176,21 @@ module Inlines = {
     ->Array.concatMany,
   )
 
+  module Sbst = {
+    @react.component
+    let make = (~before, ~after) => {
+      let (clicked, setClicked) = React.useState(_ => false)
+      let onClick = _ => setClicked(_ => true)
+      <span onClick>
+        {if clicked {
+          after
+        } else {
+          before
+        }}
+      </span>
+    }
+  }
+
   let rec make = (~value: t) => {
     let Element(elements) = value
     <span>
@@ -193,17 +208,9 @@ module Inlines = {
           let child = make(~value=Element(children))
           <Link.WithRange range> {child} </Link.WithRange>
         | Sbst(before, after, _className) =>
-          let (clicked, setClicked) = React.useState(_ => false)
-          let onClick = _ => setClicked(_ => true)
           let before = make(~value=Element(before))
           let after = make(~value=Element(after))
-          <span onClick>
-            {if clicked {
-              after
-            } else {
-              before
-            }}
-          </span>
+          <Sbst before after />
         | Horz(elements) =>
           let children =
             elements->Array.map(element =>
