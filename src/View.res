@@ -35,23 +35,17 @@ module Panel = {
         VSCode.Uri.joinPath(extensionUri, ["dist", "style.css"]),
       )->VSCode.Uri.toString
 
-    let codiconsUri = VSCode.Webview.asWebviewUri(
-      webview,
-      VSCode.Uri.joinPath(
-        extensionUri,
-        ["dist", "codicon/codicon.css"],
-        // ["node_modules", "vscode-codicons", "dist", "codicon.css"],
-      ),
-    )->VSCode.Uri.toString
+    let codiconsUri =
+      VSCode.Webview.asWebviewUri(
+        webview,
+        VSCode.Uri.joinPath(extensionUri, ["dist", "codicon/codicon.css"]),
+      )->VSCode.Uri.toString
 
-    let codiconsFontUri = VSCode.Webview.asWebviewUri(
-      webview,
-      VSCode.Uri.joinPath(
-        extensionUri,
-        ["dist", "codicon/codicon.ttf"],
-        // ["node_modules", "vscode-codicons", "dist", "codicon.ttf"],
-      ),
-    )->VSCode.Uri.toString
+    let codiconsFontUri =
+      VSCode.Webview.asWebviewUri(
+        webview,
+        VSCode.Uri.joinPath(extensionUri, ["dist", "codicon/codicon.ttf"]),
+      )->VSCode.Uri.toString
 
     // Content-Security-Policy
     let defaultSrc = "default-src 'none'; "
@@ -274,7 +268,7 @@ module Controller: Controller = {
     | None =>
       View.make(extensionPath)->Promise.map(view => {
         singleton.contents = Some(view)
-        // register stored listeners 
+        // register stored listeners
         listenersBeforeAcvitation->Js.Array2.forEach(((callback, resolve)) => {
           let dispose = View.on(view, callback)
           resolve(dispose)

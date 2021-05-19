@@ -116,13 +116,6 @@ module Spec = {
     }
   }
 
-  let insert = (state, lineNo, expr) => {
-    let assertion = "{ " ++ GCL.Syntax.Expr.toString(expr) ++ " }\n"
-    let point = VSCode.Position.make(lineNo - 1, 0)
-    // insert the assertion
-    Editor.Text.insert(state.document, point, assertion)
-  }
-
   let redecorate = (state, specs) => {
     // dispose old decorations
     state.specifications->Array.forEach(spec =>
@@ -215,7 +208,6 @@ let handleResponseKind = (state: t, kind) =>
   | UpdateSpecs(specs) =>
     Spec.redecorate(state, specs)
     Promise.resolved()
-  | Substitute(id, expr) => View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
   | ConsoleLog(s) =>
     Js.log(s)
     Promise.resolved()

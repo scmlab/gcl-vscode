@@ -5,7 +5,7 @@ open React
 let make = (~method: option<Connection.method>) =>
   switch method {
   | Some(ViaTCP(_)) => <div id="gcl-connection-status"> {string("TCP")} </div>
-  | Some(ViaStdIO(_)) => <div id="gcl-connection-status"/>
+  | Some(ViaStdIO(_)) => <div id="gcl-connection-status" />
   | Some(ViaPrebuilt(version, _)) => <div id="gcl-connection-status"> {string(version)} </div>
   | None =>
     <div id="gcl-connection-status" className="disconnected">

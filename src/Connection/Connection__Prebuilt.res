@@ -99,15 +99,15 @@ module Error = {
     | ResponseDecodeError(msg, _) => "Cannot decode release metadata JSON from GitHub:\n" ++ msg
     // network
     | NoRedirectLocation => "Got HTTP 301/302 from GitHub without location in headers"
-    | ServerResponseError(exn) => "Server Response Error:\n" ++  Util.Exn.toString(exn)
-    // metadata 
+    | ServerResponseError(exn) => "Server Response Error:\n" ++ Util.Exn.toString(exn)
+    // metadata
     | NoMatchingVersion(version) => "Cannot find " ++ version ++ " in releases from GitHub"
     | NotSupportedOS(os) => "Cannot find prebuilt for " ++ os
     // file system
-    | CannotDeleteFile(exn) => "Failed to delete files:\n" ++  Util.Exn.toString(exn)
-    | CannotRenameFile(exn) => "Failed to rename files:\n" ++  Util.Exn.toString(exn)
-    | CannotWriteFile(exn) => "Failed to  write files:\n" ++  Util.Exn.toString(exn)
-    | CannotUnzipFileWithExn(exn) => "Failed to unzip files:\n" ++  Util.Exn.toString(exn)
+    | CannotDeleteFile(exn) => "Failed to delete files:\n" ++ Util.Exn.toString(exn)
+    | CannotRenameFile(exn) => "Failed to rename files:\n" ++ Util.Exn.toString(exn)
+    | CannotWriteFile(exn) => "Failed to  write files:\n" ++ Util.Exn.toString(exn)
+    | CannotUnzipFileWithExn(exn) => "Failed to unzip files:\n" ++ Util.Exn.toString(exn)
     | CannotUnzipFile => "Failed to unzip files"
     }
 }
@@ -444,11 +444,9 @@ module Module: {
         Promise.resolved(Ok(path))
       | Error(error) => Promise.resolved(Error(error))
       }
-    | Some(Downloaded(path)) =>
-      Promise.resolved(Ok(path))
+    | Some(Downloaded(path)) => Promise.resolved(Ok(path))
     // returns a promise that will be resolved once the download's been completed
-    | Some(InFlight(promise)) =>
-      promise
+    | Some(InFlight(promise)) => promise
     }
   }
 }

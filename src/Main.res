@@ -11,39 +11,54 @@ let handleResponse = response =>
       kinds->Array.map(State.handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())
     })
   | CannotSendRequest(message) =>
-    State.display(0, [
-      Element.Block.block(
-        Some("Client Internal Error"),
-        None,
-        Element.Inlines.string("Cannot send request to the server\n" ++ message),
-      ),
-    ])
-  | CannotDecodeRequest(message) =>
-    State.display(0, [
-      Element.Block.block(
-        Some("Server Internal Error"),
-        None,
-        Element.Inlines.string("Cannot decode request from the client\n" ++ message),
-      ),
-    ])
-  | NotLoaded =>
-    State.display(0, [
-      Element.Block.block(
-        Some("Internal Error"),
-        None,
-        Element.Inlines.string("Program source not loaded yet"),
-      ),
-    ])
-  | CannotDecodeResponse(message, json) =>
-    State.display(0, [
-      Element.Block.block(
-        Some("Client Internal Error"),
-        None,
-        Element.Inlines.string(
-          "Cannot decode response from the server\n" ++ message ++ "\n" ++ Js.Json.stringify(json),
+    State.display(
+      0,
+      [
+        Element.Block.block(
+          Some("Client Internal Error"),
+          None,
+          Element.Inlines.string("Cannot send request to the server\n" ++ message),
         ),
-      ),
-    ])
+      ],
+    )
+  | CannotDecodeRequest(message) =>
+    State.display(
+      0,
+      [
+        Element.Block.block(
+          Some("Server Internal Error"),
+          None,
+          Element.Inlines.string("Cannot decode request from the client\n" ++ message),
+        ),
+      ],
+    )
+  | NotLoaded =>
+    State.display(
+      0,
+      [
+        Element.Block.block(
+          Some("Internal Error"),
+          None,
+          Element.Inlines.string("Program source not loaded yet"),
+        ),
+      ],
+    )
+  | CannotDecodeResponse(message, json) =>
+    State.display(
+      0,
+      [
+        Element.Block.block(
+          Some("Client Internal Error"),
+          None,
+          Element.Inlines.string(
+            "Cannot decode response from the server\n" ++
+            message ++
+            "\n" ++
+            Js.Json.stringify(json),
+          ),
+        ),
+      ],
+    )
   }
 
 let sendLSPRequest = (state, kind) => {
@@ -78,13 +93,7 @@ let handleViewResponse = response => {
       let range = GCL.Loc.toRange(loc)
       let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
       state.editor->VSCode.TextEditor.setSelection(selection)
-
     // Decoration.remove(key)
-    | Substitute(id, expr, subst) =>
-      // remove all decorations
-      State.Decoration.removeAll()
-      // send request to the server
-      sendLSPRequest(state, Request.Kind.Substitute(id, expr, subst))->ignore
     | ExportProofObligations => sendLSPRequest(state, Request.Kind.ExportProofObligations)->ignore
     | Initialized => ()
     | Destroyed => ()
@@ -161,18 +170,20 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     | Ok(response) => handleResponse(response)->ignore
     | Error(error) =>
       let (header, body) = Connection.Error.toString(error)
-      State.display(0, [
-        Element.Block.block(Some(header), None, Element.Inlines.string(body)),
-      ])->ignore
+      State.display(
+        0,
+        [Element.Block.block(Some(header), None, Element.Inlines.string(body))],
+      )->ignore
     }
   )->subscribe
 
   // on LSP client-server error
   Connection.onError(error => {
     let (header, body) = Connection.Error.toString(error)
-    State.display(0, [
-      Element.Block.block(Some(header), None, Element.Inlines.string(body)),
-    ])->ignore
+    State.display(
+      0,
+      [Element.Block.block(Some(header), None, Element.Inlines.string(body))],
+    )->ignore
   })->subscribe
 
   // on open

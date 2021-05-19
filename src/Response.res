@@ -13,21 +13,24 @@ module Specification = {
   let destroy = self => self.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
 
   open Json.Decode
-  let decode: decoder<t> =
-    tuple4(int, string, string, Loc.decode) |> map(((id, pre, post, loc)) => {
-      id: id,
-      pre: pre,
-      post: post,
-      loc: loc,
-      decorations: [],
-    })
+  let decode: decoder<t> = tuple4(int, string, string, Loc.decode) |> map(((
+    id,
+    pre,
+    post,
+    loc,
+  )) => {
+    id: id,
+    pre: pre,
+    post: post,
+    loc: loc,
+    decorations: [],
+  })
 }
 
 module Kind = {
   type t =
     | Display(int, array<Element.Block.t>)
     | UpdateSpecs(array<Specification.t>)
-    | Substitute(int, Syntax.Expr.t)
     | ConsoleLog(string)
 
   open Json.Decode
@@ -39,8 +42,6 @@ module Kind = {
         tuple2(int, array(Element.Block.decode)) |> map(((id, blocks)) => Display(id, blocks)),
       )
     | "ResUpdateSpecs" => Contents(array(Specification.decode) |> map(specs => UpdateSpecs(specs)))
-    | "ResSubstitute" =>
-      Contents(pair(int, Syntax.Expr.decode) |> map(((i, expr)) => Substitute(i, expr)))
     | "ResConsoleLog" => Contents(string |> map(i => ConsoleLog(i)))
     | tag => raise(DecodeError("Unknown constructor: " ++ tag))
     }
