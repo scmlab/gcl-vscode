@@ -1,66 +1,65 @@
 module Pos = {
-  type t = Pos(string, int, int)
+  type t = {
+    path: string,
+    line: int,
+    column: int,
+    offset: int,
+  }
 
-  let toPoint = x =>
-    switch x {
-    | Pos(_, line, column) => VSCode.Position.make(line - 1, column - 1)
-    }
+  let toVSCodePos = pos => VSCode.Position.make(pos.line - 1, pos.column - 1)
 
-  let fromPoint = (point, filepath) => Pos(
-    filepath,
-    VSCode.Position.line(point) + 1,
-    VSCode.Position.character(point) + 1,
-  )
+  // let fromVSCodePos = (point, path) => {
+  //   path: path,
+  //   line: VSCode.Position.line(point) + 1,
+  //   column: VSCode.Position.character(point) + 1,
+  //   offset: 0,
+  // }
 
-  let toString = x =>
-    switch x {
-    | Pos(_, line, column) => string_of_int(line) ++ ":" ++ string_of_int(column)
-    }
+  let toString = pos => string_of_int(pos.line) ++ ":" ++ string_of_int(pos.column)
 
-  let translate = (by, x) =>
-    switch x {
-    | Pos(path, line, column) =>
-      let Pos(_, y, x) = by
-      Pos(path, line + y, column + x)
-    }
+  let translate = (by, pos) => {
+    path: pos.path,
+    line: pos.line + by.line,
+    column: pos.column + by.column,
+    offset: pos.offset + by.offset,
+  }
 
-  let translateBy = (y, x, point) =>
-    switch point {
-    | Pos(path, line, column) => Pos(path, line + y, column + x)
-    }
+  let translateBy = (line, column, offset, pos) => {
+    path: pos.path,
+    line: pos.line + line,
+    column: pos.column + column,
+    offset: pos.offset + offset,
+  }
 
   open Json.Decode
-  let decode: decoder<t> = tuple4(string, int, int, int) |> map(((w, x, y, _)) => Pos(w, x, y))
+  let decode: decoder<t> = tuple4(string, int, int, int) |> map(((path, line, column, offset)) => {path, line, column, offset})
 
   open! Json.Encode
-  let encode: encoder<t> = x =>
-    switch x {
-    | Pos(path, line, column) => (path, line, column, 0) |> tuple4(string, int, int, int)
-    }
+  let encode: encoder<t> = pos => (pos.path, pos.line, pos.column, pos.offset) |> tuple4(string, int, int, int)
 }
 
 module Range = {
   type t = Range(Pos.t, Pos.t)
 
-  let toRange = x =>
+  let toVSCodeRange = x =>
     switch x {
-    | Range(x, Pos(_, line, column)) =>
-      VSCode.Range.make(Pos.toPoint(x), VSCode.Position.make(line - 1, column))
+    | Range(start, end_) =>
+      VSCode.Range.make(Pos.toVSCodePos(start), VSCode.Position.make(end_.line - 1, end_.column))
     }
 
   let toString = range =>
     switch range {
-    | Range(Pos(_, line1, col1), Pos(_, line2, col2)) =>
-      if line1 == line2 {
-        string_of_int(line1) ++ ":" ++ string_of_int(col1) ++ "-" ++ string_of_int(col2)
+    | Range(start, end_) =>
+      if start.line == end_.line {
+        string_of_int(start.line) ++ ":" ++ string_of_int(start.column) ++ "-" ++ string_of_int(end_.column)
       } else {
-        string_of_int(line1) ++
+        string_of_int(start.line) ++
         ":" ++
-        string_of_int(col1) ++
+        string_of_int(start.column) ++
         "-" ++
-        string_of_int(line2) ++
+        string_of_int(end_.line) ++
         ":" ++
-        string_of_int(col2)
+        string_of_int(end_.column)
       }
     }
 
@@ -72,9 +71,9 @@ module Range = {
       }
     }
 
-  let translateBy = (startY, startX, endY, endX, x) =>
+  let translateBy = (startY, startX, startZ, endY, endX, endZ, x) =>
     switch x {
-    | Range(x, y) => Range(Pos.translateBy(startY, startX, x), Pos.translateBy(endY, endX, y))
+    | Range(x, y) => Range(Pos.translateBy(startY, startX, startZ, x), Pos.translateBy(endY, endX, endZ, y))
     }
 
   open Json.Decode
@@ -92,12 +91,13 @@ module Loc = {
     | NoLoc
     | Loc(Pos.t, Pos.t)
 
-  let toRange = x =>
+  let toVSCodeRange = x =>
     switch x {
     | NoLoc => VSCode.Range.make(VSCode.Position.make(0, 0), VSCode.Position.make(0, 0))
-    | Loc(x, Pos(_, line, column)) =>
-      VSCode.Range.make(Pos.toPoint(x), VSCode.Position.make(line - 1, column))
+    | Loc(start, end_) =>
+      VSCode.Range.make(Pos.toVSCodePos(start), VSCode.Position.make(end_.line - 1, end_.column))
     }
+
   let toString = x =>
     switch x {
     | NoLoc => "NoLoc"
@@ -114,10 +114,10 @@ module Loc = {
       }
     }
 
-  let translateBy = (startY, startX, endY, endX, x) =>
+  let translateBy = (startY, startX, startZ, endY, endX, endZ, x) =>
     switch x {
-    | NoLoc => Loc(Pos("", startY, startX), Pos("", endY, endX))
-    | Loc(x, y) => Loc(Pos.translateBy(startY, startX, x), Pos.translateBy(endY, endX, y))
+    | NoLoc => Loc({path: "", line: startY, column: startX, offset: startZ}, {path: "", line: endY, column: endX, offset: endZ})
+    | Loc(start, end) => Loc(Pos.translateBy(startY, startX, startZ, start), Pos.translateBy(endY, endX, endZ, end))
     }
 
   open Util.Decode

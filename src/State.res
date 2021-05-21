@@ -32,14 +32,14 @@ module Spec = {
     let smallestHole = ref(None)
     state.specifications
     ->Array.keep(spec => {
-      let range = GCL.Loc.toRange(spec.loc)
+      let range = GCL.Loc.toVSCodeRange(spec.loc)
       VSCode.Range.contains(range, cursor)
     })
     ->Array.forEach(spec =>
       switch smallestHole.contents {
       | None => smallestHole := Some(spec)
       | Some(spec') =>
-        if VSCode.Range.containsRange(GCL.Loc.toRange(spec.loc), GCL.Loc.toRange(spec'.loc)) {
+        if VSCode.Range.containsRange(GCL.Loc.toVSCodeRange(spec.loc), GCL.Loc.toVSCodeRange(spec'.loc)) {
           smallestHole := Some(spec)
         }
       }
@@ -48,7 +48,7 @@ module Spec = {
   }
 
   let getPayloadRange = (doc, spec: Response.Specification.t) => {
-    let range = GCL.Loc.toRange(spec.loc)
+    let range = GCL.Loc.toVSCodeRange(spec.loc)
     let startingLine = VSCode.Position.line(VSCode.Range.start(range)) + 1
     let endingLine = VSCode.Position.line(VSCode.Range.end_(range)) - 1
 
@@ -91,7 +91,7 @@ module Spec = {
     switch spec {
     | None => Promise.resolved()
     | Some(spec) =>
-      let range = GCL.Loc.toRange(spec.loc)
+      let range = GCL.Loc.toVSCodeRange(spec.loc)
       // get text inside the Spec
       let start = VSCode.Range.start(range)
       let indentedPayload = {
@@ -128,7 +128,7 @@ module Spec = {
     state.specifications->Array.forEach(spec => {
       // devise and apply new decorations
       let decorations = {
-        let range = GCL.Loc.toRange(spec.loc)
+        let range = GCL.Loc.toVSCodeRange(spec.loc)
         let startPosition = VSCode.Range.start(range)
         let endPosition = VSCode.Range.end_(range)
         // range of [!

@@ -79,7 +79,7 @@ let handleViewResponse = response => {
     switch response {
     | ViewType.Response.Link(MouseOver(loc)) =>
       let key = GCL.Loc.toString(loc)
-      let range = GCL.Loc.toRange(loc)
+      let range = GCL.Loc.toVSCodeRange(loc)
       State.Decoration.addBackground(state, key, range, "statusBar.debuggingBackground")
     | Link(MouseOut(loc)) =>
       let key = GCL.Loc.toString(loc)
@@ -90,7 +90,7 @@ let handleViewResponse = response => {
       // focus on the editor
       State.focus(state)
       // select the source on the editor
-      let range = GCL.Loc.toRange(loc)
+      let range = GCL.Loc.toVSCodeRange(loc)
       let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
       state.editor->VSCode.TextEditor.setSelection(selection)
     // Decoration.remove(key)
