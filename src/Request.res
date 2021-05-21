@@ -3,18 +3,18 @@ type source = string
 
 module Kind = {
   type t =
-    | Inspect(int, int)
-    | Refine(int, int)
+    | Inspect(GCL.Range.t)
+    | Refine(GCL.Range.t)
     | ExportProofObligations
     | Debug
 
   open! Json.Encode
   let encode: encoder<t> = x =>
     switch x {
-    | Inspect(start, end_) =>
-      object_(list{("tag", string("ReqInspect")), ("contents", (start, end_) |> tuple2(int, int))})
-    | Refine(start, end_) =>
-      object_(list{("tag", string("ReqRefine")), ("contents", (start, end_) |> tuple2(int, int))})
+    | Inspect(range) =>
+      object_(list{("tag", string("ReqInspect")), ("contents", range |> GCL.Range.encode)})
+    | Refine(range) =>
+      object_(list{("tag", string("ReqRefine")), ("contents", range |> GCL.Range.encode)})
     | Debug => object_(list{("tag", string("ReqDebug"))})
     | ExportProofObligations => object_(list{("tag", string("ReqExportProofObligations"))})
     }
