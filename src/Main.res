@@ -251,13 +251,9 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       Registry.get(filePath)->Option.forEach(state =>
         // TODO, there may be multiple selections at once
         selections[0]->Option.forEach(selection => {
-          let start = VSCode.TextDocument.offsetAt(
-            state.document,
-            VSCode.Selection.start(selection),
-          )
-          let end_ = VSCode.TextDocument.offsetAt(state.document, VSCode.Selection.end_(selection))
-
-          sendLSPRequest(state, Inspect(start, end_))->ignore
+          let start = GCL.Pos.fromVSCodePos(VSCode.Selection.start(selection), state.document) 
+          let end = GCL.Pos.fromVSCodePos(VSCode.Selection.end_(selection), state.document) 
+          sendLSPRequest(state, Inspect(start.offset, end.offset))->ignore
         })
       )
     }

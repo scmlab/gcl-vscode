@@ -1,19 +1,19 @@
 module Pos = {
   type t = {
     path: string,
-    line: int,
-    column: int,
-    offset: int,
+    line: int, // line numbering starts at 1
+    column: int, // column offset starts at 1
+    offset: int, // character offset starts at 0
   }
 
   let toVSCodePos = pos => VSCode.Position.make(pos.line - 1, pos.column - 1)
 
-  // let fromVSCodePos = (point, path) => {
-  //   path: path,
-  //   line: VSCode.Position.line(point) + 1,
-  //   column: VSCode.Position.character(point) + 1,
-  //   offset: 0,
-  // }
+  let fromVSCodePos = (pos, document) => {
+    path: VSCode.TextDocument.fileName(document),
+    line: VSCode.Position.line(pos) + 1,
+    column: VSCode.Position.character(pos) + 1,
+    offset: VSCode.TextDocument.offsetAt(document, pos),
+  }
 
   let toString = pos => string_of_int(pos.line) ++ ":" ++ string_of_int(pos.column)
 
@@ -32,10 +32,16 @@ module Pos = {
   }
 
   open Json.Decode
-  let decode: decoder<t> = tuple4(string, int, int, int) |> map(((path, line, column, offset)) => {path, line, column, offset})
+  let decode: decoder<t> = tuple4(string, int, int, int) |> map(((path, line, column, offset)) => {
+    path: path,
+    line: line,
+    column: column,
+    offset: offset,
+  })
 
   open! Json.Encode
-  let encode: encoder<t> = pos => (pos.path, pos.line, pos.column, pos.offset) |> tuple4(string, int, int, int)
+  let encode: encoder<t> = pos =>
+    (pos.path, pos.line, pos.column, pos.offset) |> tuple4(string, int, int, int)
 }
 
 module Range = {
@@ -43,23 +49,27 @@ module Range = {
 
   let toVSCodeRange = x =>
     switch x {
-    | Range(start, end_) =>
-      VSCode.Range.make(Pos.toVSCodePos(start), VSCode.Position.make(end_.line - 1, end_.column))
+    | Range(start, end) =>
+      VSCode.Range.make(Pos.toVSCodePos(start), Pos.toVSCodePos(end))
     }
 
   let toString = range =>
     switch range {
-    | Range(start, end_) =>
-      if start.line == end_.line {
-        string_of_int(start.line) ++ ":" ++ string_of_int(start.column) ++ "-" ++ string_of_int(end_.column)
+    | Range(start, end) =>
+      if start.line == end.line {
+        string_of_int(start.line) ++
+        ":" ++
+        string_of_int(start.column) ++
+        "-" ++
+        string_of_int(end.column)
       } else {
         string_of_int(start.line) ++
         ":" ++
         string_of_int(start.column) ++
         "-" ++
-        string_of_int(end_.line) ++
+        string_of_int(end.line) ++
         ":" ++
-        string_of_int(end_.column)
+        string_of_int(end.column)
       }
     }
 
@@ -73,7 +83,8 @@ module Range = {
 
   let translateBy = (startY, startX, startZ, endY, endX, endZ, x) =>
     switch x {
-    | Range(x, y) => Range(Pos.translateBy(startY, startX, startZ, x), Pos.translateBy(endY, endX, endZ, y))
+    | Range(x, y) =>
+      Range(Pos.translateBy(startY, startX, startZ, x), Pos.translateBy(endY, endX, endZ, y))
     }
 
   open Json.Decode
@@ -94,8 +105,8 @@ module Loc = {
   let toVSCodeRange = x =>
     switch x {
     | NoLoc => VSCode.Range.make(VSCode.Position.make(0, 0), VSCode.Position.make(0, 0))
-    | Loc(start, end_) =>
-      VSCode.Range.make(Pos.toVSCodePos(start), VSCode.Position.make(end_.line - 1, end_.column))
+    | Loc(start, end) =>
+      VSCode.Range.make(Pos.toVSCodePos(start), VSCode.Position.make(end.line - 1, end.column))
     }
 
   let toString = x =>
@@ -116,8 +127,13 @@ module Loc = {
 
   let translateBy = (startY, startX, startZ, endY, endX, endZ, x) =>
     switch x {
-    | NoLoc => Loc({path: "", line: startY, column: startX, offset: startZ}, {path: "", line: endY, column: endX, offset: endZ})
-    | Loc(start, end) => Loc(Pos.translateBy(startY, startX, startZ, start), Pos.translateBy(endY, endX, endZ, end))
+    | NoLoc =>
+      Loc(
+        {path: "", line: startY, column: startX, offset: startZ},
+        {path: "", line: endY, column: endX, offset: endZ},
+      )
+    | Loc(start, end) =>
+      Loc(Pos.translateBy(startY, startX, startZ, start), Pos.translateBy(endY, endX, endZ, end))
     }
 
   open Util.Decode
