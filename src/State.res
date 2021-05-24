@@ -128,7 +128,6 @@ module Spec = {
     state.specifications->Array.forEach(spec => {
       // devise and apply new decorations
       let decorations = {
-        Js.log(spec.loc)
         let range = GCL.Loc.toVSCodeRange(spec.loc)
         let startPosition = VSCode.Range.start(range)
         let endPosition = VSCode.Range.end_(range)
