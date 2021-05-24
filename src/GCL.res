@@ -106,7 +106,8 @@ module Loc = {
     switch x {
     | NoLoc => VSCode.Range.make(VSCode.Position.make(0, 0), VSCode.Position.make(0, 0))
     | Loc(start, end) =>
-      VSCode.Range.make(Pos.toVSCodePos(start), VSCode.Position.make(end.line - 1, end.column))
+      VSCode.Range.make(Pos.toVSCodePos(start), Pos.toVSCodePos(end))
+      // VSCode.Range.make(Pos.toVSCodePos(start), VSCode.Position.make(end.line - 1, end.column))
     }
 
   let toString = x =>
