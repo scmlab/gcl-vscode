@@ -90,4 +90,8 @@
             "⟩"
         ]
     ],
+    "indentationRules": {
+        "increaseIndentPattern": "\\-\\>",
+        "decreaseIndentPattern": "^\\s*(fi|od)"
+    }
 }
