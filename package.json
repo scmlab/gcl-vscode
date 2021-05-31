@@ -63,6 +63,7 @@
 				"aliases": [
 					"Guacamole"
 				],
+				"configuration": "./language-configuration.json",
 				"filenames": []
 			}
 		],
