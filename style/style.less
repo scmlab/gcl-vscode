@@ -88,29 +88,33 @@
         padding   : @padding;
 
 
-        display        : flex;
-        flex-wrap      : wrap;
-        justify-content: space-between;
-        align-items    : flex-start;
-
         .element-po-pre {
-            width: 45%
-        }
-
-        .element-po-arrow {
-            width     : 10%;
-            text-align: center;
+            padding: @padding;
+            background: @header-background;
+            margin-bottom: @padding;
         }
 
         .element-po-post {
-            width: 45%
+            padding: @padding;
+            background: @header-background;
+        }
+
+        .element-po-label {
+            display: none;
+            // font-family: sans-serif;
+            // // font-weight : bold;
+            // font-variant: small-caps;
+            // color       : @foreground-tenuous;
+
+            // position: absolute;
+            // right: calc(@padding * 4);
+            // z-index: 0;
         }
 
     }
 
 
     li .element-block-header {
-        margin-left: @padding/2;
         padding    : @padding @padding 0 @padding;
 
         color       : @foreground-tenuous;

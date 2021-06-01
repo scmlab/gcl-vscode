@@ -351,9 +351,12 @@ module Block = {
       <li className="element-block">
         {header}
         <div className="element-po-body">
-          <div className="element-po-pre"> <Inlines value=pre /> </div>
-          <span className="element-po-arrow"> {string(j`⇒`)} </span>
-          <div className="element-po-post"> <Inlines value=post /> </div>
+          <div className="element-po-pre">
+            <Inlines value=pre /> <span className="element-po-label"> {string("pre")} </span>
+          </div>
+          <div className="element-po-post">
+            <Inlines value=post /> <span className="element-po-label"> {string("post")} </span>
+          </div>
         </div>
       </li>
 
@@ -373,9 +376,12 @@ module Block = {
       <li className="element-block">
         {header}
         <div className="element-po-body">
-          <div className="element-po-pre"> <Inlines value=pre /> </div>
-          <span className="element-po-arrow"> {string(j`⇒`)} </span>
-          <div className="element-po-post"> <Inlines value=post /> </div>
+          <div className="element-po-pre">
+            <Inlines value=pre /> <span className="element-po-label"> {string("pre")} </span>
+          </div>
+          <div className="element-po-post">
+            <Inlines value=post /> <span className="element-po-label"> {string("post")} </span>
+          </div>
         </div>
       </li>
     | Header(header) => <li className="element-header"> <h3> {string(header)} </h3> </li>
