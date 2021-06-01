@@ -1,12 +1,12 @@
 open Belt
-open GCL
+open SrcLoc
 
 module Specification = {
   type t = {
     id: int,
     pre: string,
     post: string,
-    mutable loc: loc,
+    mutable loc: Loc.t,
     mutable decorations: array<VSCode.TextEditorDecorationType.t>,
   }
 

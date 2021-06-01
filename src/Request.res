@@ -3,8 +3,8 @@ type source = string
 
 module Kind = {
   type t =
-    | Inspect(GCL.Range.t)
-    | Refine(GCL.Range.t)
+    | Inspect(SrcLoc.Range.t)
+    | Refine(SrcLoc.Range.t)
     | ExportProofObligations
     | Debug
 
@@ -12,9 +12,9 @@ module Kind = {
   let encode: encoder<t> = x =>
     switch x {
     | Inspect(range) =>
-      object_(list{("tag", string("ReqInspect")), ("contents", range |> GCL.Range.encode)})
+      object_(list{("tag", string("ReqInspect")), ("contents", range |> SrcLoc.Range.encode)})
     | Refine(range) =>
-      object_(list{("tag", string("ReqRefine")), ("contents", range |> GCL.Range.encode)})
+      object_(list{("tag", string("ReqRefine")), ("contents", range |> SrcLoc.Range.encode)})
     | Debug => object_(list{("tag", string("ReqDebug"))})
     | ExportProofObligations => object_(list{("tag", string("ReqExportProofObligations"))})
     }

@@ -84,7 +84,7 @@ module Inlines = {
     type rec t =
       | Icon(string, ClassNames.t)
       | Text(string, ClassNames.t)
-      | Link(GCL.Range.t, array<t>, ClassNames.t)
+      | Link(SrcLoc.Range.t, array<t>, ClassNames.t)
       | Sbst(array<t>, array<t>, ClassNames.t)
       | Horz(array<array<t>>)
       | Vert(array<array<t>>)
@@ -101,7 +101,7 @@ module Inlines = {
         | "Text" => Contents(pair(string, ClassNames.decode) |> map(((s, cs)) => Text(s, cs)))
         | "Link" =>
           Contents(
-            tuple3(GCL.Range.decode, array(decode()), ClassNames.decode) |> map(((
+            tuple3(SrcLoc.Range.decode, array(decode()), ClassNames.decode) |> map(((
               r,
               xs,
               cs,
@@ -141,7 +141,7 @@ module Inlines = {
       | Link(r, s, cs) =>
         object_(list{
           ("tag", string("Link")),
-          ("contents", (r, s, cs) |> tuple3(GCL.Range.encode, array(encode), ClassNames.encode)),
+          ("contents", (r, s, cs) |> tuple3(SrcLoc.Range.encode, array(encode), ClassNames.encode)),
         })
       | Sbst(a, b, c) =>
         object_(list{
@@ -161,7 +161,7 @@ module Inlines = {
   // let srcLoc = range => Element([
   //   Link(
   //     range,
-  //     [Icon("link ", []), Text(GCL.Range.toString(range), [])],
+  //     [Icon("link ", []), Text(SrcLoc.Range.toString(range), [])],
   //     ["element-link element-hole"],
   //   ),
   // ])
@@ -255,8 +255,8 @@ module Inlines = {
 
 module Block = {
   type t =
-    | Block(option<string>, option<GCL.Range.t>, Inlines.t)
-    | PO(option<string>, option<GCL.Range.t>, Inlines.t, Inlines.t)
+    | Block(option<string>, option<SrcLoc.Range.t>, Inlines.t)
+    | PO(option<string>, option<SrcLoc.Range.t>, Inlines.t, Inlines.t)
     | Header(string)
 
   let block = (header, range, body) => Block(header, range, body)
@@ -268,7 +268,7 @@ module Block = {
       switch x {
       | "Block" =>
         Contents(
-          tuple3(optional(string), optional(GCL.Range.decode), Inlines.decode) |> map(((
+          tuple3(optional(string), optional(SrcLoc.Range.decode), Inlines.decode) |> map(((
             a,
             b,
             c,
@@ -278,7 +278,7 @@ module Block = {
         Contents(
           tuple4(
             optional(string),
-            optional(GCL.Range.decode),
+            optional(SrcLoc.Range.decode),
             Inlines.decode,
             Inlines.decode,
           ) |> map(((a, b, c, d)) => PO(a, b, c, d)),
@@ -296,7 +296,7 @@ module Block = {
         ("tag", string("Block")),
         (
           "contents",
-          (a, b, c) |> tuple3(nullable(string), nullable(GCL.Range.encode), Inlines.encode),
+          (a, b, c) |> tuple3(nullable(string), nullable(SrcLoc.Range.encode), Inlines.encode),
         ),
       })
     | PO(a, b, c, d) =>
@@ -306,7 +306,7 @@ module Block = {
           "contents",
           (a, b, c, d) |> tuple4(
             nullable(string),
-            nullable(GCL.Range.encode),
+            nullable(SrcLoc.Range.encode),
             Inlines.encode,
             Inlines.encode,
           ),
@@ -335,7 +335,7 @@ module Block = {
           <div className="element-block-header">
             {string(header)}
             <span className="element-block-header-range">
-              {string(GCL.Range.toString(range))}
+              {string(SrcLoc.Range.toString(range))}
             </span>
           </div>
         </Link.WithRange>
@@ -365,7 +365,7 @@ module Block = {
           <div className="element-block-header">
             {string(header)}
             <span className="element-block-header-range">
-              {string(GCL.Range.toString(range))}
+              {string(SrcLoc.Range.toString(range))}
             </span>
           </div>
         </Link.WithRange>

@@ -2,17 +2,17 @@
 
 module Event = {
   type t =
-    | MouseOver(GCL.loc)
-    | MouseOut(GCL.loc)
-    | MouseClick(GCL.loc)
+    | MouseOver(SrcLoc.range)
+    | MouseOut(SrcLoc.range)
+    | MouseClick(SrcLoc.range)
 
   open Util.Decode
   open Json.Decode
   let decode: decoder<t> = sum(x =>
     switch x {
-    | "MouseOver" => Contents(loc => MouseOver(GCL.Loc.decode(loc)))
-    | "MouseOut" => Contents(loc => MouseOut(GCL.Loc.decode(loc)))
-    | "MouseClick" => Contents(loc => MouseClick(GCL.Loc.decode(loc)))
+    | "MouseOver" => Contents(range => MouseOver(SrcLoc.Range.decode(range)))
+    | "MouseOut" => Contents(range => MouseOut(SrcLoc.Range.decode(range)))
+    | "MouseClick" => Contents(range => MouseClick(SrcLoc.Range.decode(range)))
     | tag => raise(DecodeError("[Link.Event] Unknown constructor: " ++ tag))
     }
   )
@@ -20,11 +20,11 @@ module Event = {
   open! Json.Encode
   let encode: encoder<t> = x =>
     switch x {
-    | MouseOver(loc) =>
-      object_(list{("tag", string("MouseOver")), ("contents", GCL.Loc.encode(loc))})
-    | MouseOut(loc) => object_(list{("tag", string("MouseOut")), ("contents", GCL.Loc.encode(loc))})
-    | MouseClick(loc) =>
-      object_(list{("tag", string("MouseClick")), ("contents", GCL.Loc.encode(loc))})
+    | MouseOver(range) =>
+      object_(list{("tag", string("MouseOver")), ("contents", SrcLoc.Range.encode(range))})
+    | MouseOut(range) => object_(list{("tag", string("MouseOut")), ("contents", SrcLoc.Range.encode(range))})
+    | MouseClick(range) =>
+      object_(list{("tag", string("MouseClick")), ("contents", SrcLoc.Range.encode(range))})
     }
 }
 
@@ -53,14 +53,10 @@ let make = (~loc, ~children) => {
 module WithRange = {
   @react.component
   let make = (~range, ~children) => {
-    // TEMP: loc => range
-    let loc = switch range {
-    | GCL.Range.Range(x, y) => GCL.Loc.Loc(x, y)
-    }
     let link = React.useContext(eventContext)
-    let onMouseOver = _ => link->Chan.emit(MouseOver(loc))
-    let onMouseOut = _ => link->Chan.emit(MouseOut(loc))
-    let onClick = _ => link->Chan.emit(MouseClick(loc))
+    let onMouseOver = _ => link->Chan.emit(MouseOver(range))
+    let onMouseOut = _ => link->Chan.emit(MouseOut(range))
+    let onClick = _ => link->Chan.emit(MouseClick(range))
     <span className="element-link" onMouseOver onMouseOut onClick> children </span>
   }
 }

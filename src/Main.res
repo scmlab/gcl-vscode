@@ -77,23 +77,23 @@ let getState = () => previouslyActivatedState.contents
 let handleViewResponse = response => {
   getState()->Option.forEach(state => {
     switch response {
-    | ViewType.Response.Link(MouseOver(loc)) =>
-      let key = GCL.Loc.toString(loc)
-      let range = GCL.Loc.toVSCodeRange(loc)
+    | ViewType.Response.Link(MouseOver(range)) =>
+      let key = SrcLoc.Range.toString(range)
+      let range = SrcLoc.Range.toVSCodeRange(range)
       State.Decoration.addBackground(state, key, range, "statusBar.debuggingBackground")
-    | Link(MouseOut(loc)) =>
-      let key = GCL.Loc.toString(loc)
+    | Link(MouseOut(range)) =>
+      let key = SrcLoc.Range.toString(range)
       State.Decoration.remove(key)
-    | Link(MouseClick(loc)) =>
-      let key = GCL.Loc.toString(loc)
+    | Link(MouseClick(range)) =>
+      let key = SrcLoc.Range.toString(range)
       State.Decoration.remove(key)
       // focus on the editor
       State.focus(state)
       // select the source on the editor
-      let range = GCL.Loc.toVSCodeRange(loc)
+      let range = SrcLoc.Range.toVSCodeRange(range)
       let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
       state.editor->VSCode.TextEditor.setSelection(selection)
-    // Decoration.remove(key)
+      // State.Decoration.remove(key)
     | ExportProofObligations => sendLSPRequest(state, Request.Kind.ExportProofObligations)->ignore
     | Initialized => ()
     | Destroyed => ()
@@ -251,8 +251,8 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       Registry.get(filePath)->Option.forEach(state =>
         // TODO, there may be multiple selections at once
         selections[0]->Option.forEach(selection => {
-          let start = GCL.Pos.fromVSCodePos(VSCode.Selection.start(selection), state.document)
-          let end = GCL.Pos.fromVSCodePos(VSCode.Selection.end_(selection), state.document)
+          let start = SrcLoc.Pos.fromVSCodePos(VSCode.Selection.start(selection), state.document)
+          let end = SrcLoc.Pos.fromVSCodePos(VSCode.Selection.end_(selection), state.document)
           sendLSPRequest(state, Inspect(Range(start, end)))->ignore
         })
       )
@@ -266,8 +266,8 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   VSCode.Commands.registerCommand("guacamole.refine", () =>
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
       let selection = state.editor->VSCode.TextEditor.selection
-      let start = GCL.Pos.fromVSCodePos(VSCode.Selection.start(selection), state.document)
-      let end = GCL.Pos.fromVSCodePos(VSCode.Selection.end_(selection), state.document)
+      let start = SrcLoc.Pos.fromVSCodePos(VSCode.Selection.start(selection), state.document)
+      let end = SrcLoc.Pos.fromVSCodePos(VSCode.Selection.end_(selection), state.document)
       sendLSPRequest(state, Refine(Range(start, end)))
     })
   )->subscribe

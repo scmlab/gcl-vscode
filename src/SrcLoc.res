@@ -158,4 +158,3 @@ module Loc = {
 
 type pos = Pos.t
 type range = Range.t
-type loc = Loc.t
