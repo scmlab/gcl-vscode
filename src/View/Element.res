@@ -256,6 +256,7 @@ module Inlines = {
 module Block = {
   type t =
     | Block(option<string>, option<SrcLoc.Range.t>, Inlines.t)
+    | Spec(SrcLoc.Range.t, Inlines.t, Inlines.t)
     | PO(option<string>, option<SrcLoc.Range.t>, Inlines.t, Inlines.t)
     | Header(string)
 
@@ -273,6 +274,14 @@ module Block = {
             b,
             c,
           )) => Block(a, b, c)),
+        )
+      | "Spec" =>
+        Contents(
+          tuple3(
+            SrcLoc.Range.decode,
+            Inlines.decode,
+            Inlines.decode,
+          ) |> map(((a, b, c)) => Spec(a, b, c)),
         )
       | "PO" =>
         Contents(
@@ -297,6 +306,18 @@ module Block = {
         (
           "contents",
           (a, b, c) |> tuple3(nullable(string), nullable(SrcLoc.Range.encode), Inlines.encode),
+        ),
+      })
+    | Spec(a, b, c) =>
+      object_(list{
+        ("tag", string("Spec")),
+        (
+          "contents",
+          (a, b, c) |> tuple3(
+            SrcLoc.Range.encode,
+            Inlines.encode,
+            Inlines.encode,
+          ),
         ),
       })
     | PO(a, b, c, d) =>
@@ -343,6 +364,25 @@ module Block = {
       <li className="element-block">
         {header} <div className="element-block-body"> <Inlines value=body /> </div>
       </li>
+    | Spec(range, pre, post) =>
+      <li className="element-block">
+        <Link range>
+          <div className="element-block-header">
+            <span className="element-block-header-range">
+              {string(SrcLoc.Range.toString(range))}
+            </span>
+          </div>
+        </Link>
+        <div className="element-po-body">
+          <div className="element-po-pre">
+            <Inlines value=pre /> <span className="element-po-label"> {string("pre")} </span>
+          </div>
+          <div className="element-po-post">
+            <Inlines value=post /> <span className="element-po-label"> {string("post")} </span>
+          </div>
+        </div>
+      </li>
+
     | PO(header, None, pre, post) =>
       let header = switch header {
       | None => <> </>

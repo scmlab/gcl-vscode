@@ -32,14 +32,14 @@ module Spec = {
     let smallestHole = ref(None)
     state.specifications
     ->Array.keep(spec => {
-      let range = SrcLoc.Loc.toVSCodeRange(spec.loc)
+      let range = SrcLoc.Range.toVSCodeRange(spec.range)
       VSCode.Range.contains(range, cursor)
     })
     ->Array.forEach(spec =>
       switch smallestHole.contents {
       | None => smallestHole := Some(spec)
       | Some(spec') =>
-        if VSCode.Range.containsRange(SrcLoc.Loc.toVSCodeRange(spec.loc), SrcLoc.Loc.toVSCodeRange(spec'.loc)) {
+        if VSCode.Range.containsRange(SrcLoc.Range.toVSCodeRange(spec.range), SrcLoc.Range.toVSCodeRange(spec'.range)) {
           smallestHole := Some(spec)
         }
       }
@@ -48,7 +48,7 @@ module Spec = {
   }
 
   let getPayloadRange = (doc, spec: Response.Specification.t) => {
-    let range = SrcLoc.Loc.toVSCodeRange(spec.loc)
+    let range = SrcLoc.Range.toVSCodeRange(spec.range)
     let startingLine = VSCode.Position.line(VSCode.Range.start(range)) + 1
     let endingLine = VSCode.Position.line(VSCode.Range.end_(range)) - 1
 
@@ -91,7 +91,7 @@ module Spec = {
     switch spec {
     | None => Promise.resolved()
     | Some(spec) =>
-      let range = SrcLoc.Loc.toVSCodeRange(spec.loc)
+      let range = SrcLoc.Range.toVSCodeRange(spec.range)
       // get text inside the Spec
       let start = VSCode.Range.start(range)
       let indentedPayload = {
@@ -128,7 +128,7 @@ module Spec = {
     state.specifications->Array.forEach(spec => {
       // devise and apply new decorations
       let decorations = {
-        let range = SrcLoc.Loc.toVSCodeRange(spec.loc)
+        let range = SrcLoc.Range.toVSCodeRange(spec.range)
         let startPosition = VSCode.Range.start(range)
         let endPosition = VSCode.Range.end_(range)
         // range of [!
@@ -193,9 +193,9 @@ module Spec = {
 
   let updateLocations = (state, locations) => {
     state.specifications->Array.forEachWithIndex((index, spec) => {
-      locations[index]->Option.forEach(loc => {
+      locations[index]->Option.forEach(range => {
         // Js.log(SrcLoc.Loc.toString(spec.loc) ++ " ===>" ++ SrcLoc.Loc.toString(loc))
-        spec.loc = loc
+        spec.range = range
       })
     })
     redecorate(state, state.specifications)

@@ -1,28 +1,27 @@
 open Belt
-open SrcLoc
 
 module Specification = {
   type t = {
     id: int,
     pre: string,
     post: string,
-    mutable loc: Loc.t,
+    mutable range: SrcLoc.Range.t,
     mutable decorations: array<VSCode.TextEditorDecorationType.t>,
   }
 
   let destroy = self => self.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
 
   open Json.Decode
-  let decode: decoder<t> = tuple4(int, string, string, Loc.decode) |> map(((
+  let decode: decoder<t> = tuple4(int, string, string, SrcLoc.Range.decode) |> map(((
     id,
     pre,
     post,
-    loc,
+    range,
   )) => {
     id: id,
     pre: pre,
     post: post,
-    loc: loc,
+    range: range,
     decorations: [],
   })
 }
