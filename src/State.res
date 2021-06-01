@@ -229,7 +229,9 @@ module Decoration: Decoration = {
     string,
   ) => unit = %raw(`function (dict, id) {delete dict[id]}`)
 
-  let addBackground = (state, key, range, color) => {
+  let addBackground = (state, key, range, color) => switch Js.Dict.get(dict, key) {
+  | Some(_) => () // already exists 
+  | None => 
     // "editor.symbolHighlightBackground"
     let backgroundColor = VSCode.StringOr.others(VSCode.ThemeColor.make(color))
     let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ())

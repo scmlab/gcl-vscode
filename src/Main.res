@@ -79,10 +79,12 @@ let handleViewResponse = response => {
     switch response {
     | ViewType.Response.Link(MouseOver(range)) =>
       let key = SrcLoc.Range.toString(range)
+      Js.log("in " ++ key)
       let range = SrcLoc.Range.toVSCodeRange(range)
       State.Decoration.addBackground(state, key, range, "statusBar.debuggingBackground")
     | Link(MouseOut(range)) =>
       let key = SrcLoc.Range.toString(range)
+      Js.log("out " ++ key)
       State.Decoration.remove(key)
     | Link(MouseClick(range)) =>
       let key = SrcLoc.Range.toString(range)
@@ -93,7 +95,7 @@ let handleViewResponse = response => {
       let range = SrcLoc.Range.toVSCodeRange(range)
       let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
       state.editor->VSCode.TextEditor.setSelection(selection)
-      // State.Decoration.remove(key)
+    // State.Decoration.remove(key)
     | ExportProofObligations => sendLSPRequest(state, Request.Kind.ExportProofObligations)->ignore
     | Initialized => ()
     | Destroyed => ()
