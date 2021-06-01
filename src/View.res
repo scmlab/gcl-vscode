@@ -1,6 +1,20 @@
 open Belt
 
-module Panel = {
+// abstraction of a panel
+module Panel: {
+  type t
+  // constructor / destructor
+  let make: (string, string) => t
+  let destroy: t => unit
+  // messaging
+  let send: (t, string) => Promise.t<bool>
+  let recv: (t, Js.Json.t => unit) => VSCode.Disposable.t
+  // events
+  let onDestroyed: (t, unit => unit) => VSCode.Disposable.t
+  // methods
+  let reveal: t => unit
+  let focus: t => unit
+} = {
   type t = VSCode.WebviewPanel.t
 
   let makeHTML = (webview, extensionPath) => {
@@ -83,11 +97,11 @@ module Panel = {
     `
   }
 
-  let make = extensionPath => {
+  let make = (title, extensionPath) => {
     let distPath = Node.Path.join2(extensionPath, "dist")
     let panel = VSCode.Window.createWebviewPanel(
       "panel",
-      "Guacamole",
+      title,
       {"preserveFocus": true, "viewColumn": 3},
       // None,
       Some(
@@ -107,6 +121,19 @@ module Panel = {
 
     panel
   }
+
+  let destroy = VSCode.WebviewPanel.dispose
+
+  let send = (panel, message) =>
+    panel->VSCode.WebviewPanel.webview->VSCode.Webview.postMessage(message)
+
+  let recv = (panel, callback) =>
+    panel->VSCode.WebviewPanel.webview->VSCode.Webview.onDidReceiveMessage(callback)
+
+  let onDestroyed = (panel, callback) => panel->VSCode.WebviewPanel.onDidDispose(callback)
+
+  let reveal = panel => panel->VSCode.WebviewPanel.reveal(~preserveFocus=true, ())
+  let focus = panel => panel->VSCode.WebviewPanel.reveal()
 }
 
 module type View = {
@@ -117,9 +144,11 @@ module type View = {
   // messaging
   let send: (t, ViewType.Request.t) => Promise.t<bool>
   let on: (t, ViewType.Response.t => unit) => VSCode.Disposable.t
-  let reveal: t => unit
   // event
   let onceDestroyed: t => Promise.t<unit>
+  // methods
+  let reveal: t => unit
+  let focus: t => unit
 }
 
 module View: View = {
@@ -143,25 +172,22 @@ module View: View = {
       Promise.resolved(false)
     | Initialized =>
       let stringified = Js.Json.stringify(ViewType.Request.encode(req))
-      view.panel->VSCode.WebviewPanel.webview->VSCode.Webview.postMessage(stringified)
+      Panel.send(view.panel, stringified)
     }
 
   let on = (view, callback) => view.onResponse->Chan.on(callback)->VSCode.Disposable.make
 
   let make = extensionPath => {
     let view = {
-      panel: Panel.make(extensionPath),
+      panel: Panel.make("Guacamole", extensionPath),
       subscriptions: [],
       onResponse: Chan.make(),
       status: Uninitialized([]),
     }
 
-    // Panel.moveToRight()
-
     // on message
     view.panel
-    ->VSCode.WebviewPanel.webview
-    ->VSCode.Webview.onDidReceiveMessage(json =>
+    ->Panel.recv(json =>
       switch ViewType.Response.decode(json) {
       | result => view.onResponse->Chan.emit(result)
       | exception e => Js.log2("[ panic ][ Webview.onDidReceiveMessage JSON decode error ]", e)
@@ -171,10 +197,10 @@ module View: View = {
     ->ignore
 
     // on destroy
+
+    // on destroy
     view.panel
-    ->VSCode.WebviewPanel.onDidDispose(() =>
-      view.onResponse->Chan.emit(ViewType.Response.Destroyed)
-    )
+    ->Panel.onDestroyed(() => view.onResponse->Chan.emit(ViewType.Response.Destroyed))
     ->Js.Array.push(view.subscriptions)
     ->ignore
 
@@ -204,9 +230,15 @@ module View: View = {
     promise
   }
 
-  let destroy = view => {
-    view.panel->VSCode.WebviewPanel.dispose
+  let destroy = view => {    
+    // if we invoke `view.panel->Panel.destroy` first,
+    // this would trigger `ViewType.Response.Destroyed`
+    // and in turns would trigger this function AGAIN
+
+    // destroy the chan first, to prevent the aforementioned from happening
     view.onResponse->Chan.destroy
+    view.panel->Panel.destroy
+    view.subscriptions->Belt.Array.forEach(VSCode.Disposable.dispose)
   }
 
   // resolves the returned promise once the view has been destroyed
@@ -223,9 +255,9 @@ module View: View = {
     promise->Promise.tap(disposable)
   }
 
-  let reveal = view => VSCode.WebviewPanel.reveal(view.panel, ())
-
-  // let focus = document => Window.showTextDocument(document, ~column=ViewColumn.Beside, ())->ignore
+  // show/focus
+  let reveal = view => view.panel->Panel.reveal
+  let focus = view => view.panel->Panel.focus
 }
 
 module type Controller = {
