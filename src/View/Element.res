@@ -206,7 +206,7 @@ module Inlines = {
           <div className key={string_of_int(i)} />
         | Link(range, children, _className) =>
           let child = make(~value=Element(children))
-          <Link.WithRange range> {child} </Link.WithRange>
+          <Link range> {child} </Link>
         | Sbst(before, after, _className) =>
           let before = make(~value=Element(before))
           let after = make(~value=Element(after))
@@ -331,14 +331,14 @@ module Block = {
       let header = switch header {
       | None => <> </>
       | Some(header) =>
-        <Link.WithRange range>
+        <Link range>
           <div className="element-block-header">
             {string(header)}
             <span className="element-block-header-range">
               {string(SrcLoc.Range.toString(range))}
             </span>
           </div>
-        </Link.WithRange>
+        </Link>
       }
       <li className="element-block">
         {header} <div className="element-block-body"> <Inlines value=body /> </div>
@@ -361,14 +361,14 @@ module Block = {
       let header = switch header {
       | None => <> </>
       | Some(header) =>
-        <Link.WithRange range>
+        <Link range>
           <div className="element-block-header">
             {string(header)}
             <span className="element-block-header-range">
               {string(SrcLoc.Range.toString(range))}
             </span>
           </div>
-        </Link.WithRange>
+        </Link>
       }
       <li className="element-block">
         {header}

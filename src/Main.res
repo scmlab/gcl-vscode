@@ -79,12 +79,10 @@ let handleViewResponse = response => {
     switch response {
     | ViewType.Response.Link(MouseOver(range)) =>
       let key = SrcLoc.Range.toString(range)
-      Js.log("in " ++ key)
       let range = SrcLoc.Range.toVSCodeRange(range)
       State.Decoration.addBackground(state, key, range, "statusBar.debuggingBackground")
     | Link(MouseOut(range)) =>
       let key = SrcLoc.Range.toString(range)
-      Js.log("out " ++ key)
       State.Decoration.remove(key)
     | Link(MouseClick(range)) =>
       let key = SrcLoc.Range.toString(range)
