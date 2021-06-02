@@ -257,7 +257,7 @@ module Block = {
   type t =
     | Block(option<string>, option<SrcLoc.Range.t>, Inlines.t)
     | Spec(SrcLoc.Range.t, Inlines.t, Inlines.t)
-    | PO(option<string>, option<SrcLoc.Range.t>, Inlines.t, Inlines.t)
+    | PO(option<string>, option<SrcLoc.Range.t>, Inlines.t)
     | Header(string)
 
   let block = (header, range, body) => Block(header, range, body)
@@ -285,12 +285,11 @@ module Block = {
         )
       | "PO" =>
         Contents(
-          tuple4(
+          tuple3(
             optional(string),
             optional(SrcLoc.Range.decode),
             Inlines.decode,
-            Inlines.decode,
-          ) |> map(((a, b, c, d)) => PO(a, b, c, d)),
+          ) |> map(((a, b, c)) => PO(a, b, c)),
         )
       | "Header" => Contents(string |> map(s => Header(s)))
       | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
@@ -313,16 +312,15 @@ module Block = {
         ("tag", string("Spec")),
         ("contents", (a, b, c) |> tuple3(SrcLoc.Range.encode, Inlines.encode, Inlines.encode)),
       })
-    | PO(a, b, c, d) =>
+    | PO(a, b, c) =>
       object_(list{
         ("tag", string("PO")),
         (
           "contents",
-          (a, b, c, d) |> tuple4(
+          (a, b, c) |> tuple3(
             nullable(string),
             nullable(SrcLoc.Range.encode),
-            Inlines.encode,
-            Inlines.encode,
+            Inlines.encode
           ),
         ),
       })
@@ -378,7 +376,7 @@ module Block = {
         </div>
       </li>
 
-    | PO(header, None, pre, post) =>
+    | PO(header, None, predicate) =>
       let header = switch header {
       | None => <> </>
       | Some(header) => <div className="element-block-header"> {string(header)} </div>
@@ -386,12 +384,11 @@ module Block = {
       <li className="element-block">
         {header}
         <div className="element-block-body">
-          <div className="element-body-item"> <Inlines value=pre /> </div>
-          <div className="element-body-item"> <Inlines value=post /> </div>
+          <div className="element-body-item"> <Inlines value=predicate /> </div>
         </div>
       </li>
 
-    | PO(header, Some(range), pre, post) =>
+    | PO(header, Some(range), predicate) =>
       let header = switch header {
       | None => <> </>
       | Some(header) =>
@@ -407,8 +404,7 @@ module Block = {
       <li className="element-block">
         {header}
         <div className="element-block-body">
-          <div className="element-body-item"> <Inlines value=pre /> </div>
-          <div className="element-body-item"> <Inlines value=post /> </div>
+          <div className="element-body-item"> <Inlines value=predicate /> </div>
         </div>
       </li>
     | Header(header) => <li className="element-header"> <h3> {string(header)} </h3> </li>
