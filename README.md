@@ -2,7 +2,7 @@
 
 ## Installation
 
-[![MarketPlace Tag](https://vsmarketplacebadge.apphb.com/version/scmlab.guacamole.svg)](https://marketplace.visualstudio.com/items?itemName=scmlab.guacamole)
+[![MarketPlace Tag](https://vsmarketplacebadge.apphb.com/version/scmlab.guabao.svg)](https://marketplace.visualstudio.com/items?itemName=scmlab.guabao)
 
 Search for "Guabao" and install it from the Visual Studio Marketplace
 
