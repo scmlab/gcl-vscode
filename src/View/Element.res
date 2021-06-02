@@ -277,11 +277,11 @@ module Block = {
         )
       | "Spec" =>
         Contents(
-          tuple3(
-            SrcLoc.Range.decode,
-            Inlines.decode,
-            Inlines.decode,
-          ) |> map(((a, b, c)) => Spec(a, b, c)),
+          tuple3(SrcLoc.Range.decode, Inlines.decode, Inlines.decode) |> map(((a, b, c)) => Spec(
+            a,
+            b,
+            c,
+          )),
         )
       | "PO" =>
         Contents(
@@ -311,14 +311,7 @@ module Block = {
     | Spec(a, b, c) =>
       object_(list{
         ("tag", string("Spec")),
-        (
-          "contents",
-          (a, b, c) |> tuple3(
-            SrcLoc.Range.encode,
-            Inlines.encode,
-            Inlines.encode,
-          ),
-        ),
+        ("contents", (a, b, c) |> tuple3(SrcLoc.Range.encode, Inlines.encode, Inlines.encode)),
       })
     | PO(a, b, c, d) =>
       object_(list{
@@ -366,20 +359,22 @@ module Block = {
       </li>
     | Spec(range, pre, post) =>
       <li className="element-block">
-        <Link range>
-          <div className="element-block-header">
+        <div className="element-block-header">
+          {string("precondition")}
+          <Link range>
             <span className="element-block-header-range">
               {string(SrcLoc.Range.toString(range))}
             </span>
-          </div>
-        </Link>
-        <div className="element-po-body">
-          <div className="element-po-pre">
-            <Inlines value=pre /> <span className="element-po-label"> {string("pre")} </span>
-          </div>
-          <div className="element-po-post">
-            <Inlines value=post /> <span className="element-po-label"> {string("post")} </span>
-          </div>
+          </Link>
+        </div>
+        <div className="element-block-body">
+          <div className="element-body-item"> <Inlines value=pre /> </div>
+        </div>
+        <div className="element-block-header">
+          {string("post-condition")}
+        </div>
+        <div className="element-block-body">
+          <div className="element-body-item"> <Inlines value=post /> </div>
         </div>
       </li>
 
@@ -390,13 +385,9 @@ module Block = {
       }
       <li className="element-block">
         {header}
-        <div className="element-po-body">
-          <div className="element-po-pre">
-            <Inlines value=pre /> <span className="element-po-label"> {string("pre")} </span>
-          </div>
-          <div className="element-po-post">
-            <Inlines value=post /> <span className="element-po-label"> {string("post")} </span>
-          </div>
+        <div className="element-block-body">
+          <div className="element-body-item"> <Inlines value=pre /> </div>
+          <div className="element-body-item"> <Inlines value=post /> </div>
         </div>
       </li>
 
@@ -415,13 +406,9 @@ module Block = {
       }
       <li className="element-block">
         {header}
-        <div className="element-po-body">
-          <div className="element-po-pre">
-            <Inlines value=pre /> <span className="element-po-label"> {string("pre")} </span>
-          </div>
-          <div className="element-po-post">
-            <Inlines value=post /> <span className="element-po-label"> {string("post")} </span>
-          </div>
+        <div className="element-block-body">
+          <div className="element-body-item"> <Inlines value=pre /> </div>
+          <div className="element-body-item"> <Inlines value=post /> </div>
         </div>
       </li>
     | Header(header) => <li className="element-header"> <h3> {string(header)} </h3> </li>

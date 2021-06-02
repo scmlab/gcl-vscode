@@ -44,8 +44,7 @@
 
     li {
         // dimensions
-        margin : @padding 0;
-        padding: @padding/2 @padding;
+        margin : calc(@padding*2) 0;
 
         &:first-of-type {
             margin-top: 0;
@@ -74,52 +73,19 @@
         }
     }
 
-    li .element-block-body {
-        font-family: Menlo, Monaco, 'Courier New', monospace;
-        white-space: pre-wrap;
-        padding    : @padding;
-    }
-
-    li .element-po-body {
-        font-family: Menlo, Monaco, 'Courier New', monospace;
-        white-space: pre-wrap;
-
-        overflow-y: scroll;
-        padding   : @padding;
-
-
-        .element-po-pre {
-            padding: @padding;
-            background: @header-background;
-            margin-bottom: @padding;
-        }
-
-        .element-po-post {
-            padding: @padding;
-            background: @header-background;
-        }
-
-        .element-po-label {
-            display: none;
-            // font-family: sans-serif;
-            // // font-weight : bold;
-            // font-variant: small-caps;
-            // color       : @foreground-tenuous;
-
-            // position: absolute;
-            // right: calc(@padding * 4);
-            // z-index: 0;
-        }
-
-    }
-
 
     li .element-block-header {
-        padding    : @padding @padding 0 @padding;
+        padding: 0 @padding;
+
+        &:first-of-type {
+            padding-top: @padding
+        }
 
         color       : @foreground-tenuous;
         font-variant: small-caps;
         font-weight : bolder;
+        height: @line-height;
+        line-height: @line-height;
 
         .element-block-header-range {
             font-variant: normal;
@@ -127,6 +93,29 @@
             float       : right;
         }
     }
+
+    li .element-block-body {
+        font-family: Menlo, Monaco, 'Courier New', monospace;
+        white-space: pre-wrap;
+        padding    : @padding;
+    }
+
+    li .element-body-item {
+
+        font-family: Menlo, Monaco, 'Courier New', monospace;
+        white-space: pre-wrap;
+
+        overflow-y: scroll;
+        padding: @padding;
+        background: @header-background;
+
+        margin-bottom: @padding;
+
+        &:last-of-type {
+            margin-bottom: 0
+        }
+    }
+
 
     ul {
         list-style: none;
