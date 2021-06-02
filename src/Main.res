@@ -263,7 +263,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   View.on(handleViewResponse)->Promise.get(subscribe)
 
   // on refine
-  VSCode.Commands.registerCommand("guacamole.refine", () =>
+  VSCode.Commands.registerCommand("guabao.refine", () =>
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
       let selection = state.editor->VSCode.TextEditor.selection
       let start = SrcLoc.Pos.fromVSCodePos(VSCode.Selection.start(selection), state.document)
@@ -273,7 +273,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   )->subscribe
 
   // on restart
-  VSCode.Commands.registerCommand("guacamole.restart", () =>
+  VSCode.Commands.registerCommand("guabao.restart", () =>
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
       previouslyActivatedState.contents = None
       let editor = state.editor
@@ -303,7 +303,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   )->subscribe
 
   // on debug
-  VSCode.Commands.registerCommand("guacamole.debug", () =>
+  VSCode.Commands.registerCommand("guabao.debug", () =>
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
       sendLSPRequest(state, Debug)
     })

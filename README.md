@@ -1,10 +1,10 @@
-# Guacamole on VS Code
+# Guabao on VS Code
 
 ## Installation
 
 [![MarketPlace Tag](https://vsmarketplacebadge.apphb.com/version/scmlab.guacamole.svg)](https://marketplace.visualstudio.com/items?itemName=scmlab.guacamole)
 
-Search for "Guacamole" and install it from the Visual Studio Marketplace
+Search for "Guabao" and install it from the Visual Studio Marketplace
 
 ## Development
 

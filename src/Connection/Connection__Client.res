@@ -39,7 +39,7 @@ module Module: Module = {
     ->LSP.LanguageClient.onReady
     ->Promise.Js.toResult
     ->Promise.flatMapOk(() => {
-      self.client->LSP.LanguageClient.sendRequest("guacamole", data)->Promise.Js.toResult
+      self.client->LSP.LanguageClient.sendRequest("guabao", data)->Promise.Js.toResult
     })
     ->Promise.mapError(exn => Error.CannotSendRequest(exn))
 
@@ -65,7 +65,7 @@ module Module: Module = {
           {
             scheme: Some("file"),
             pattern: None,
-            language: Some("guacamole"),
+            language: Some("guabao"),
           }
         }),
       ]
@@ -92,8 +92,8 @@ module Module: Module = {
 
     // Create the language client
     let languageClient = LSP.LanguageClient.make(
-      "guacamoleLanguageServer",
-      "Guacamole Language Server",
+      "guabaoLanguageServer",
+      "Guabao Language Server",
       serverOptions,
       clientOptions,
     )
@@ -113,7 +113,7 @@ module Module: Module = {
       switch result {
       | Error(error) => Error(error)
       | Ok() =>
-        self.client->LSP.LanguageClient.onNotification("guacamole", json =>
+        self.client->LSP.LanguageClient.onNotification("guabao", json =>
           dataChan->Chan.emit(json)
         )
         Ok(self)

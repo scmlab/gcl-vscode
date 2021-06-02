@@ -179,7 +179,7 @@ module View: View = {
 
   let make = extensionPath => {
     let view = {
-      panel: Panel.make("Guacamole", extensionPath),
+      panel: Panel.make("Guabao", extensionPath),
       subscriptions: [],
       onResponse: Chan.make(),
       status: Uninitialized([]),

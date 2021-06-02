@@ -1,7 +1,7 @@
 {
-	"name": "guacamole",
-	"displayName": "Guacamole",
-	"description": "Guacamole on vscode",
+	"name": "guabao",
+	"displayName": "Guabao",
+	"description": "Frontend for Guabao",
 	"publisher": "scmlab",
 	"version": "0.0.27",
 	"repository": "https://github.com/scmlab/gcl-vscode",
@@ -12,7 +12,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onLanguage:guacamole"
+		"onLanguage:guabao"
 	],
 	"main": "./dist/app.bundle.js",
 	"scripts": {
@@ -56,12 +56,12 @@
 	"contributes": {
 		"languages": [
 			{
-				"id": "guacamole",
+				"id": "guabao",
 				"extensions": [
 					".gcl"
 				],
 				"aliases": [
-					"Guacamole"
+					"Guabao"
 				],
 				"configuration": "./language-configuration.json",
 				"filenames": []
@@ -69,46 +69,46 @@
 		],
 		"grammars": [
 			{
-				"language": "guacamole",
+				"language": "guabao",
 				"scopeName": "source.gcl",
-				"path": "./syntaxes/guacamole.tmGrammar.json"
+				"path": "./syntaxes/guabao.tmGrammar.json"
 			}
 		],
 		"commands": [
 			{
-				"command": "guacamole.refine",
+				"command": "guabao.refine",
 				"title": "Refine",
-				"category": "Guacamole"
+				"category": "Guabao"
 			},
 			{
-				"command": "guacamole.restart",
+				"command": "guabao.restart",
 				"title": "Restart",
-				"category": "Guacamole"
+				"category": "Guabao"
 			},
 			{
-				"command": "guacamole.debug",
+				"command": "guabao.debug",
 				"title": "Debug",
-				"category": "Guacamole"
+				"category": "Guabao"
 			}
 		],
 		"keybindings": [
 			{
-				"command": "guacamole.refine",
+				"command": "guabao.refine",
 				"key": "ctrl+c ctrl+r",
 				"mac": "ctrl+c ctrl+r",
 				"when": "resourceExtname == .gcl"
 			},
 			{
-				"command": "guacamole.restart",
+				"command": "guabao.restart",
 				"key": "ctrl+x ctrl+r",
 				"mac": "ctrl+x ctrl+r",
 				"when": "resourceExtname == .gcl"
 			}
 		],
 		"configuration": {
-			"title": "Guacamole",
+			"title": "Guabao",
 			"properties": {
-				"guacamole.gclPath": {
+				"guabao.gclPath": {
 					"type": "string",
 					"default": "",
 					"scope": "machine-overridable",
