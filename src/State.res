@@ -25,97 +25,6 @@ let sendLSPRequest = (state, kind) => {
 }
 
 module Spec = {
-  // find the hole containing the cursor
-  let fromCursorPosition = state => {
-    let cursor = state.editor->VSCode.TextEditor.selection->VSCode.Selection.end_
-    // find the smallest hole containing the cursor, as there might be many of them
-    let smallestHole = ref(None)
-    state.specifications
-    ->Array.keep(spec => {
-      let range = SrcLoc.Range.toVSCodeRange(spec.range)
-      VSCode.Range.contains(range, cursor)
-    })
-    ->Array.forEach(spec =>
-      switch smallestHole.contents {
-      | None => smallestHole := Some(spec)
-      | Some(spec') =>
-        if VSCode.Range.containsRange(SrcLoc.Range.toVSCodeRange(spec.range), SrcLoc.Range.toVSCodeRange(spec'.range)) {
-          smallestHole := Some(spec)
-        }
-      }
-    )
-    smallestHole.contents
-  }
-
-  let getPayloadRange = (doc, spec: Response.Specification.t) => {
-    let range = SrcLoc.Range.toVSCodeRange(spec.range)
-    let startingLine = VSCode.Position.line(VSCode.Range.start(range)) + 1
-    let endingLine = VSCode.Position.line(VSCode.Range.end_(range)) - 1
-
-    let start =
-      VSCode.TextDocument.lineAt(doc, startingLine)->VSCode.TextLine.range->VSCode.Range.start
-    let end_ = VSCode.TextDocument.lineAt(doc, endingLine)->VSCode.TextLine.range->VSCode.Range.end_
-    VSCode.Range.make(start, end_)
-  }
-
-  // return the payload inside the spec
-  // split into lines
-  let getPayload = (doc, spec): array<string> => {
-    // return the text in the targeted hole
-    let innerRange = getPayloadRange(doc, spec)
-    let payload = VSCode.TextDocument.getText(doc, Some(innerRange))
-    // split the payload into lines
-    let payloadLines = payload->Js.String2.match_(%re("/[^\\r\\n]+/g"))->Option.getWithDefault([])
-    // calculate the level of indentation for each lines
-    let indentLevels = payloadLines->Array.map(Js.String.search(%re("/\\S|$/")))
-    // find the smallest level
-    let smallestLevel = ref(None)
-    indentLevels->Array.forEach(lvl =>
-      switch smallestLevel.contents {
-      | None => smallestLevel := Some(lvl)
-      | Some(n) =>
-        if lvl < n {
-          smallestLevel := Some(lvl)
-        }
-      }
-    )
-    let smallestLevel = smallestLevel.contents->Option.getWithDefault(0)
-    // remove the indentation
-    payloadLines->Array.map(Js.String.sliceToEnd(~from=smallestLevel))
-  }
-
-  let resolve = (state, i) => {
-    // find the corresponding Spec
-
-    let spec = (state.specifications->Array.keep(spec => spec.id == i))[0]
-    switch spec {
-    | None => Promise.resolved()
-    | Some(spec) =>
-      let range = SrcLoc.Range.toVSCodeRange(spec.range)
-      // get text inside the Spec
-      let start = VSCode.Range.start(range)
-      let indentedPayload = {
-        let payload = getPayload(state.document, spec)
-        let indentationLevel = VSCode.Position.character(start)
-        let indentation = Js.String.repeat(indentationLevel, " ")
-        payload->Js.Array2.joinWith("\n" ++ indentation)
-      }
-      // delete the whole Spec
-      Editor.Text.delete(state.document, range)
-      // restore the original text inside that Spec
-      ->Promise.flatMap(result =>
-        switch result {
-        | false => Promise.resolved(false)
-        | true => Editor.Text.insert(state.document, start, indentedPayload)
-        }
-      )
-      // remove decorations
-      ->Promise.map(_ => {
-        spec.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
-      })
-    }
-  }
-
   let redecorate = (state, specs) => {
     // dispose old decorations
     state.specifications->Array.forEach(spec =>
@@ -131,6 +40,9 @@ module Spec = {
         let range = SrcLoc.Range.toVSCodeRange(spec.range)
         let startPosition = VSCode.Range.start(range)
         let endPosition = VSCode.Range.end_(range)
+
+        let singleLine = VSCode.Position.line(startPosition) == VSCode.Position.line(endPosition)
+
         // range of [!
         let startRange = VSCode.Range.make(
           startPosition,
@@ -179,26 +91,22 @@ module Spec = {
           state.editor->VSCode.TextEditor.setDecorations(decoration, ranges)
           decoration
         }
-        [
-          overlayText(isQQ ? "" : preCondText, [startRange]),
-          overlayText(postCondText, [endRange]),
-          highlightBackground([startRange, endRange]),
-        ]
+
+        // only overlay texts when the Spec spans multiple lines
+        if singleLine {
+          [highlightBackground([startRange, endRange])]
+        } else {
+          [
+            overlayText(isQQ ? "" : preCondText, [startRange]),
+            overlayText(postCondText, [endRange]),
+            highlightBackground([startRange, endRange]),
+          ]
+        }
       }
 
       // persist new decoraitons
       spec.decorations = decorations
     })
-  }
-
-  let updateLocations = (state, locations) => {
-    state.specifications->Array.forEachWithIndex((index, spec) => {
-      locations[index]->Option.forEach(range => {
-        // Js.log(SrcLoc.Loc.toString(spec.loc) ++ " ===>" ++ SrcLoc.Loc.toString(loc))
-        spec.range = range
-      })
-    })
-    redecorate(state, state.specifications)
   }
 }
 
@@ -229,16 +137,17 @@ module Decoration: Decoration = {
     string,
   ) => unit = %raw(`function (dict, id) {delete dict[id]}`)
 
-  let addBackground = (state, key, range, color) => switch Js.Dict.get(dict, key) {
-  | Some(_) => () // already exists 
-  | None => 
-    // "editor.symbolHighlightBackground"
-    let backgroundColor = VSCode.StringOr.others(VSCode.ThemeColor.make(color))
-    let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ())
-    let decoration = VSCode.Window.createTextEditorDecorationType(options)
-    state.editor->VSCode.TextEditor.setDecorations(decoration, [range])
-    Js.Dict.set(dict, key, [decoration])
-  }
+  let addBackground = (state, key, range, color) =>
+    switch Js.Dict.get(dict, key) {
+    | Some(_) => () // already exists
+    | None =>
+      // "editor.symbolHighlightBackground"
+      let backgroundColor = VSCode.StringOr.others(VSCode.ThemeColor.make(color))
+      let options = VSCode.DecorationRenderOptions.t(~backgroundColor, ())
+      let decoration = VSCode.Window.createTextEditorDecorationType(options)
+      state.editor->VSCode.TextEditor.setDecorations(decoration, [range])
+      Js.Dict.set(dict, key, [decoration])
+    }
 
   let remove = key => {
     Js.Dict.get(dict, key)->Option.forEach(decos =>
