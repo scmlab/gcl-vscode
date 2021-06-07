@@ -49,7 +49,6 @@ module Kind = {
 
 type t =
   | Res(string, array<Kind.t>)
-  | NotLoaded
   | CannotDecodeResponse(string, Js.Json.t)
   | CannotDecodeRequest(string)
   | CannotSendRequest(string)
@@ -60,7 +59,6 @@ let decode: decoder<t> = sum(x =>
   switch x {
   | "Res" =>
     Contents(pair(string, array(Kind.decode)) |> map(((filePath, kinds)) => Res(filePath, kinds)))
-  | "NotLoaded" => TagOnly(_ => NotLoaded)
   | "CannotDecodeRequest" => Contents(string |> map(msg => CannotDecodeRequest(msg)))
   | tag => raise(DecodeError("Unknown constructor: " ++ tag))
   }

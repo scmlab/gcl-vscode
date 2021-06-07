@@ -32,17 +32,6 @@ let handleResponse = response =>
         ),
       ],
     )
-  | NotLoaded =>
-    State.display(
-      0,
-      [
-        Element.Block.block(
-          Some("Internal Error"),
-          None,
-          Element.Inlines.string("Program source not loaded yet"),
-        ),
-      ],
-    )
   | CannotDecodeResponse(message, json) =>
     State.display(
       0,
