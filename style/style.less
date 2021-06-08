@@ -41,7 +41,7 @@
 
     li {
         // dimensions
-        margin : calc(@padding*2) 0;
+        margin: calc(@padding*2) 0;
 
         &:first-of-type {
             margin-top: 0;
@@ -81,8 +81,8 @@
         color       : @foreground-tenuous;
         font-variant: small-caps;
         font-weight : bolder;
-        height: @line-height;
-        line-height: @line-height;
+        height      : @line-height;
+        line-height : @line-height;
 
         .element-block-header-range {
             font-variant: normal;
@@ -103,7 +103,7 @@
         white-space: pre-wrap;
 
         overflow-y: scroll;
-        padding: @padding;
+        padding   : @padding;
         background: @header-background;
 
         margin-bottom: @padding;
@@ -133,8 +133,8 @@
 }
 
 .element-link:hover {
-    color          : @link-hover;
-    cursor         : pointer;
+    color : @link-hover;
+    cursor: pointer;
 
     .element-block-header {
         color: @foreground-subtle;
@@ -170,10 +170,20 @@
 
 // the parent container of a Vertical grouping 
 .element-vert {
-    display: flex; 
-    flex-direction:  column;
+    display       : flex;
+    flex-direction: column;
 }
 
+// highlight <Sbst> background on hover (before substitution)
+.element-sbst.before-substitution {
+    &:hover {
+        cursor    : pointer;
+        background: @body-background;
+        .element-horz {
+            background: @body-background
+        }
+    }
+}
 
 // for styling parentheses
 .element-parentheses {
@@ -185,322 +195,3 @@
         font-weight: bolder;
     }
 }
-
-
-
-// <Panel>
-// .gcl-panel {
-//     font-size  : 125%;
-//     padding    : @element-padding;
-//     line-height: 200%;
-
-//     // vscode: removes focus outline  
-//     &:focus,
-//     *:focus {
-//         outline: none;
-//     }
-
-//     h2 {
-//         font-size: 100%;
-//     }
-
-//     // For hiding React elements
-//     .hidden {
-//         display: none !important
-//     }
-
-
-//     #gcl-connection-status {
-//         // place it at the top right corner 
-//         position: absolute;
-//         top     : @element-padding * 2;
-//         right   : @element-padding* 2;
-
-//         // text style 
-//         font-size   : 75%;
-//         font-weight : bold;
-//         font-variant: small-caps;
-//         color       : @text-color-subtle;
-//     }
-
-//     .gcl-proof-obligation,
-//     .gcl-global-props {
-//         overflow-y: scroll;
-//         padding   : 0;
-
-//         .gcl-proof-obligation-header {
-//             button {
-//                 float: right;
-//             }
-//         }
-
-//         .gcl-proof-obligation-message {
-//             // display: none;
-//             width: 100%;
-
-//             font-variant: small-caps;
-//             font-weight : bolder;
-//             color       : @text-color-subtle;
-//         }
-
-//         .gcl-proof-obligation-antecedent {
-//             width: 45%
-//         }
-
-//         .gcl-proof-obligation-consequent {
-//             width: 45%
-//         }
-
-//         .gcl-proof-obligation-arrow {
-//             width     : 10%;
-//             text-align: center;
-//         }
-
-//     }
-
-//     // List <ul>
-
-//     ul {
-//         list-style: none;
-//         padding   : 0;
-//         margin    : 0;
-
-//         li {
-//             display        : flex;
-//             flex-wrap      : wrap;
-//             justify-content: space-between;
-//             align-items    : flex-start;
-//         }
-//     }
-
-
-//     //  List Item <li>
-
-//     .element-block-unlabeled {
-//         display      : block;
-//         background   : @background2;
-//         padding      : @element-padding;
-//         margin-bottom: @element-padding * 2;
-//     }
-
-//     .gcl-list-item {
-//         background   : @background2;
-//         padding      : @element-padding;
-//         margin-bottom: @element-padding * 2;
-//     }
-
-//     .gcl-list-item:last-of-type {
-//         margin-bottom: 0
-//     }
-
-//     .gcl-list-item-header {
-//         width: 100%;
-
-//         font-variant: small-caps;
-//         font-weight : bolder;
-//         color       : @text-color-subtle;
-
-//         &.has-range:hover {
-//             cursor: pointer;
-//             color : @foreground3;
-//         }
-//     }
-
-//     .gcl-list-item-range {
-//         float       : right;
-//         font-weight : normal;
-//         font-variant: normal;
-//     }
-
-//     // .gcl-list-item-body {}
-
-
-//     // buttons
-//     button {
-//         border : 0;
-//         outline: 0;
-//         padding: @element-padding;
-//         margin : 0;
-
-//         background : @background3;
-//         color      : @foreground3;
-//         font-weight: bold;
-
-//         .icon {
-//             font-weight: bold;
-//         }
-
-//         &:hover {
-//             color : @foreground;
-//             cursor: pointer;
-//         }
-//     }
-
-//     // codicons
-//     .icon {
-//         display    : flex;
-//         align-items: center;
-
-//         font-size: 1em;
-
-//         .codicon {
-//             font-size: 100%;
-//         }
-
-//         .codicon.right {
-//             margin-left: 0.5em;
-//         }
-
-//         .codicon.left {
-//             margin-left: 0.5em;
-//         }
-
-//     }
-
-//     // other stuff
-
-//     .expr {
-//         color: @text-color-highlight;
-
-//         * {
-//             display: inline;
-//         }
-
-//         .expr-paren {
-//             cursor: zoom-out;
-
-//             &.hovered {
-//                 color: @text-color-selected
-//             }
-
-//             &.collapsed {
-//                 cursor: zoom-in
-//             }
-//         }
-
-//         .expr-subst {
-//             cursor: ew-resize;
-//         }
-
-//         .expr-link {
-//             &:hover {
-//                 color: @text-color-selected
-//             }
-//         }
-//     }
-
-//     .marker {
-//         display       : inline-flex;
-//         flex-direction: column;
-
-//         .marker-line {
-//             height       : 8px;
-//             border-bottom: 4px @marker-line-color;
-
-//             &:hover {
-//                 border-color: @marker-line-color-hover
-//             }
-
-//             &.marker-guard {
-//                 border-bottom-style: dashed
-//             }
-
-//             &.marker-assertion {
-//                 border-bottom-style: solid
-//             }
-
-//             &.marker-if {
-//                 border-color: @marker-line-if-color;
-//             }
-
-//             &.marker-if:hover {
-//                 border-color: @marker-line-if-color-hover
-//             }
-
-//             &.marker-loop {
-//                 border-color: @marker-line-loop-color
-//             }
-
-//             &.marker-loop:hover {
-//                 border-color: @marker-line-loop-color-hover
-//             }
-
-//             &.marker-bound {
-//                 border-bottom-style: solid;
-//                 border-color       : @marker-line-bound-color
-//             }
-
-//             &.marker-bound:hover {
-//                 border-color: @marker-line-bound-color-hover
-//             }
-//         }
-
-//         .marker-text {
-//             display   : none;
-//             text-align: center;
-
-//             font-size   : 75%;
-//             font-variant: small-caps;
-//             font-weight : bolder;
-//             color       : @foreground5;
-//         }
-//     }
-
-//     // Elements 
-//     @indent           : 2ch;
-//     @warning          : var(--vscode-editorWarning-foreground);
-//     @foreground-subtle: var(--vscode-input-placeholderForeground);
-
-//     // the parent container of a Horizontal grouping 
-//     .element-horz {
-//         // so that we can set paddings
-//         display     : inline-flex;
-//         flex-wrap   : wrap;
-//         // use padding-left to indent every child
-//         padding-left: @indent - 1ch;
-//     }
-
-//     // but don't indent the first child
-//     .element-horz-item:first-of-type {
-//         margin-left: -(@indent - 1ch);
-//     }
-
-//     // seperate each .element-horz-item
-//     .element-horz-item {
-//         margin-left: 1ch;
-
-//         // no margin, for parentheses around other horz-items
-//         &.compact {
-//             margin-left: 0
-//         }
-//     }
-
-//     // for styling parentheses
-//     .element-parentheses {
-//         color: @foreground-subtle;
-
-//         &.activated {
-//             cursor     : ew-resize;
-//             color      : @warning;
-//             font-weight: bolder;
-//         }
-//     }
-
-//     @link      : var(--vscode-button-foreground);
-//     @link-hover: var(--vscode-button-foreground);
-
-//     .element-link {
-//         color: @link;
-
-//         .codicon-link::after {
-//             content    : " ";
-//             white-space: pre;
-//         }
-//     }
-
-//     .element-link:hover {
-//         color          : @link-hover;
-//         cursor         : pointer;
-//         text-decoration: underline;
-//     }
-// }

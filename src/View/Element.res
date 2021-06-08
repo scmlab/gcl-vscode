@@ -181,7 +181,9 @@ module Inlines = {
     let make = (~before, ~after) => {
       let (clicked, setClicked) = React.useState(_ => false)
       let onClick = _ => setClicked(_ => true)
-      <span onClick>
+
+      let className = clicked ? "element-sbst" : "element-sbst before-substitution"
+      <span className onClick>
         {if clicked {
           after
         } else {
@@ -285,11 +287,11 @@ module Block = {
         )
       | "PO" =>
         Contents(
-          tuple3(
-            optional(string),
-            optional(SrcLoc.Range.decode),
-            Inlines.decode,
-          ) |> map(((a, b, c)) => PO(a, b, c)),
+          tuple3(optional(string), optional(SrcLoc.Range.decode), Inlines.decode) |> map(((
+            a,
+            b,
+            c,
+          )) => PO(a, b, c)),
         )
       | "Header" => Contents(string |> map(s => Header(s)))
       | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
@@ -317,11 +319,7 @@ module Block = {
         ("tag", string("PO")),
         (
           "contents",
-          (a, b, c) |> tuple3(
-            nullable(string),
-            nullable(SrcLoc.Range.encode),
-            Inlines.encode
-          ),
+          (a, b, c) |> tuple3(nullable(string), nullable(SrcLoc.Range.encode), Inlines.encode),
         ),
       })
     | Header(xs) => object_(list{("tag", string("Header")), ("contents", xs |> string)})
@@ -368,9 +366,7 @@ module Block = {
         <div className="element-block-body">
           <div className="element-body-item"> <Inlines value=pre /> </div>
         </div>
-        <div className="element-block-header">
-          {string("post-condition")}
-        </div>
+        <div className="element-block-header"> {string("post-condition")} </div>
         <div className="element-block-body">
           <div className="element-body-item"> <Inlines value=post /> </div>
         </div>
