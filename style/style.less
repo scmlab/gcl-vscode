@@ -174,11 +174,13 @@
     flex-direction: column;
 }
 
-// highlight <Sbst> background on hover (before substitution)
-.element-sbst.before-substitution {
+// highlight the background of env in <Sbst> on hover
+.element-sbst-env {
     &:hover {
         cursor    : pointer;
+        color     : @warning;
         background: @body-background;
+
         .element-horz {
             background: @body-background
         }

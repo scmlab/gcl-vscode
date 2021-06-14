@@ -85,7 +85,7 @@ module Inlines = {
       | Icon(string, ClassNames.t)
       | Text(string, ClassNames.t)
       | Link(SrcLoc.Range.t, array<t>, ClassNames.t)
-      | Sbst(array<t>, array<t>, ClassNames.t)
+      | Sbst(array<t>, array<t>, array<t>, ClassNames.t)
       | Horz(array<array<t>>)
       | Vert(array<array<t>>)
       | Parn(array<t>)
@@ -109,11 +109,12 @@ module Inlines = {
           )
         | "Sbst" =>
           Contents(
-            tuple3(array(decode()), array(decode()), ClassNames.decode) |> map(((a, b, c)) => Sbst(
+            tuple4(array(decode()), array(decode()), array(decode()), ClassNames.decode) |> map(((
               a,
               b,
               c,
-            )),
+              d,
+            )) => Sbst(a, b, c, d)),
           )
         | "Horz" => Contents(array(array(decode())) |> map(xs => Horz(xs)))
         | "Vert" => Contents(array(array(decode())) |> map(xs => Vert(xs)))
@@ -143,10 +144,13 @@ module Inlines = {
           ("tag", string("Link")),
           ("contents", (r, s, cs) |> tuple3(SrcLoc.Range.encode, array(encode), ClassNames.encode)),
         })
-      | Sbst(a, b, c) =>
+      | Sbst(a, b, c, d) =>
         object_(list{
           ("tag", string("Sbst")),
-          ("contents", (a, b, c) |> tuple3(array(encode), array(encode), ClassNames.encode)),
+          (
+            "contents",
+            (a, b, c, d) |> tuple4(array(encode), array(encode), array(encode), ClassNames.encode),
+          ),
         })
       | Horz(xs) => object_(list{("tag", string("Horz")), ("contents", xs |> array(array(encode)))})
       | Vert(xs) => object_(list{("tag", string("Vert")), ("contents", xs |> array(array(encode)))})
@@ -178,18 +182,17 @@ module Inlines = {
 
   module Sbst = {
     @react.component
-    let make = (~before, ~after) => {
+    let make = (~before, ~env, ~after) => {
       let (clicked, setClicked) = React.useState(_ => false)
       let onClick = _ => setClicked(_ => true)
 
-      let className = clicked ? "element-sbst" : "element-sbst before-substitution"
-      <span className onClick>
-        {if clicked {
-          after
-        } else {
-          before
-        }}
-      </span>
+      if clicked {
+        <span className="element-sbst"> after </span>
+      } else {
+        <span className="element-sbst"> before 
+        {React.string(" ")}
+        <span className="element-sbst-env" onClick> env </span> </span>
+      }
     }
   }
 
@@ -209,10 +212,11 @@ module Inlines = {
         | Link(range, children, _className) =>
           let child = make(~value=Element(children))
           <Link range> {child} </Link>
-        | Sbst(before, after, _className) =>
+        | Sbst(before, env, after, _className) =>
           let before = make(~value=Element(before))
+          let env = make(~value=Element(env))
           let after = make(~value=Element(after))
-          <Sbst before after />
+          <Sbst before env after />
         | Horz(elements) =>
           let children =
             elements->Array.map(element =>
