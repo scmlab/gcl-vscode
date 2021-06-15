@@ -1,8 +1,9 @@
 open Belt
 
+
 type t =
   // probe
-  | CannotConnectViaStdIO(AgdaModeVscode.Process.PathSearch.Error.t)
+  | CannotConnectViaStdIO(LanguageServerMule.Connection__Process.PathSearch.Error.t)
   | CannotConnectViaTCP(Js.Exn.t)
   | CannotConnectViaPrebuilt(Connection__Prebuilt.Error.t)
   // connection
@@ -14,7 +15,7 @@ type t =
 let toString = error =>
   switch error {
   | CannotConnectViaStdIO(e) =>
-    let (_header, body) = AgdaModeVscode.Process.PathSearch.Error.toString(e)
+    let (_header, body) = LanguageServerMule.Connection__Process.PathSearch.Error.toString(e)
     ("Cannot locate \"gcl\"", body ++ "\nPlease make sure that the executable is in the path")
   | CannotConnectViaTCP(_) => (
       "Cannot connect with the server",

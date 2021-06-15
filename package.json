@@ -16,10 +16,10 @@
 	],
 	"main": "./dist/app.bundle.js",
 	"scripts": {
-		"clean": "npx bsb -clean-world",
-		"build": "npx bsb -make-world && npx lessc style/style.less dist/style.css && webpack --mode development",
-		"dev": "webpack --mode development --watch & npx less-watch-compiler style/ dist/ & npx bsb -w",
-		"vscode:prepublish": "npx bsb -make-world && npx lessc style/style.less dist/style.css && webpack --mode production"
+		"clean": "npx rescript clean",
+		"build": "npx rescript build -with-deps && npx lessc style/style.less dist/style.css && webpack --mode development",
+		"dev": "npx less-watch-compiler style/ dist/ & npx rescript build -w & webpack --mode development --watch",
+		"vscode:prepublish": "npx rescript && npx lessc style/style.less dist/style.css && webpack --mode production"
 	},
 	"devDependencies": {
 		"copy-webpack-plugin": "^6.0.3",
@@ -34,15 +34,15 @@
 	},
 	"dependencies": {
 		"@glennsl/bs-json": "github:banacorn/bs-json#0c900d3",
-		"agda-mode-vscode": "github:banacorn/agda-mode-vscode#v0.2.7",
-		"bs-platform": "^8.3.3",
 		"bs-vscode": "github:banacorn/bs-vscode#v0.0.16",
 		"bs-webapi": ">=0.19.0",
 		"eventemitter3": ">=4.0.0",
-		"reason-nodejs": "^13.0.0-beta.1",
+		"language-server-mule": "github:banacorn/language-server-mule#d570da5",
+		"reason-nodejs": "github:banacorn/reason-nodejs#adece71",
 		"reason-promise": ">=1.1.0",
 		"reason-react": "github:banacorn/reason-react#d1c98ce",
 		"reason-react-update": "^2.0.0",
+		"rescript": "^9.1.4",
 		"vscode-languageclient": "^6.1.3",
 		"vscode-languageserver": "^6.1.1",
 		"vscode-languageserver-textdocument": "^1.0.1",

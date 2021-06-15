@@ -21,7 +21,7 @@ module Module: Module = {
     module StdIO = {
       // see if "gcl" is available
       let probe = name => {
-        AgdaModeVscode.Process.PathSearch.run(name)
+        LanguageServerMule.Connection__Process.PathSearch.run(name, "Cannot find the executable")
         ->Promise.mapOk(path => Client.ViaStdIO(name, Js.String.trim(path)))
         ->Promise.mapError(e => Error.CannotConnectViaStdIO(e))
       }
