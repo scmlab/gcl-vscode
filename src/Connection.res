@@ -21,37 +21,9 @@ module Module: Module = {
     module StdIO = {
       // see if "gcl" is available
       let probe = name => {
-        LanguageServerMule.Search.Path.run(name)
+        LanguageServerMule.Search.Path.search(name)
         ->Promise.mapOk(path => Client.ViaStdIO(name, Js.String.trim(path)))
         ->Promise.mapError(e => Error.CannotConnectViaStdIO(e))
-      }
-    }
-
-    module TCP = {
-      module Socket = {
-        type t
-        // methods
-        @bs.send external destroy: t => t = "destroy"
-        // events
-        @bs.send
-        external on: (t, @bs.string [#error(Js.Exn.t => unit) | #timeout(unit => unit)]) => t = "on"
-      }
-
-      @bs.module("net")
-      external connect: (int, unit => unit) => Socket.t = "connect"
-
-      // see if the TCP port is available
-      let probe = port => {
-        let (promise, resolve) = Promise.pending()
-        // connect and resolve `Ok()`` on success
-        let socket = connect(port, () => resolve(Ok()))
-        // resolve `Error(CannotConnect(Js.Exn.t))` on error
-        socket->Socket.on(#error(exn => resolve(Error(Error.CannotConnectViaTCP(exn)))))->ignore
-        // destroy the connection afterwards
-        promise->Promise.mapOk(() => {
-          Socket.destroy(socket)->ignore
-          Client.ViaTCP(port)
-        })
       }
     }
 
@@ -69,7 +41,11 @@ module Module: Module = {
     let probe = globalStoragePath => {
       let port = 3000
       let name = "gcl"
-      TCP.probe(port)
+      LanguageServerMule.Search.Port.probe(port, "localhost")
+      ->Promise.map(result => switch result {
+      | Ok() => Ok(Client.ViaTCP(port))
+      | Error(exn) => Error(Error.CannotConnectViaTCP(exn))
+      })
       ->Promise.flatMapError(_ => Prebuilt.probe(globalStoragePath))
       ->Promise.flatMapError(_ => StdIO.probe(name))
     }
