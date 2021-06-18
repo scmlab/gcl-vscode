@@ -1,7 +1,7 @@
 type method = ViaStdIO(string, string) | ViaTCP(int) | ViaPrebuilt(string, string)
 
 module Error = Connection__Error
-module LSP = Connection__LSP
+module LSP = LanguageServerMule.LSP
 
 module type Module = {
   type t
@@ -52,7 +52,7 @@ module Module: Module = {
     // let emittedError = ref(false)
 
     let serverOptions = switch method {
-    | ViaTCP(port) => LSP.ServerOptions.makeWithStreamInfo(port)
+    | ViaTCP(port) => LSP.ServerOptions.makeWithStreamInfo(port, "localhost")
     | ViaStdIO(name, _path) => LSP.ServerOptions.makeWithCommand(name)
     | ViaPrebuilt(_version, path) => LSP.ServerOptions.makeWithCommand(path)
     }

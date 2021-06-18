@@ -26,10 +26,5 @@
     "reason-react",
     "reason-nodejs",
     "reason-react-update"
-  ],
-  "ppx-flags": [],
-  "bsc-flags": [
-    "-bs-g"
-  ],
-  "refmt": 3
+  ]
 }
