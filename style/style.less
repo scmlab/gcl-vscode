@@ -6,6 +6,7 @@
 @header-height    : 2rem;
 @left-border-width: 0.2rem;
 @line-height      : 1.5rem;
+@indent           : 2ch;
 
 .gcl {
     height: 100%;
@@ -39,9 +40,15 @@
         vertical-align: middle;
     }
 
+    ul {
+        list-style: none;
+        padding   : 0px;
+        margin    : 0px;
+    }
+
     li {
         // dimensions
-        margin: calc(@padding*2) 0;
+        margin: @padding 0;
 
         &:first-of-type {
             margin-top: 0;
@@ -55,12 +62,7 @@
 
     }
 
-    li.element-block {
-        // background & border
-        background : @body-background;
-        border-left: @left-border-width solid @body-background;
-    }
-
+    // Header
     li.element-header {
         margin : 0;
         padding: 0;
@@ -70,59 +72,73 @@
         }
     }
 
+    // Block
 
-    li .element-block-header {
-        padding: 0 @padding;
+    li.element-block {
+        background : @body-background;
+        border-left: @left-border-width solid @body-background;
 
-        &:first-of-type {
-            padding-top: @padding
+        .element-block-header {
+            padding    : @padding;
+            height     : @line-height;
+            line-height: @line-height;
+
+            color       : @foreground-tenuous;
+            font-variant: small-caps;
+            font-weight : bolder;
+
+            .element-block-header-range {
+                font-variant: normal;
+                font-weight : normal;
+                float       : right;
+            }
         }
 
-        color       : @foreground-tenuous;
-        font-variant: small-caps;
-        font-weight : bolder;
-        height      : @line-height;
-        line-height : @line-height;
+        .element-block-body {
 
-        .element-block-header-range {
-            font-variant: normal;
-            font-weight : normal;
-            float       : right;
+            padding: 0 @padding;
+
+            &:last-of-type {
+                padding-bottom: @padding
+            }
+
+            font-family: Menlo,
+            Monaco,
+            'Courier New',
+            monospace;
+            white-space: pre-wrap;
+        }
+
+        // .element-block-footer {
+        //     padding: 0 @padding @padding @padding;
+
+        //     .codicon {
+        //         background-color: orange;
+        //     }
+        // }
+
+        .element-body-item {
+            font-family: Menlo, Monaco, 'Courier New', monospace;
+            white-space: pre-wrap;
+
+            overflow-y: scroll;
+            padding   : @padding;
+            background: @header-background;
+
+            margin-bottom: @padding;
+
+            &:last-of-type {
+                margin-bottom: 0
+            }
         }
     }
-
-    li .element-block-body {
-        font-family: Menlo, Monaco, 'Courier New', monospace;
-        white-space: pre-wrap;
-        padding    : @padding;
-    }
-
-    li .element-body-item {
-
-        font-family: Menlo, Monaco, 'Courier New', monospace;
-        white-space: pre-wrap;
-
-        overflow-y: scroll;
-        padding   : @padding;
-        background: @header-background;
-
-        margin-bottom: @padding;
-
-        &:last-of-type {
-            margin-bottom: 0
-        }
-    }
-
-
-    ul {
-        list-style: none;
-        padding   : 0px;
-        margin    : 0px;
-    }
-
 }
 
-// elements
+
+////////////////////////////////////////////////////////////////////////////////
+// Inline Elements
+////////////////////////////////////////////////////////////////////////////////
+
 .element-link {
     color: @link;
 
@@ -142,7 +158,6 @@
 }
 
 
-@indent: 2ch;
 
 // the parent container of a Horizontal grouping 
 .element-horz {
