@@ -11,42 +11,16 @@ let handleResponse = response =>
       kinds->Array.map(State.handleResponseKind(state))->Util.Promise.oneByOne->Promise.map(_ => ())
     })
   | CannotSendRequest(message) =>
-    State.display(
-      0,
-      [
-        Element.Block.block(
-          Some("Client Internal Error"),
-          None,
-          Element.Inlines.string("Cannot send request to the server\n" ++ message),
-        ),
-      ],
-    )
+    State.displayError("Client Internal Error", "Cannot send request to the server\n" ++ message)
   | CannotDecodeRequest(message) =>
-    State.display(
-      0,
-      [
-        Element.Block.block(
-          Some("Server Internal Error"),
-          None,
-          Element.Inlines.string("Cannot decode request from the client\n" ++ message),
-        ),
-      ],
+    State.displayError(
+      "Server Internal Error",
+      "Cannot decode request from the client\n" ++ message,
     )
   | CannotDecodeResponse(message, json) =>
-    State.display(
-      0,
-      [
-        Element.Block.block(
-          Some("Client Internal Error"),
-          None,
-          Element.Inlines.string(
-            "Cannot decode response from the server\n" ++
-            message ++
-            "\n" ++
-            Js.Json.stringify(json),
-          ),
-        ),
-      ],
+    State.displayError(
+      "Client Internal Error",
+      "Cannot decode response from the server\n" ++ message ++ "\n" ++ Js.Json.stringify(json),
     )
   }
 
@@ -55,7 +29,7 @@ let sendLSPRequest = (state, kind) => {
     switch result {
     | Error(error) =>
       let (header, body) = Connection.Error.toString(error)
-      State.display(0, [Element.Block.block(Some(header), None, Element.Inlines.string(body))])
+      State.displayError(header, body)
     | Ok(response) => handleResponse(response)
     }
   )
@@ -159,20 +133,14 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     | Ok(response) => handleResponse(response)->ignore
     | Error(error) =>
       let (header, body) = Connection.Error.toString(error)
-      State.display(
-        0,
-        [Element.Block.block(Some(header), None, Element.Inlines.string(body))],
-      )->ignore
+      State.displayError(header, body)->ignore
     }
   )->subscribe
 
   // on LSP client-server error
   Connection.onError(error => {
     let (header, body) = Connection.Error.toString(error)
-    State.display(
-      0,
-      [Element.Block.block(Some(header), None, Element.Inlines.string(body))],
-    )->ignore
+    State.displayError(header, body)->ignore
   })->subscribe
 
   // on open
