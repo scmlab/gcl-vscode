@@ -408,6 +408,5 @@ module Block = {
         </div>
       </li>
     | Header(header) => <li className="element-header"> <h3> {string(header)} </h3> </li>
-    // <h2> {string(header)} </h2>
     }
 }
