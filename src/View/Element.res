@@ -263,6 +263,15 @@ module Block = {
   module Deco = {
     type t = Plain | Red | Yellow | Green | Blue
 
+    let toClassName = x =>
+      switch x {
+      | Plain => ""
+      | Red => "element-deco-red"
+      | Yellow => "element-deco-yellow"
+      | Green => "element-deco-green"
+      | Blue => "element-deco-blue"
+      }
+
     open Json.Decode
     let decode: decoder<t> = string |> map(tag =>
       switch tag {
@@ -273,16 +282,6 @@ module Block = {
       | _ => Plain
       }
     )
-    // let decode: decoder<t> = sum(x =>
-    //   switch x {
-    //   | "Plain" => TagOnly(_ => Plain)
-    //   | "Red" => TagOnly(_ => Red)
-    //   | "Yellow" => TagOnly(_ => Yellow)
-    //   | "Green" => TagOnly(_ => Green)
-    //   | "Blue" => TagOnly(_ => Blue)
-    //   | tag => raise(DecodeError("[Block.Deco] Unknown constructor: " ++ tag))
-    //   }
-    // )
 
     open! Json.Encode
     let encode: encoder<t> = x =>
@@ -292,11 +291,6 @@ module Block = {
       | Yellow => string("Yellow")
       | Green => string("Green")
       | Blue => string("Blue")
-      // | Plain => object_(list{("tag", string("Plain"))})
-      // | Red => object_(list{("tag", string("Red"))})
-      // | Yellow => object_(list{("tag", string("Yellow"))})
-      // | Green => object_(list{("tag", string("Green"))})
-      // | Blue => object_(list{("tag", string("Blue"))})
       }
   }
 
@@ -393,11 +387,12 @@ module Block = {
           </Link>
         }
       }
-      <li className="element-block">
+      let className = "element-block " ++ Deco.toClassName(deco)
+      <li className>
         {header} <div className="element-block-body"> <Inlines value=body /> </div>
       </li>
     | Spec(range, pre, post) =>
-      <li className="element-block">
+      <li className="element-block element-deco-blue">
         <div className="element-block-header">
           {string("precondition")}
           <Link range>

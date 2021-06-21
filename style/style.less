@@ -64,6 +64,24 @@
 
     // Block
 
+    // TODO: refactor this
+    .element-deco-red {
+        border-left-color: @error !important ;
+        .element-block-header { color: @error !important }  
+    }
+    .element-deco-yellow {
+        border-left-color: @warning !important ;
+        .element-block-header { color: @warning !important }  
+    }
+    .element-deco-green {
+        border-left-color: @success !important ;
+        .element-block-header { color: @success !important }  
+    }
+    .element-deco-blue {
+        border-left-color: @info !important ;
+        .element-block-header { color: @info !important }  
+    }
+
     li.element-block {
         background : @body-background;
         border-left: @left-border-width solid @body-background;
@@ -74,6 +92,7 @@
             line-height: @line-height;
 
             color       : @foreground-tenuous;
+
             font-variant: small-caps;
             font-weight : bolder;
 
