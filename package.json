@@ -3,7 +3,7 @@
 	"displayName": "Guabao",
 	"description": "Frontend for Guabao",
 	"publisher": "scmlab",
-	"version": "0.1.8",
+	"version": "0.1.9",
 	"repository": "https://github.com/scmlab/gcl-vscode",
 	"engines": {
 		"vscode": "^1.41.0"
