@@ -18,7 +18,7 @@ let toString = error =>
     let body = LanguageServerMule.Search.Path.Error.toString(e)
     ("Cannot locate \"gcl\"", body ++ "\nPlease make sure that the executable is in the path")
   | CannotConnectViaTCP(_) => (
-      "Cannot connect with the server",
+      "Cannot connect with the server via TCP",
       "Please enter \":main -d\" in ghci",
     )
   | CannotConnectViaPrebuilt(e) => (

@@ -42,12 +42,20 @@ module Module: Module = {
       let port = 3000
       let name = "gcl"
       LanguageServerMule.Search.Port.probe(port, "localhost")
-      ->Promise.map(result => switch result {
-      | Ok() => Ok(Client.ViaTCP(port))
-      | Error(exn) => Error(Error.CannotConnectViaTCP(exn))
+      ->Promise.map(result =>
+        switch result {
+        | Ok() => Ok(Client.ViaTCP(port))
+        | Error(exn) => Error(Error.CannotConnectViaTCP(exn))
+        }
+      )
+      ->Promise.flatMapError(error => {
+        Js.log(Error.toString(error))
+        Prebuilt.probe(globalStoragePath)
       })
-      ->Promise.flatMapError(_ => Prebuilt.probe(globalStoragePath))
-      ->Promise.flatMapError(_ => StdIO.probe(name))
+      ->Promise.flatMapError(error => {
+        Js.log(Error.toString(error))
+        StdIO.probe(name)
+      })
     }
   }
 
