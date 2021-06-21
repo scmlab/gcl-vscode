@@ -264,7 +264,6 @@ module Block = {
     | Block(option<string>, option<SrcLoc.Range.t>, Inlines.t)
     | Spec(SrcLoc.Range.t, Inlines.t, Inlines.t)
     | PO(option<string>, option<SrcLoc.Range.t>, Inlines.t)
-    | Header(string)
 
   let block = (header, range, body) => Block(header, range, body)
 
@@ -297,7 +296,6 @@ module Block = {
             c,
           )) => PO(a, b, c)),
         )
-      | "Header" => Contents(string |> map(s => Header(s)))
       | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
       }
     )
@@ -326,7 +324,6 @@ module Block = {
           (a, b, c) |> tuple3(nullable(string), nullable(SrcLoc.Range.encode), Inlines.encode),
         ),
       })
-    | Header(xs) => object_(list{("tag", string("Header")), ("contents", xs |> string)})
     }
 
   open! React
@@ -407,6 +404,5 @@ module Block = {
           <div className="element-body-item"> <Inlines value=predicate /> </div>
         </div>
       </li>
-    | Header(header) => <li className="element-header"> <h3> {string(header)} </h3> </li>
     }
 }
