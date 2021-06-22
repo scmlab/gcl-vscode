@@ -52,10 +52,10 @@
         background : @body-background;
         border-left: @left-border-width solid @body-background;
 
-        padding: 0 @padding;
+        padding      : 0 @padding;
         margin-bottom: @padding;
         // to prevent children <Block> elements from margin-collapsing
-        overflow: hidden;
+        overflow     : hidden;
 
         header {
 
@@ -78,8 +78,8 @@
         }
 
         p {
-            margin          : @padding 0;
-            padding         : 0;
+            margin : @padding 0;
+            padding: 0;
 
             // text 
             font-family: Menlo,
@@ -91,14 +91,35 @@
         }
 
         pre {
-            background-color   : @header-background;
+            background-color      : @header-background;
             // dimensions
-            margin             : @padding 0;
-            padding            : @padding;
+            margin                : @padding 0;
+            padding               : @padding;
             // text 
-            font-family        : Menlo, Monaco, 'Courier New', monospace;
-            white-space        : pre-wrap;
-            overflow-y         : scroll;
+            font-family           : Menlo, Monaco, 'Courier New', monospace;
+            white-space           : pre-wrap;
+            // overflow-y         : scroll;
+
+
+            .element-block-code-buttons {
+                display: none;
+                float  : right;
+
+                button {
+                    // dimensions 
+                    margin-left: 1ex;
+                    // text
+                    color: @foreground-tenuous
+                }
+                button:hover {
+                    color: @foreground
+                }
+            }
+
+            // only display buttons when the parent <pre> is being hovered
+            &:hover .element-block-code-buttons {
+                display: inherit;
+            }
         }
 
     }
@@ -137,6 +158,17 @@
         }
     }
 
+
+    // Reset styles of <button>s
+    button {
+        margin    : 0;
+        padding   : 0;
+        border    : 0;
+        outline   : 0;
+        background: inherit;
+        cursor    : pointer;
+        color: inherit;
+    }
 }
 
 

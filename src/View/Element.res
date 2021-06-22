@@ -308,7 +308,13 @@ module Block = {
         </Link>
       }
     | Paragraph(value) => <p> <Inlines value /> </p>
-    | Code(value) => <pre> <Inlines value /> </pre>
+    | Code(value) =>
+      <pre>
+        <div className="element-block-code-buttons">
+          <button className="codicon codicon-debug-step-back"> </button>
+        </div>
+        <Inlines value />
+      </pre>
     }
 }
 
