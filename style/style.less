@@ -1,12 +1,12 @@
 @import "variables";
 
 // CONSTANTS
-@root-padding     : 20px; // the left/right padding of the root housing element
-@padding          : 1rem;
-@header-height    : 2rem;
-@left-border-width: 0.2rem;
-@line-height      : 1.25rem;
-@indent           : 2ch;
+@root-padding      : 20px; // the left/right padding of the root housing element
+@padding           : 1rem;
+@left-border-width : 0.2rem;
+@line-height       : 1.25rem;
+@header-line-height: 2rem;
+@indent            : 2ch;
 
 .gcl {
     height: 100%;
@@ -14,7 +14,7 @@
 
 .gcl-panel {
     // dimensions
-    padding-top: @header-height + @padding;
+    padding-top: @padding * 3;
     line-height: @line-height;
 
     white-space: pre;
@@ -26,7 +26,7 @@
     #gcl-connection-status {
         // place it at the top right corner 
         position: absolute;
-        top     : @padding * 2;
+        top     : @padding;
         right   : @padding* 2;
 
         // text style 
@@ -46,68 +46,24 @@
         margin    : 0px;
     }
 
-    li {
-        // dimensions
-        margin: @padding 0;
-
-        &:first-of-type {
-            margin-top: 0;
-        }
-
-        &:hover {
-            .item-raw-button {
-                visibility: visible;
-            }
-        }
-
-    }
-
     // Block
 
-    // TODO: refactor this
-    .element-deco-red {
-        border-left-color: @error  !important;
-
-        .element-block-header {
-            color: @error  !important
-        }
-    }
-
-    .element-deco-yellow {
-        border-left-color: @warning  !important;
-
-        .element-block-header {
-            color: @warning  !important
-        }
-    }
-
-    .element-deco-green {
-        border-left-color: @success  !important;
-
-        .element-block-header {
-            color: @success  !important
-        }
-    }
-
-    .element-deco-blue {
-        border-left-color: @info  !important;
-
-        .element-block-header {
-            color: @info  !important
-        }
-    }
-
-    li.element-block {
+    li.element-section {
         background : @body-background;
         border-left: @left-border-width solid @body-background;
 
-        .element-block-header {
+        padding: 0 @padding;
+        margin-bottom: @padding;
+        // to prevent children <Block> elements from margin-collapsing
+        overflow: hidden;
 
-            background-color: orange;
+        header {
 
-            padding    : @padding;
-            height     : @line-height;
-            line-height: @line-height;
+            margin : @padding 0;
+            padding: 0;
+
+            height     : @header-line-height;
+            line-height: @header-line-height;
 
             color: @foreground-tenuous;
 
@@ -121,49 +77,66 @@
             }
         }
 
-        .element-block-body {
+        p {
+            margin          : @padding 0;
+            padding         : 0;
 
-            background-color: greenyellow;
-            // dimensions 
-            padding         : 0 @padding;
-
-            &:last-of-type {
-                padding-bottom: @padding
-            }
-
-            p {
-                background-color: cornflowerblue;
-                margin          : 0;
-                padding         : @padding;
-
-                &:last-of-type {
-                    margin-bottom: 0
-                }
-
-                // text 
-                font-family: Menlo,
+            // text 
+            font-family: Menlo,
                 Monaco,
                 'Courier New',
                 monospace;
-                white-space: pre-wrap;
-                overflow-y : scroll;
-            }
+            white-space: pre-wrap;
+            overflow-y : scroll;
+        }
 
-            pre {
-                background-color: cornflowerblue;
-                // dimensions
-                margin          : 0;
-                padding         : @padding;
-                // backgroung
-                background      : @header-background;
-                // text 
-                font-family     : Menlo, Monaco, 'Courier New', monospace;
-                white-space     : pre-wrap;
-                overflow-y      : scroll;
-            }
+        pre {
+            background-color   : @header-background;
+            // dimensions
+            margin             : @padding 0;
+            padding            : @padding;
+            // text 
+            font-family        : Menlo, Monaco, 'Courier New', monospace;
+            white-space        : pre-wrap;
+            overflow-y         : scroll;
         }
 
     }
+
+
+    // TODO: refactor this
+    .element-deco-red {
+        border-left-color: @error  !important;
+
+        header {
+            color: @error  !important
+        }
+    }
+
+    .element-deco-yellow {
+        border-left-color: @warning  !important;
+
+        header {
+            color: @warning  !important
+        }
+    }
+
+    .element-deco-green {
+        border-left-color: @success  !important;
+
+        header {
+            color: @success  !important
+        }
+    }
+
+    .element-deco-blue {
+        border-left-color: @info  !important;
+
+        header {
+            color: @info  !important
+        }
+    }
+
 }
 
 
@@ -177,16 +150,6 @@
         white-space: pre;
     }
 }
-
-.element-link:hover {
-    cursor: pointer;
-
-    .element-block-header {
-        color: @foreground-subtle;
-    }
-}
-
-
 
 // the parent container of a Horizontal grouping 
 .element-horz {

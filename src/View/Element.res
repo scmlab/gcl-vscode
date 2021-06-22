@@ -296,63 +296,20 @@ module Block = {
     switch value {
     | Header(header, range) =>
       switch range {
-      | None => <div className="element-block-header"> {string(header)} </div>
+      | None => <header> {string(header)} </header>
       | Some(range) =>
         <Link range>
-          <div className="element-block-header">
+          <header>
             {string(header)}
             <span className="element-block-header-range">
               {string(SrcLoc.Range.toString(range))}
             </span>
-          </div>
+          </header>
         </Link>
       }
-    | Paragraph(value) => <div className="element-block-body"> <p> <Inlines value /> </p> </div>
-    | Code(value) => <div className="element-block-body"> <pre> <Inlines value /> </pre> </div>
+    | Paragraph(value) => <p> <Inlines value /> </p>
+    | Code(value) => <pre> <Inlines value /> </pre>
     }
-  // | Paragraph(inlines) =>
-  //   <li className="element-block element-deco-blue">
-  //     <div className="element-block-header">
-  //       {string("precondition")}
-  //       <Link range>
-  //         <span className="element-block-header-range">
-  //           {string(SrcLoc.Range.toString(range))}
-  //         </span>
-  //       </Link>
-  //     </div>
-  //     <div className="element-block-body"> <pre> <Inlines value=pre /> </pre> </div>
-  //     <div className="element-block-header"> {string("post-condition")} </div>
-  //     <div className="element-block-body"> <pre> <Inlines value=post /> </pre> </div>
-  //   </li>
-
-  // | PO(header, None, predicate) =>
-  //   let header = switch header {
-  //   | None => <> </>
-  //   | Some(header) => <div className="element-block-header"> {string(header)} </div>
-  //   }
-  //   <li className="element-block">
-  //     {header}
-  //     <div className="element-block-body"> <pre> <Inlines value=predicate /> </pre> </div>
-  //   </li>
-
-  // | PO(header, Some(range), predicate) =>
-  //   let header = switch header {
-  //   | None => <> </>
-  //   | Some(header) =>
-  //     <Link range>
-  //       <div className="element-block-header">
-  //         {string(header)}
-  //         <span className="element-block-header-range">
-  //           {string(SrcLoc.Range.toString(range))}
-  //         </span>
-  //       </div>
-  //     </Link>
-  //   }
-  //   <li className="element-block">
-  //     {header}
-  //     <div className="element-block-body"> <pre> <Inlines value=predicate /> </pre> </div>
-  //   </li>
-  // }
 }
 
 module Section = {
@@ -411,7 +368,7 @@ module Section = {
   open! React
   @react.component
   let make = (~value: t) => {
-    let className = "element-block " ++ Deco.toClassName(value.deco)
+    let className = "element-section " ++ Deco.toClassName(value.deco)
     let blocks =
       value.blocks
       ->Array.mapWithIndex((i, value) => {
