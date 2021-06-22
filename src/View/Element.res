@@ -391,7 +391,7 @@ module Block = {
       <li className>
         {header}
         <div className="element-block-body">
-          <div className="element-body-item"> <Inlines value=body /> </div>
+          <p> <Inlines value=body /> </p>
         </div>
       </li>
     | Spec(range, pre, post) =>
@@ -405,11 +405,11 @@ module Block = {
           </Link>
         </div>
         <div className="element-block-body">
-          <div className="element-body-item"> <Inlines value=pre /> </div>
+          <pre> <Inlines value=pre /> </pre>
         </div>
         <div className="element-block-header"> {string("post-condition")} </div>
         <div className="element-block-body">
-          <div className="element-body-item"> <Inlines value=post /> </div>
+          <pre> <Inlines value=post /> </pre>
         </div>
       </li>
 
@@ -421,7 +421,7 @@ module Block = {
       <li className="element-block">
         {header}
         <div className="element-block-body">
-          <div className="element-body-item"> <Inlines value=predicate /> </div>
+          <pre> <Inlines value=predicate /> </pre>
         </div>
       </li>
 
@@ -441,7 +441,7 @@ module Block = {
       <li className="element-block">
         {header}
         <div className="element-block-body">
-          <div className="element-body-item"> <Inlines value=predicate /> </div>
+          <pre> <Inlines value=predicate /> </pre>
         </div>
       </li>
     }

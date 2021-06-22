@@ -66,20 +66,35 @@
 
     // TODO: refactor this
     .element-deco-red {
-        border-left-color: @error !important ;
-        .element-block-header { color: @error !important }  
+        border-left-color: @error  !important;
+
+        .element-block-header {
+            color: @error  !important
+        }
     }
+
     .element-deco-yellow {
-        border-left-color: @warning !important ;
-        .element-block-header { color: @warning !important }  
+        border-left-color: @warning  !important;
+
+        .element-block-header {
+            color: @warning  !important
+        }
     }
+
     .element-deco-green {
-        border-left-color: @success !important ;
-        .element-block-header { color: @success !important }  
+        border-left-color: @success  !important;
+
+        .element-block-header {
+            color: @success  !important
+        }
     }
+
     .element-deco-blue {
-        border-left-color: @info !important ;
-        .element-block-header { color: @info !important }  
+        border-left-color: @info  !important;
+
+        .element-block-header {
+            color: @info  !important
+        }
     }
 
     li.element-block {
@@ -91,7 +106,7 @@
             height     : @line-height;
             line-height: @line-height;
 
-            color       : @foreground-tenuous;
+            color: @foreground-tenuous;
 
             font-variant: small-caps;
             font-weight : bolder;
@@ -104,42 +119,44 @@
         }
 
         .element-block-body {
-
+            // dimensions 
             padding: 0 @padding;
 
             &:last-of-type {
                 padding-bottom: @padding
             }
 
-            font-family: Menlo,
-            Monaco,
-            'Courier New',
-            monospace;
-            white-space: pre-wrap;
-        }
+            p {
 
-        // .element-block-footer {
-        //     padding: 0 @padding @padding @padding;
+                // dimensions
+                margin-bottom: @padding;
 
-        //     .codicon {
-        //         background-color: orange;
-        //     }
-        // }
+                &:last-of-type {
+                    margin-bottom: 0
+                }
 
-        .element-body-item {
-            font-family: Menlo, Monaco, 'Courier New', monospace;
-            white-space: pre-wrap;
+                // text 
+                font-family: Menlo,
+                Monaco,
+                'Courier New',
+                monospace;
+                white-space: pre-wrap;
+                overflow-y : scroll;
+            }
 
-            overflow-y: scroll;
-            padding   : @padding;
-            background: @header-background;
-
-            margin-bottom: @padding;
-
-            &:last-of-type {
-                margin-bottom: 0
+            pre {
+                // dimensions
+                margin-top : 0;
+                padding    : @padding;
+                // backgroung
+                background : @header-background;
+                // text 
+                font-family: Menlo, Monaco, 'Courier New', monospace;
+                white-space: pre-wrap;
+                overflow-y : scroll;
             }
         }
+
     }
 }
 
