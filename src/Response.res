@@ -28,7 +28,7 @@ module Specification = {
 
 module Kind = {
   type t =
-    | Display(int, array<Element.Block.t>)
+    | Display(int, array<Element.Section.t>)
     | UpdateSpecs(array<Specification.t>)
     | ConsoleLog(string)
 
@@ -38,7 +38,7 @@ module Kind = {
     switch x {
     | "ResDisplay" =>
       Contents(
-        tuple2(int, array(Element.Block.decode)) |> map(((id, blocks)) => Display(id, blocks)),
+        tuple2(int, array(Element.Section.decode)) |> map(((id, sections)) => Display(id, sections)),
       )
     | "ResUpdateSpecs" => Contents(array(Specification.decode) |> map(specs => UpdateSpecs(specs)))
     | "ResConsoleLog" => Contents(string |> map(i => ConsoleLog(i)))

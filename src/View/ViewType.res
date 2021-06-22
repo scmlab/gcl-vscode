@@ -37,7 +37,7 @@ module ConnectionMethod = {
 module Request = {
   type t =
     | UpdateConnection(option<Connection.method>)
-    | Display(int, array<Element.Block.t>)
+    | Display(int, array<Element.Section.t>)
 
   open Json.Decode
   open Util.Decode
@@ -47,7 +47,7 @@ module Request = {
       Contents(optional(ConnectionMethod.decode) |> map(method => UpdateConnection(method)))
     | "Display" =>
       Contents(
-        tuple2(int, array(Element.Block.decode)) |> map(((id, blocks)) => Display(id, blocks)),
+        tuple2(int, array(Element.Section.decode)) |> map(((id, sections)) => Display(id, sections)),
       )
     | tag => raise(DecodeError("[Request] Unknown constructor: " ++ tag))
     }
@@ -64,7 +64,7 @@ module Request = {
     | Display(id, ws) =>
       object_(list{
         ("tag", string("Display")),
-        ("contents", (id, ws) |> tuple2(int, array(Element.Block.encode))),
+        ("contents", (id, ws) |> tuple2(int, array(Element.Section.encode))),
       })
     }
 }

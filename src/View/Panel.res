@@ -4,7 +4,7 @@ open React
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (connection, setConnection) = React.useState(_ => None)
-  let ((id, blocks), setDisplay) = React.useState(() => (0, []))
+  let ((id, sections), setDisplay) = React.useState(() => (0, []))
   let onClickLink = React.useRef(Chan.make())
 
   // response with Initialized on mount
@@ -33,13 +33,13 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
 
   let className = "gcl-panel native-key-bindings"
 
-  let blocks = if Array.length(blocks) == 0 {
+  let sections = if Array.length(sections) == 0 {
     <> </>
   } else {
     <ul>
-      {blocks
+      {sections
       ->Array.mapWithIndex((i, value) => {
-        <Element.Block value key={string_of_int(i)} />
+        <Element.Section value key={string_of_int(i)} />
       })
       ->array}
     </ul>
@@ -47,7 +47,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
 
   <Link.Provider value=onClickLink.current>
     <ReqID.Provider value=Some(id)>
-      <section className tabIndex={-1}> <DevPanel method=connection /> blocks </section>
+      <section className tabIndex={-1}> <DevPanel method=connection /> sections </section>
     </ReqID.Provider>
   </Link.Provider>
 }

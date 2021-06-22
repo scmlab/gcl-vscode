@@ -260,6 +260,102 @@ module Inlines = {
 }
 
 module Block = {
+  type t =
+    | Header(string, option<SrcLoc.Range.t>)
+    | Paragraph(Inlines.t)
+    | Code(Inlines.t)
+
+  open Json.Decode
+  open Util.Decode
+  let decode: decoder<t> = json =>
+    json |> sum(x =>
+      switch x {
+      | "Header" =>
+        Contents(tuple2(string, optional(SrcLoc.Range.decode)) |> map(((a, b)) => Header(a, b)))
+      | "Paragraph" => Contents(Inlines.decode |> map(a => Paragraph(a)))
+      | "Code" => Contents(Inlines.decode |> map(a => Code(a)))
+      | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
+      }
+    )
+
+  open! Json.Encode
+  let encode: encoder<t> = x =>
+    switch x {
+    | Header(a, b) =>
+      object_(list{
+        ("tag", string("Header")),
+        ("contents", (a, b) |> tuple2(string, nullable(SrcLoc.Range.encode))),
+      })
+    | Paragraph(a) => object_(list{("tag", string("Paragraph")), ("contents", a |> Inlines.encode)})
+    | Code(a) => object_(list{("tag", string("Code")), ("contents", a |> Inlines.encode)})
+    }
+
+  open! React
+  @react.component
+  let make = (~value: t) =>
+    switch value {
+    | Header(header, range) =>
+      switch range {
+      | None => <div className="element-block-header"> {string(header)} </div>
+      | Some(range) =>
+        <Link range>
+          <div className="element-block-header">
+            {string(header)}
+            <span className="element-block-header-range">
+              {string(SrcLoc.Range.toString(range))}
+            </span>
+          </div>
+        </Link>
+      }
+    | Paragraph(value) => <div className="element-block-body"> <p> <Inlines value /> </p> </div>
+    | Code(value) => <div className="element-block-body"> <pre> <Inlines value /> </pre> </div>
+    }
+  // | Paragraph(inlines) =>
+  //   <li className="element-block element-deco-blue">
+  //     <div className="element-block-header">
+  //       {string("precondition")}
+  //       <Link range>
+  //         <span className="element-block-header-range">
+  //           {string(SrcLoc.Range.toString(range))}
+  //         </span>
+  //       </Link>
+  //     </div>
+  //     <div className="element-block-body"> <pre> <Inlines value=pre /> </pre> </div>
+  //     <div className="element-block-header"> {string("post-condition")} </div>
+  //     <div className="element-block-body"> <pre> <Inlines value=post /> </pre> </div>
+  //   </li>
+
+  // | PO(header, None, predicate) =>
+  //   let header = switch header {
+  //   | None => <> </>
+  //   | Some(header) => <div className="element-block-header"> {string(header)} </div>
+  //   }
+  //   <li className="element-block">
+  //     {header}
+  //     <div className="element-block-body"> <pre> <Inlines value=predicate /> </pre> </div>
+  //   </li>
+
+  // | PO(header, Some(range), predicate) =>
+  //   let header = switch header {
+  //   | None => <> </>
+  //   | Some(header) =>
+  //     <Link range>
+  //       <div className="element-block-header">
+  //         {string(header)}
+  //         <span className="element-block-header-range">
+  //           {string(SrcLoc.Range.toString(range))}
+  //         </span>
+  //       </div>
+  //     </Link>
+  //   }
+  //   <li className="element-block">
+  //     {header}
+  //     <div className="element-block-body"> <pre> <Inlines value=predicate /> </pre> </div>
+  //   </li>
+  // }
+}
+
+module Section = {
   module Deco = {
     type t = Plain | Red | Yellow | Green | Blue
 
@@ -294,155 +390,34 @@ module Block = {
       }
   }
 
-  type t =
-    | Block(option<string>, option<SrcLoc.Range.t>, Deco.t, Inlines.t)
-    | Spec(SrcLoc.Range.t, Inlines.t, Inlines.t)
-    | PO(option<string>, option<SrcLoc.Range.t>, Inlines.t)
-
-  let block = (header, range, deco, body) => Block(header, range, deco, body)
+  type t = {
+    deco: Deco.t,
+    blocks: array<Block.t>,
+  }
 
   open Json.Decode
-  open Util.Decode
-  let decode: decoder<t> = json =>
-    json |> sum(x =>
-      switch x {
-      | "Block" =>
-        Contents(
-          tuple4(
-            optional(string),
-            optional(SrcLoc.Range.decode),
-            Deco.decode,
-            Inlines.decode,
-          ) |> map(((a, b, c, d)) => Block(a, b, c, d)),
-        )
-      | "Spec" =>
-        Contents(
-          tuple3(SrcLoc.Range.decode, Inlines.decode, Inlines.decode) |> map(((a, b, c)) => Spec(
-            a,
-            b,
-            c,
-          )),
-        )
-      | "PO" =>
-        Contents(
-          tuple3(optional(string), optional(SrcLoc.Range.decode), Inlines.decode) |> map(((
-            a,
-            b,
-            c,
-          )) => PO(a, b, c)),
-        )
-      | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
-      }
-    )
+  let decode: decoder<t> = json => {
+    deco: json |> field("sectionDeco", Deco.decode),
+    blocks: json |> field("sectionBlocks", array(Block.decode)),
+  }
 
   open! Json.Encode
   let encode: encoder<t> = x =>
-    switch x {
-    | Block(a, b, c, d) =>
-      object_(list{
-        ("tag", string("Block")),
-        (
-          "contents",
-          (a, b, c, d) |> tuple4(
-            nullable(string),
-            nullable(SrcLoc.Range.encode),
-            Deco.encode,
-            Inlines.encode,
-          ),
-        ),
-      })
-    | Spec(a, b, c) =>
-      object_(list{
-        ("tag", string("Spec")),
-        ("contents", (a, b, c) |> tuple3(SrcLoc.Range.encode, Inlines.encode, Inlines.encode)),
-      })
-    | PO(a, b, c) =>
-      object_(list{
-        ("tag", string("PO")),
-        (
-          "contents",
-          (a, b, c) |> tuple3(nullable(string), nullable(SrcLoc.Range.encode), Inlines.encode),
-        ),
-      })
-    }
+    object_(list{
+      ("sectionDeco", x.deco |> Deco.encode),
+      ("sectionBlocks", x.blocks |> array(Block.encode)),
+    })
 
   open! React
   @react.component
-  let make = (~value: t) =>
-    switch value {
-    | Block(header, range, deco, body) =>
-      let header = switch header {
-      | None => <> </>
-      | Some(header) =>
-        switch range {
-        | None => <div className="element-block-header"> {string(header)} </div>
-        | Some(range) =>
-          <Link range>
-            <div className="element-block-header">
-              {string(header)}
-              <span className="element-block-header-range">
-                {string(SrcLoc.Range.toString(range))}
-              </span>
-            </div>
-          </Link>
-        }
-      }
-      let className = "element-block " ++ Deco.toClassName(deco)
-      <li className>
-        {header}
-        <div className="element-block-body">
-          <p> <Inlines value=body /> </p>
-        </div>
-      </li>
-    | Spec(range, pre, post) =>
-      <li className="element-block element-deco-blue">
-        <div className="element-block-header">
-          {string("precondition")}
-          <Link range>
-            <span className="element-block-header-range">
-              {string(SrcLoc.Range.toString(range))}
-            </span>
-          </Link>
-        </div>
-        <div className="element-block-body">
-          <pre> <Inlines value=pre /> </pre>
-        </div>
-        <div className="element-block-header"> {string("post-condition")} </div>
-        <div className="element-block-body">
-          <pre> <Inlines value=post /> </pre>
-        </div>
-      </li>
-
-    | PO(header, None, predicate) =>
-      let header = switch header {
-      | None => <> </>
-      | Some(header) => <div className="element-block-header"> {string(header)} </div>
-      }
-      <li className="element-block">
-        {header}
-        <div className="element-block-body">
-          <pre> <Inlines value=predicate /> </pre>
-        </div>
-      </li>
-
-    | PO(header, Some(range), predicate) =>
-      let header = switch header {
-      | None => <> </>
-      | Some(header) =>
-        <Link range>
-          <div className="element-block-header">
-            {string(header)}
-            <span className="element-block-header-range">
-              {string(SrcLoc.Range.toString(range))}
-            </span>
-          </div>
-        </Link>
-      }
-      <li className="element-block">
-        {header}
-        <div className="element-block-body">
-          <pre> <Inlines value=predicate /> </pre>
-        </div>
-      </li>
-    }
+  let make = (~value: t) => {
+    let className = "element-block " ++ Deco.toClassName(value.deco)
+    let blocks =
+      value.blocks
+      ->Array.mapWithIndex((i, value) => {
+        <Block value key={string_of_int(i)} />
+      })
+      ->array
+    <li className> {blocks} </li>
+  }
 }

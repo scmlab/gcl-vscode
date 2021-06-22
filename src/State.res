@@ -13,18 +13,18 @@ type t = {
 
 let subscribe = (disposable, state) => disposable->Js.Array.push(state.subscriptions)->ignore
 
-let display = (id, blocks) => View.send(ViewType.Request.Display(id, blocks))->Promise.map(_ => ())
+let display = (id, sections) =>
+  View.send(ViewType.Request.Display(id, sections))->Promise.map(_ => ())
 let displayError = (header, message) =>
   display(
     0,
-    [
-      Element.Block.block(
-        Some(header),
-        None,
-        Element.Block.Deco.Red,
-        Element.Inlines.string(message),
-      ),
-    ],
+    [{
+      Element.Section.deco: Red,
+      blocks: [
+        Element.Block.Header(header, None),
+        Element.Block.Paragraph(Element.Inlines.string(message)),
+      ],
+    }],
   )
 
 let updateConnection = status => View.send(UpdateConnection(status))->Promise.map(_ => ())
@@ -124,7 +124,7 @@ module Spec = {
 
 let handleResponseKind = (state: t, kind) =>
   switch kind {
-  | Response.Kind.Display(i, blocks) => display(i, blocks)
+  | Response.Kind.Display(i, sections) => display(i, sections)
   | UpdateSpecs(specs) =>
     Spec.redecorate(state, specs)
     Promise.resolved()

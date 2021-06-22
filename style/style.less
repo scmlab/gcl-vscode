@@ -102,6 +102,9 @@
         border-left: @left-border-width solid @body-background;
 
         .element-block-header {
+
+            background-color: orange;
+
             padding    : @padding;
             height     : @line-height;
             line-height: @line-height;
@@ -119,17 +122,19 @@
         }
 
         .element-block-body {
+
+            background-color: greenyellow;
             // dimensions 
-            padding: 0 @padding;
+            padding         : 0 @padding;
 
             &:last-of-type {
                 padding-bottom: @padding
             }
 
             p {
-
-                // dimensions
-                margin-bottom: @padding;
+                background-color: cornflowerblue;
+                margin          : 0;
+                padding         : @padding;
 
                 &:last-of-type {
                     margin-bottom: 0
@@ -145,15 +150,16 @@
             }
 
             pre {
+                background-color: cornflowerblue;
                 // dimensions
-                margin-top : 0;
-                padding    : @padding;
+                margin          : 0;
+                padding         : @padding;
                 // backgroung
-                background : @header-background;
+                background      : @header-background;
                 // text 
-                font-family: Menlo, Monaco, 'Courier New', monospace;
-                white-space: pre-wrap;
-                overflow-y : scroll;
+                font-family     : Menlo, Monaco, 'Courier New', monospace;
+                white-space     : pre-wrap;
+                overflow-y      : scroll;
             }
         }
 
