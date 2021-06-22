@@ -389,7 +389,10 @@ module Block = {
       }
       let className = "element-block " ++ Deco.toClassName(deco)
       <li className>
-        {header} <div className="element-block-body"> <Inlines value=body /> </div>
+        {header}
+        <div className="element-block-body">
+          <div className="element-body-item"> <Inlines value=body /> </div>
+        </div>
       </li>
     | Spec(range, pre, post) =>
       <li className="element-block element-deco-blue">
