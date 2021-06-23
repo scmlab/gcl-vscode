@@ -175,19 +175,27 @@ module Inlines = {
 
   module Sbst = {
     @react.component
-    let make = (~before, ~env, ~after, ~history) => {
-      let (clicked, setClicked) = React.useState(_ => false)
-      let undo = () => setClicked(_ => false)
+    let make = (~makeInline, ~before, ~env, ~after, ~history) => {
+      let (substituted, setSubstitute) = React.useState(_ => false)
+      let undo = () => setSubstitute(_ => false)
       let onClick = _ => {
         history->History.push(undo)
-        setClicked(_ => true)
+        setSubstitute(_ => true)
       }
-      if clicked {
+      if substituted {
+        let after = makeInline(~value=Element(after), ~history)
         <span className="element-sbst"> after </span>
       } else {
-        <span className="element-sbst">
-          before {React.string(" ")} <span className="element-sbst-env" onClick> env </span>
-        </span>
+        let before = makeInline(~value=Element(before), ~history)
+        // render ENV only if it is non-empty
+        if Js.Array.length(env) > 0 {
+          let env = makeInline(~value=Element(env), ~history)
+          <span className="element-sbst">
+            before {React.string(" ")} <span className="element-sbst-env" onClick> env </span>
+          </span>
+        } else {
+          <span className="element-sbst"> before </span>
+        }
       }
     }
   }
@@ -209,23 +217,28 @@ module Inlines = {
           let child = make(~value=Element(children), ~history)
           <Link range key={string_of_int(i)}> {child} </Link>
         | Sbst(before, env, after, _className) =>
-          let before = make(~value=Element(before), ~history)
-          let env = make(~value=Element(env), ~history)
-          let after = make(~value=Element(after), ~history)
-          <Sbst key={string_of_int(i)} before env after history />
+          // let before = make(~value=Element(before), ~history)
+          // let env = make(~value=Element(env), ~history)
+          // let after = make(~value=Element(after), ~history)
+          <Sbst makeInline=make key={string_of_int(i)} before env after history />
         | Horz(elements) =>
           let children =
             elements->Array.mapWithIndex((j, element) =>
-              <span className="element-horz-item" key={string_of_int(j)}> {make(~value=Element(element), ~history)} </span>
+              <span className="element-horz-item" key={string_of_int(j)}>
+                {make(~value=Element(element), ~history)}
+              </span>
             )
           <span className="element-horz" key={string_of_int(i)}> {React.array(children)} </span>
         | Vert(elements) =>
           let children =
             elements->Array.mapWithIndex((j, element) =>
-              <span className="element-vert-item" key={string_of_int(j)}> {make(~value=Element(element), ~history)} </span>
+              <span className="element-vert-item" key={string_of_int(j)}>
+                {make(~value=Element(element), ~history)}
+              </span>
             )
           <span className="element-vert" key={string_of_int(i)}> {React.array(children)} </span>
-        | Parn(element) => <Parens key={string_of_int(i)}> {make(~value=Element(element), ~history)} </Parens>
+        | Parn(element) =>
+          <Parens key={string_of_int(i)}> {make(~value=Element(element), ~history)} </Parens>
         | PrHz(elements) =>
           let children =
             elements->Array.mapWithIndex((index, element) =>
@@ -237,7 +250,7 @@ module Inlines = {
                     {make(~value=Element(element), ~history)}
                   </span>
             )
-          <Parens2  key={string_of_int(i)} payload=children />
+          <Parens2 key={string_of_int(i)} payload=children />
         }
       })
       ->React.array}
@@ -310,9 +323,7 @@ module Block = {
     | Code(value) =>
       <pre>
         <div className="element-block-code-buttons">
-          <button
-            onClick={_ => history->History.pop} className="codicon codicon-debug-step-back"
-          />
+          <button onClick={_ => history->History.pop} className="codicon codicon-debug-step-back" />
         </div>
         <Inlines value history />
       </pre>
