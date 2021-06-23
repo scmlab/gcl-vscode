@@ -14,7 +14,6 @@
 
 .gcl-panel {
     // dimensions
-    padding-top: @padding * 3;
     line-height: @line-height;
 
     white-space: pre;
@@ -24,12 +23,10 @@
     box-shadow: none;
 
     #gcl-connection-status {
-        // place it at the top right corner 
-        position: absolute;
-        top     : @padding;
-        right   : @padding* 2;
-
+        // dimensions 
+        padding     : @padding 0;
         // text style 
+        text-align  : right;
         font-size   : 75%;
         font-weight : bold;
         font-variant: small-caps;
@@ -46,7 +43,7 @@
         margin    : 0px;
     }
 
-    // Block
+    // Sections
 
     li.element-section {
         background : @body-background;
@@ -57,6 +54,7 @@
         // to prevent children <Block> elements from margin-collapsing
         overflow     : hidden;
 
+        // Blocks
         header {
 
             margin : @padding 0;
@@ -103,12 +101,14 @@
 
             .element-block-code-buttons {
                 display: none;
+
                 button {
                     // dimensions 
                     margin-left: 1ex;
                     // text
-                    color: @foreground-tenuous
+                    color      : @foreground-tenuous
                 }
+
                 button:hover {
                     color: @foreground
                 }
@@ -119,9 +119,9 @@
                 // take the buttons out of flow
                 // so that it does not effect othe contents
                 position: absolute;
-                right: calc(@padding * 3);
-                display: inherit;
-                
+                right   : calc(@padding * 3);
+                display : inherit;
+
             }
         }
 
@@ -170,72 +170,71 @@
         outline   : 0;
         background: inherit;
         cursor    : pointer;
-        color: inherit;
+        color     : inherit;
     }
-}
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // Inline Elements
+    ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-// Inline Elements
-////////////////////////////////////////////////////////////////////////////////
-
-.element-link {
-    .codicon-link::after {
-        content    : " ";
-        white-space: pre;
-    }
-}
-
-// the parent container of a Horizontal grouping 
-.element-horz {
-    // so that we can set paddings
-    display     : inline-flex;
-    flex-wrap   : wrap;
-    // use padding-left to indent every child
-    padding-left: @indent - 1ch;
-}
-
-// but don't indent the first child
-.element-horz-item:first-of-type {
-    margin-left: -(@indent - 1ch);
-}
-
-// seperate each .element-horz-item
-.element-horz-item {
-    margin-left: 1ch;
-
-    // no margin, for parentheses around other horz-items
-    &.compact {
-        margin-left: 0
-    }
-}
-
-// the parent container of a Vertical grouping 
-.element-vert {
-    display       : flex;
-    flex-direction: column;
-}
-
-// highlight the background of env in <Sbst> on hover
-.element-sbst-env {
-    &:hover {
-        cursor    : pointer;
-        color     : @warning;
-        background: @body-background;
-
-        .element-horz {
-            background: @body-background
+    .element-link {
+        .codicon-link::after {
+            content    : " ";
+            white-space: pre;
         }
     }
-}
 
-// for styling parentheses
-.element-parentheses {
-    color: @foreground-subtle;
+    // the parent container of a Horizontal grouping 
+    .element-horz {
+        // so that we can set paddings
+        display     : inline-flex;
+        flex-wrap   : wrap;
+        // use padding-left to indent every child
+        padding-left: @indent - 1ch;
+    }
 
-    &.activated {
-        cursor     : ew-resize;
-        color      : @warning;
-        font-weight: bolder;
+    // but don't indent the first child
+    .element-horz-item:first-of-type {
+        margin-left: -(@indent - 1ch);
+    }
+
+    // seperate each .element-horz-item
+    .element-horz-item {
+        margin-left: 1ch;
+
+        // no margin, for parentheses around other horz-items
+        &.compact {
+            margin-left: 0
+        }
+    }
+
+    // the parent container of a Vertical grouping 
+    .element-vert {
+        display       : flex;
+        flex-direction: column;
+    }
+
+    // highlight the background of env in <Sbst> on hover
+    .element-sbst-env {
+        &:hover {
+            cursor    : pointer;
+            color     : @warning;
+            background: @body-background;
+
+            .element-horz {
+                background: @body-background
+            }
+        }
+    }
+
+    // for styling parentheses
+    .element-parentheses {
+        color: @foreground-subtle;
+
+        &.activated {
+            cursor     : ew-resize;
+            color      : @warning;
+            font-weight: bolder;
+        }
     }
 }

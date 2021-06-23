@@ -47,7 +47,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
 
   <Link.Provider value=onClickLink.current>
     <ReqID.Provider value=Some(id)>
-      <section className tabIndex={-1}> <DevPanel method=connection /> sections </section>
+      <section className tabIndex={-1}> <Status method=connection /> sections </section>
     </ReqID.Provider>
   </Link.Provider>
 }
