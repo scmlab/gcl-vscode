@@ -162,13 +162,6 @@ module Inlines = {
 
   let empty = Element([])
   let string = s => Element([Text(s, [])])
-  // let srcLoc = range => Element([
-  //   Link(
-  //     range,
-  //     [Icon("link ", []), Text(SrcLoc.Range.toString(range), [])],
-  //     ["element-link element-hole"],
-  //   ),
-  // ])
 
   let concatMany = xs => Element(
     xs
@@ -214,37 +207,37 @@ module Inlines = {
           <div className key={string_of_int(i)} />
         | Link(range, children, _className) =>
           let child = make(~value=Element(children), ~history)
-          <Link range> {child} </Link>
+          <Link range key={string_of_int(i)}> {child} </Link>
         | Sbst(before, env, after, _className) =>
           let before = make(~value=Element(before), ~history)
           let env = make(~value=Element(env), ~history)
           let after = make(~value=Element(after), ~history)
-          <Sbst before env after history />
+          <Sbst key={string_of_int(i)} before env after history />
         | Horz(elements) =>
           let children =
-            elements->Array.map(element =>
-              <span className="element-horz-item"> {make(~value=Element(element), ~history)} </span>
+            elements->Array.mapWithIndex((j, element) =>
+              <span className="element-horz-item" key={string_of_int(j)}> {make(~value=Element(element), ~history)} </span>
             )
           <span className="element-horz" key={string_of_int(i)}> {React.array(children)} </span>
         | Vert(elements) =>
           let children =
-            elements->Array.map(element =>
-              <span className="element-vert-item"> {make(~value=Element(element), ~history)} </span>
+            elements->Array.mapWithIndex((j, element) =>
+              <span className="element-vert-item" key={string_of_int(j)}> {make(~value=Element(element), ~history)} </span>
             )
           <span className="element-vert" key={string_of_int(i)}> {React.array(children)} </span>
-        | Parn(element) => <Parens> {make(~value=Element(element), ~history)} </Parens>
+        | Parn(element) => <Parens key={string_of_int(i)}> {make(~value=Element(element), ~history)} </Parens>
         | PrHz(elements) =>
           let children =
             elements->Array.mapWithIndex((index, element) =>
               index == 0
-                ? <span className="element-horz-item compact">
+                ? <span className="element-horz-item compact" key={string_of_int(index)}>
                     {make(~value=Element(element), ~history)}
                   </span>
-                : <span className="element-horz-item">
+                : <span className="element-horz-item" key={string_of_int(index)}>
                     {make(~value=Element(element), ~history)}
                   </span>
             )
-          <Parens2 payload=children />
+          <Parens2  key={string_of_int(i)} payload=children />
         }
       })
       ->React.array}
