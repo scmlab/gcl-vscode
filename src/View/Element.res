@@ -182,10 +182,13 @@ module Inlines = {
 
   module Sbst = {
     @react.component
-    let make = (~before, ~env, ~after) => {
+    let make = (~before, ~env, ~after, ~history) => {
       let (clicked, setClicked) = React.useState(_ => false)
-      let onClick = _ => setClicked(_ => true)
-
+      let undo = () => setClicked(_ => false)
+      let onClick = _ => {
+        history->History.push(undo)
+        setClicked(_ => true)
+      }
       if clicked {
         <span className="element-sbst"> after </span>
       } else {
@@ -196,7 +199,7 @@ module Inlines = {
     }
   }
 
-  let rec make = (~value: t) => {
+  let rec make = (~value: t, ~history: History.t) => {
     let Element(elements) = value
     <span>
       {elements
@@ -210,34 +213,36 @@ module Inlines = {
           let className = {String.concat(" ", List.fromArray(className))}
           <div className key={string_of_int(i)} />
         | Link(range, children, _className) =>
-          let child = make(~value=Element(children))
+          let child = make(~value=Element(children), ~history)
           <Link range> {child} </Link>
         | Sbst(before, env, after, _className) =>
-          let before = make(~value=Element(before))
-          let env = make(~value=Element(env))
-          let after = make(~value=Element(after))
-          <Sbst before env after />
+          let before = make(~value=Element(before), ~history)
+          let env = make(~value=Element(env), ~history)
+          let after = make(~value=Element(after), ~history)
+          <Sbst before env after history />
         | Horz(elements) =>
           let children =
             elements->Array.map(element =>
-              <span className="element-horz-item"> {make(~value=Element(element))} </span>
+              <span className="element-horz-item"> {make(~value=Element(element), ~history)} </span>
             )
           <span className="element-horz" key={string_of_int(i)}> {React.array(children)} </span>
         | Vert(elements) =>
           let children =
             elements->Array.map(element =>
-              <span className="element-vert-item"> {make(~value=Element(element))} </span>
+              <span className="element-vert-item"> {make(~value=Element(element), ~history)} </span>
             )
           <span className="element-vert" key={string_of_int(i)}> {React.array(children)} </span>
-        | Parn(element) => <Parens> {make(~value=Element(element))} </Parens>
+        | Parn(element) => <Parens> {make(~value=Element(element), ~history)} </Parens>
         | PrHz(elements) =>
           let children =
             elements->Array.mapWithIndex((index, element) =>
               index == 0
                 ? <span className="element-horz-item compact">
-                    {make(~value=Element(element))}
+                    {make(~value=Element(element), ~history)}
                   </span>
-                : <span className="element-horz-item"> {make(~value=Element(element))} </span>
+                : <span className="element-horz-item">
+                    {make(~value=Element(element), ~history)}
+                  </span>
             )
           <Parens2 payload=children />
         }
@@ -256,7 +261,7 @@ module Inlines = {
     }
 
   @react.component
-  let make = (~value: t) => make(~value)
+  let make = (~value: t, ~history: History.t) => make(~value, ~history)
 }
 
 module Block = {
@@ -292,7 +297,8 @@ module Block = {
 
   open! React
   @react.component
-  let make = (~value: t) =>
+  let make = (~value: t) => {
+    let history = History.make()
     switch value {
     | Header(header, range) =>
       switch range {
@@ -307,15 +313,18 @@ module Block = {
           </header>
         </Link>
       }
-    | Paragraph(value) => <p> <Inlines value /> </p>
+    | Paragraph(value) => <p> <Inlines value history /> </p>
     | Code(value) =>
       <pre>
         <div className="element-block-code-buttons">
-          <button className="codicon codicon-debug-step-back"> </button>
+          <button
+            onClick={_ => history->History.pop} className="codicon codicon-debug-step-back"
+          />
         </div>
-        <Inlines value />
+        <Inlines value history />
       </pre>
     }
+  }
 }
 
 module Section = {
