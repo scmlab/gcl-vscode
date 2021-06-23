@@ -103,8 +103,6 @@
 
             .element-block-code-buttons {
                 display: none;
-                float  : right;
-
                 button {
                     // dimensions 
                     margin-left: 1ex;
@@ -118,7 +116,12 @@
 
             // only display buttons when the parent <pre> is being hovered
             &:hover .element-block-code-buttons {
+                // take the buttons out of flow
+                // so that it does not effect othe contents
+                position: absolute;
+                right: calc(@padding * 3);
                 display: inherit;
+                
             }
         }
 
