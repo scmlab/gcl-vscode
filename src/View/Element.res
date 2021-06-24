@@ -55,6 +55,16 @@ module Parens2 = {
   }
 }
 
+module RewriteReason = {
+  type t = Assigment
+
+  open! Json.Decode
+  let decode: decoder<t> = _ => Assigment
+
+  open! Json.Encode
+  let encode: encoder<t> = _ => string("RRAssigment")
+}
+
 module type Module = {
   type t
   // constructors
@@ -86,6 +96,7 @@ module Inlines = {
       | Text(string, ClassNames.t)
       | Link(SrcLoc.Range.t, array<t>, ClassNames.t)
       | Sbst(array<t>, array<t>, array<t>, ClassNames.t)
+      | Sbst2(RewriteReason.t, array<t>, array<t>, array<t>, ClassNames.t)
       | Horz(array<array<t>>)
       | Vert(array<array<t>>)
       | Parn(array<t>)
@@ -115,6 +126,16 @@ module Inlines = {
               c,
               d,
             )) => Sbst(a, b, c, d)),
+          )
+        | "Sbst2" =>
+          Contents(
+            tuple5(RewriteReason.decode, array(decode()), array(decode()), array(decode()), ClassNames.decode) |> map(((
+              a,
+              b,
+              c,
+              d,
+              e,
+            )) => Sbst2(a, b, c, d, e)),
           )
         | "Horz" => Contents(array(array(decode())) |> map(xs => Horz(xs)))
         | "Vert" => Contents(array(array(decode())) |> map(xs => Vert(xs)))
@@ -152,6 +173,14 @@ module Inlines = {
             (a, b, c, d) |> tuple4(array(encode), array(encode), array(encode), ClassNames.encode),
           ),
         })
+      | Sbst2(a, b, c, d, e) =>
+        object_(list{
+          ("tag", string("Sbst2")),
+          (
+            "contents",
+            (a, b, c, d, e) |> Util.Encode.tuple5(RewriteReason.encode, array(encode), array(encode), array(encode), ClassNames.encode),
+          ),
+        })
       | Horz(xs) => object_(list{("tag", string("Horz")), ("contents", xs |> array(array(encode)))})
       | Vert(xs) => object_(list{("tag", string("Vert")), ("contents", xs |> array(array(encode)))})
       | Parn(x) => object_(list{("tag", string("Parn")), ("contents", x |> array(encode))})
@@ -175,10 +204,11 @@ module Inlines = {
 
   module Sbst = {
     @react.component
-    let make = (~makeInline, ~before, ~env, ~after, ~history) => {
+    let make = (~makeInline, ~before, ~env, ~after, ~reason=?, ~history) => {
       let (substituted, setSubstitute) = React.useState(_ => false)
       let undo = () => setSubstitute(_ => false)
       let onClick = _ => {
+        reason->Option.forEach(Js.log2("REASON: ", ))
         history->History.push(undo)
         setSubstitute(_ => true)
       }
@@ -217,10 +247,9 @@ module Inlines = {
           let child = make(~value=Element(children), ~history)
           <Link range key={string_of_int(i)}> {child} </Link>
         | Sbst(before, env, after, _className) =>
-          // let before = make(~value=Element(before), ~history)
-          // let env = make(~value=Element(env), ~history)
-          // let after = make(~value=Element(after), ~history)
           <Sbst makeInline=make key={string_of_int(i)} before env after history />
+        | Sbst2(reason, before, env, after, _className) =>
+          <Sbst makeInline=make key={string_of_int(i)} reason before env after history />
         | Horz(elements) =>
           let children =
             elements->Array.mapWithIndex((j, element) =>
