@@ -1,28 +1,43 @@
+open Belt
 module Inlines = Element__Inlines
 
 module Code = {
   open React
   @react.component
   let make = (~value: Inlines.t) => {
-    let trace = Trace.make()
+    let (trace, setTrace) = useState(_ => ([]: array<Trace.t>))
     let (hidden, setHidden) = useState(_ => true)
 
     let stepBack = _ => {
-      trace->Trace.pop
+      setTrace(trace => {
+
+        let popped = Js.Array2.slice(trace, ~start=0, ~end_=Js.Array2.length(trace) - 1)
+        Js.Array2.pop(trace)->Option.forEach((step: Trace.t) => {
+          step.undo()
+        })
+        popped 
+      })
     }
     let toggleView = _ => {
       setHidden(not)
     }
-    <Trace.Context.Provider value=trace>
+
+    let onSubst = step => {
+      setTrace(trace => {
+        Js.Array2.concat(trace, [step])
+      })
+    }
+
+    <>
       <pre>
         <div className="element-block-code-buttons">
           <button onClick=stepBack className="codicon codicon-debug-step-back" />
           <button onClick=toggleView className="codicon codicon-debug-rerun" />
         </div>
-        <Inlines value />
+        <Inlines value onSubst />
       </pre>
-      <Trace.View hidden />
-    </Trace.Context.Provider>
+      <Trace.View hidden trace />
+    </>
   }
 }
 

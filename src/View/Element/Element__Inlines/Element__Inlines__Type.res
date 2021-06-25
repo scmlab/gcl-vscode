@@ -1,5 +1,3 @@
-open Belt
-
 module ClassNames = {
   type t = array<string>
 

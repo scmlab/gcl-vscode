@@ -1,6 +1,5 @@
 open Belt
 
-
 open Element__Inlines__Type
 
 module Parens = {
@@ -60,25 +59,32 @@ module Parens2 = {
 
 module Sbst = {
   @react.component
-  let make = (~makeInline, ~before, ~env, ~after, ~reason=?) => {
+  let make = (~makeInline, ~before, ~mapping, ~after, ~onSubst: option<Trace.t => unit>) => {
     let (substituted, setSubstitute) = React.useState(_ => false)
     let undo = () => setSubstitute(_ => false)
 
-    let trace = React.useContext(Trace.Context.context)
+    // let trace = React.useContext(Trace.Context.context)
 
     let onClick = _ => {
-      reason->Option.forEach(Js.log2("REASON: "))
-      trace->Trace.push(undo)
+      Js.log(("SUBST!!", onSubst->Option.isSome))
+      onSubst->Option.forEach(onSubst =>
+        onSubst({
+          undo: undo,
+          before: before,
+          mapping: mapping,
+          after: after,
+        })
+      )
       setSubstitute(_ => true)
     }
     if substituted {
-      let after = makeInline(~value=Element(after))
+      let after = makeInline(~value=Element(after), ~onSubst)
       <span className="element-sbst"> after </span>
     } else {
-      let before = makeInline(~value=Element(before))
+      let before = makeInline(~value=Element(before), ~onSubst)
       // render ENV only if it is non-empty
-      if Js.Array.length(env) > 0 {
-        let env = makeInline(~value=Element(env))
+      if Js.Array.length(mapping) > 0 {
+        let env = makeInline(~value=Element(mapping), ~onSubst)
         <span className="element-sbst">
           before {React.string(" ")} <span className="element-sbst-env" onClick> env </span>
         </span>
@@ -89,7 +95,7 @@ module Sbst = {
   }
 }
 
-let rec make = (~value: t) => {
+let rec make = (~value: t, ~onSubst: option<Trace.t => unit>) => {
   let Element(elements) = value
   <span>
     {elements
@@ -103,17 +109,17 @@ let rec make = (~value: t) => {
         let className = {String.concat(" ", List.fromArray(className))}
         <div className key={string_of_int(i)} />
       | Link(range, children, _className) =>
-        let child = make(~value=Element(children))
+        let child = make(~value=Element(children), ~onSubst)
         <Link range key={string_of_int(i)}> {child} </Link>
-      | Sbst(before, env, after, _className) =>
-        <Sbst makeInline=make key={string_of_int(i)} before env after />
-      | Sbst2(reason, before, env, after, _className) =>
-        <Sbst makeInline=make key={string_of_int(i)} reason before env after />
+      | Sbst(before, mapping, after, _className) =>
+        <Sbst makeInline=make key={string_of_int(i)} before mapping after onSubst />
+      | Sbst2(_reason, before, mapping, after, _className) =>
+        <Sbst makeInline=make key={string_of_int(i)} before mapping after onSubst />
       | Horz(elements) =>
         let children =
           elements->Array.mapWithIndex((j, element) =>
             <span className="element-horz-item" key={string_of_int(j)}>
-              {make(~value=Element(element))}
+              {make(~value=Element(element), ~onSubst)}
             </span>
           )
         <span className="element-horz" key={string_of_int(i)}> {React.array(children)} </span>
@@ -121,21 +127,21 @@ let rec make = (~value: t) => {
         let children =
           elements->Array.mapWithIndex((j, element) =>
             <span className="element-vert-item" key={string_of_int(j)}>
-              {make(~value=Element(element))}
+              {make(~value=Element(element), ~onSubst)}
             </span>
           )
         <span className="element-vert" key={string_of_int(i)}> {React.array(children)} </span>
       | Parn(element) =>
-        <Parens key={string_of_int(i)}> {make(~value=Element(element))} </Parens>
+        <Parens key={string_of_int(i)}> {make(~value=Element(element), ~onSubst)} </Parens>
       | PrHz(elements) =>
         let children =
           elements->Array.mapWithIndex((index, element) =>
             index == 0
               ? <span className="element-horz-item compact" key={string_of_int(index)}>
-                  {make(~value=Element(element))}
+                  {make(~value=Element(element), ~onSubst)}
                 </span>
               : <span className="element-horz-item" key={string_of_int(index)}>
-                  {make(~value=Element(element))}
+                  {make(~value=Element(element), ~onSubst)}
                 </span>
           )
         <Parens2 key={string_of_int(i)} payload=children />
@@ -146,4 +152,4 @@ let rec make = (~value: t) => {
 }
 
 @react.component
-let make = (~value: t) => make(~value)
+let make = (~value: t, ~onSubst: option<Trace.t => unit>=?) => make(~value, ~onSubst)
