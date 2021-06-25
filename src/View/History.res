@@ -10,7 +10,7 @@ let pop = self =>
   | None => ()
   | Some(undo) => undo()
   }
-let isEmpty = (self) => Js.Array.length(self.history) == 0
+let isEmpty = self => Js.Array.length(self.history) == 0
 
 module Context = {
   let context = React.createContext(make())
@@ -22,5 +22,14 @@ module Context = {
     let make = (~value, ~children) => {
       React.createElement(provider, {"value": value, "children": children})
     }
+  }
+}
+
+module View = {
+  open React
+  @react.component
+  let make = (~hidden: bool) => {
+    let className = "element-block-code-history" ++ (hidden ? " hidden" : "")
+    <div className> {string("asdf")} </div>
   }
 }

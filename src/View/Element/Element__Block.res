@@ -1,5 +1,28 @@
 module Inlines = Element__Inlines
 
+module Code = {
+  open React
+  @react.component
+  let make = (~value: Inlines.t) => {
+    let history = History.make()
+    let (hidden, setHidden) = useState(_ => true)
+
+    let onClick = _ => {
+      history->History.pop
+      setHidden(not)
+    }
+    <History.Context.Provider value=history>
+      <pre>
+        <div className="element-block-code-buttons">
+          <button onClick className="codicon codicon-debug-rerun" />
+        </div>
+        <Inlines value />
+      </pre>
+      <History.View hidden />
+    </History.Context.Provider>
+  }
+}
+
 type t =
   | Header(string, option<SrcLoc.Range.t>)
   | Paragraph(Inlines.t)
@@ -32,7 +55,7 @@ let encode: Json.Encode.encoder<t> = x => {
   }
 }
 
-open! React
+open React
 @react.component
 let make = (~value: t) => {
   switch value {
@@ -50,15 +73,6 @@ let make = (~value: t) => {
       </Link>
     }
   | Paragraph(value) => <p> <Inlines value /> </p>
-  | Code(value) =>
-    let history = History.make()
-    <History.Context.Provider value=history>
-      <pre>
-        <div className="element-block-code-buttons">
-          <button onClick={_ => history->History.pop} className="codicon codicon-debug-rerun" />
-        </div>
-        <Inlines value />
-      </pre>
-    </History.Context.Provider>
+  | Code(value) => <Code value />
   }
 }

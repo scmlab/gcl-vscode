@@ -57,7 +57,7 @@ let encode: Json.Encode.encoder<t> = x => {
   })
 }
 
-open! React
+open React
 @react.component
 let make = (~value: t) => {
   let className = "element-section " ++ Deco.toClassName(value.deco)
