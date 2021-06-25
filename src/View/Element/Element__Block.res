@@ -4,22 +4,25 @@ module Code = {
   open React
   @react.component
   let make = (~value: Inlines.t) => {
-    let history = History.make()
+    let trace = Trace.make()
     let (hidden, setHidden) = useState(_ => true)
 
-    let onClick = _ => {
-      history->History.pop
+    let stepBack = _ => {
+      trace->Trace.pop
+    }
+    let toggleView = _ => {
       setHidden(not)
     }
-    <History.Context.Provider value=history>
+    <Trace.Context.Provider value=trace>
       <pre>
         <div className="element-block-code-buttons">
-          <button onClick className="codicon codicon-debug-rerun" />
+          <button onClick=stepBack className="codicon codicon-debug-step-back" />
+          <button onClick=toggleView className="codicon codicon-debug-rerun" />
         </div>
         <Inlines value />
       </pre>
-      <History.View hidden />
-    </History.Context.Provider>
+      <Trace.View hidden />
+    </Trace.Context.Provider>
   }
 }
 

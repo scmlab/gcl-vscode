@@ -64,11 +64,11 @@ module Sbst = {
     let (substituted, setSubstitute) = React.useState(_ => false)
     let undo = () => setSubstitute(_ => false)
 
-    let history = React.useContext(History.Context.context)
+    let trace = React.useContext(Trace.Context.context)
 
     let onClick = _ => {
       reason->Option.forEach(Js.log2("REASON: "))
-      history->History.push(undo)
+      trace->Trace.push(undo)
       setSubstitute(_ => true)
     }
     if substituted {

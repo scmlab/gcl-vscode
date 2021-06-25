@@ -1,16 +1,16 @@
-type t = {history: array<unit => unit>}
+type t = {trace: array<unit => unit>}
 
 let make = () => {
-  history: [],
+  trace: [],
 }
 
-let push = (self, undo) => Js.Array.push(undo, self.history)->ignore
+let push = (self, undo) => Js.Array.push(undo, self.trace)->ignore
 let pop = self =>
-  switch Js.Array.pop(self.history) {
+  switch Js.Array.pop(self.trace) {
   | None => ()
   | Some(undo) => undo()
   }
-let isEmpty = self => Js.Array.length(self.history) == 0
+let isEmpty = self => Js.Array.length(self.trace) == 0
 
 module Context = {
   let context = React.createContext(make())
@@ -29,7 +29,7 @@ module View = {
   open React
   @react.component
   let make = (~hidden: bool) => {
-    let className = "element-block-code-history" ++ (hidden ? " hidden" : "")
+    let className = "element-block-code-trace" ++ (hidden ? " hidden" : "")
     <div className> {string("asdf")} </div>
   }
 }
