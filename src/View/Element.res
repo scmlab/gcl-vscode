@@ -352,7 +352,7 @@ module Block = {
     | Code(value) =>
       <pre>
         <div className="element-block-code-buttons">
-          <button onClick={_ => history->History.pop} className="codicon codicon-debug-step-back" />
+          <button onClick={_ => history->History.pop} className="codicon codicon-debug-rerun" />
         </div>
         <Inlines value history />
       </pre>
