@@ -66,7 +66,6 @@ module Sbst = {
     // let trace = React.useContext(Trace.Context.context)
 
     let onClick = _ => {
-      Js.log(("SUBST!!", onSubst->Option.isSome))
       onSubst->Option.forEach(onSubst =>
         onSubst({
           undo: undo,
