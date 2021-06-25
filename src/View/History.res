@@ -11,3 +11,16 @@ let pop = self =>
   | Some(undo) => undo()
   }
 let isEmpty = (self) => Js.Array.length(self.history) == 0
+
+module Context = {
+  let context = React.createContext(make())
+
+  module Provider = {
+    let provider = React.Context.provider(context)
+
+    @react.component
+    let make = (~value, ~children) => {
+      React.createElement(provider, {"value": value, "children": children})
+    }
+  }
+}

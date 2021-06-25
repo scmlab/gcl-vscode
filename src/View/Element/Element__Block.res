@@ -35,7 +35,6 @@ let encode: Json.Encode.encoder<t> = x => {
 open! React
 @react.component
 let make = (~value: t) => {
-  let history = History.make()
   switch value {
   | Header(header, range) =>
     switch range {
@@ -50,13 +49,16 @@ let make = (~value: t) => {
         </header>
       </Link>
     }
-  | Paragraph(value) => <p> <Inlines value history /> </p>
+  | Paragraph(value) => <p> <Inlines value /> </p>
   | Code(value) =>
-    <pre>
-      <div className="element-block-code-buttons">
-        <button onClick={_ => history->History.pop} className="codicon codicon-debug-rerun" />
-      </div>
-      <Inlines value history />
-    </pre>
+    let history = History.make()
+    <History.Context.Provider value=history>
+      <pre>
+        <div className="element-block-code-buttons">
+          <button onClick={_ => history->History.pop} className="codicon codicon-debug-rerun" />
+        </div>
+        <Inlines value />
+      </pre>
+    </History.Context.Provider>
   }
 }

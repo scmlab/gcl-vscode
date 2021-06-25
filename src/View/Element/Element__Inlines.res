@@ -206,22 +206,25 @@ let concatMany = xs => Element(
 
 module Sbst = {
   @react.component
-  let make = (~makeInline, ~before, ~env, ~after, ~reason=?, ~history) => {
+  let make = (~makeInline, ~before, ~env, ~after, ~reason=?) => {
     let (substituted, setSubstitute) = React.useState(_ => false)
     let undo = () => setSubstitute(_ => false)
+
+    let history = React.useContext(History.Context.context)
+
     let onClick = _ => {
       reason->Option.forEach(Js.log2("REASON: "))
       history->History.push(undo)
       setSubstitute(_ => true)
     }
     if substituted {
-      let after = makeInline(~value=Element(after), ~history)
+      let after = makeInline(~value=Element(after))
       <span className="element-sbst"> after </span>
     } else {
-      let before = makeInline(~value=Element(before), ~history)
+      let before = makeInline(~value=Element(before))
       // render ENV only if it is non-empty
       if Js.Array.length(env) > 0 {
-        let env = makeInline(~value=Element(env), ~history)
+        let env = makeInline(~value=Element(env))
         <span className="element-sbst">
           before {React.string(" ")} <span className="element-sbst-env" onClick> env </span>
         </span>
@@ -232,7 +235,7 @@ module Sbst = {
   }
 }
 
-let rec make = (~value: t, ~history: History.t) => {
+let rec make = (~value: t) => {
   let Element(elements) = value
   <span>
     {elements
@@ -246,17 +249,17 @@ let rec make = (~value: t, ~history: History.t) => {
         let className = {String.concat(" ", List.fromArray(className))}
         <div className key={string_of_int(i)} />
       | Link(range, children, _className) =>
-        let child = make(~value=Element(children), ~history)
+        let child = make(~value=Element(children))
         <Link range key={string_of_int(i)}> {child} </Link>
       | Sbst(before, env, after, _className) =>
-        <Sbst makeInline=make key={string_of_int(i)} before env after history />
+        <Sbst makeInline=make key={string_of_int(i)} before env after />
       | Sbst2(reason, before, env, after, _className) =>
-        <Sbst makeInline=make key={string_of_int(i)} reason before env after history />
+        <Sbst makeInline=make key={string_of_int(i)} reason before env after />
       | Horz(elements) =>
         let children =
           elements->Array.mapWithIndex((j, element) =>
             <span className="element-horz-item" key={string_of_int(j)}>
-              {make(~value=Element(element), ~history)}
+              {make(~value=Element(element))}
             </span>
           )
         <span className="element-horz" key={string_of_int(i)}> {React.array(children)} </span>
@@ -264,21 +267,21 @@ let rec make = (~value: t, ~history: History.t) => {
         let children =
           elements->Array.mapWithIndex((j, element) =>
             <span className="element-vert-item" key={string_of_int(j)}>
-              {make(~value=Element(element), ~history)}
+              {make(~value=Element(element))}
             </span>
           )
         <span className="element-vert" key={string_of_int(i)}> {React.array(children)} </span>
       | Parn(element) =>
-        <Parens key={string_of_int(i)}> {make(~value=Element(element), ~history)} </Parens>
+        <Parens key={string_of_int(i)}> {make(~value=Element(element))} </Parens>
       | PrHz(elements) =>
         let children =
           elements->Array.mapWithIndex((index, element) =>
             index == 0
               ? <span className="element-horz-item compact" key={string_of_int(index)}>
-                  {make(~value=Element(element), ~history)}
+                  {make(~value=Element(element))}
                 </span>
               : <span className="element-horz-item" key={string_of_int(index)}>
-                  {make(~value=Element(element), ~history)}
+                  {make(~value=Element(element))}
                 </span>
           )
         <Parens2 key={string_of_int(i)} payload=children />
@@ -301,4 +304,4 @@ let encode: Json.Encode.encoder<t> = x => {
 }
 
 @react.component
-let make = (~value: t, ~history: History.t) => make(~value, ~history)
+let make = (~value: t) => make(~value)
