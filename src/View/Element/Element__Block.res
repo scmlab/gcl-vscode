@@ -5,9 +5,9 @@ type t =
   | Paragraph(Inlines.t)
   | Code(Inlines.t)
 
-open Json.Decode
-open Util.Decode
-let decode: decoder<t> = json =>
+let decode: Json.Decode.decoder<t> = json => {
+  open Json.Decode
+  open Util.Decode
   json |> sum(x =>
     switch x {
     | "Header" =>
@@ -17,9 +17,10 @@ let decode: decoder<t> = json =>
     | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
     }
   )
+}
 
-open! Json.Encode
-let encode: encoder<t> = x =>
+let encode: Json.Encode.encoder<t> = x => {
+  open Json.Encode
   switch x {
   | Header(a, b) =>
     object_(list{
@@ -29,6 +30,7 @@ let encode: encoder<t> = x =>
   | Paragraph(a) => object_(list{("tag", string("Paragraph")), ("contents", a |> Inlines.encode)})
   | Code(a) => object_(list{("tag", string("Code")), ("contents", a |> Inlines.encode)})
   }
+}
 
 open! React
 @react.component

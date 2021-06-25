@@ -41,18 +41,21 @@ type t = {
   blocks: array<Block.t>,
 }
 
-open Json.Decode
-let decode: decoder<t> = json => {
-  deco: json |> field("sectionDeco", Deco.decode),
-  blocks: json |> field("sectionBlocks", array(Block.decode)),
+let decode: Json.Decode.decoder<t> = json => {
+  open Json.Decode
+  {
+    deco: json |> field("sectionDeco", Deco.decode),
+    blocks: json |> field("sectionBlocks", array(Block.decode)),
+  }
 }
 
-open! Json.Encode
-let encode: encoder<t> = x =>
+let encode: Json.Encode.encoder<t> = x => {
+  open Json.Encode
   object_(list{
     ("sectionDeco", x.deco |> Deco.encode),
     ("sectionBlocks", x.blocks |> array(Block.encode)),
   })
+}
 
 open! React
 @react.component

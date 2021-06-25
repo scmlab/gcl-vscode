@@ -58,21 +58,29 @@ module Parens2 = {
 module ClassNames = {
   type t = array<string>
 
-  open! Json.Decode
-  let decode: decoder<t> = array(string)
+  let decode: Json.Decode.decoder<t> = {
+    open Json.Decode
+    array(string)
+  }
 
-  open! Json.Encode
-  let encode: encoder<t> = array(string)
+  let encode: Json.Encode.encoder<t> = {
+    open Json.Encode
+    array(string)
+  }
 }
 
 module RewriteReason = {
   type t = Assigment
 
-  open! Json.Decode
-  let decode: decoder<t> = _ => Assigment
+  let decode: Json.Decode.decoder<t> = {
+    // open Json.Decode
+    _ => Assigment
+  }
 
-  open! Json.Encode
-  let encode: encoder<t> = _ => string("RRAssigment")
+  let encode: Json.Encode.encoder<t> = {
+    open Json.Encode
+    _ => string("RRAssigment")
+  }
 }
 
 module Inline = {
@@ -88,9 +96,9 @@ module Inline = {
     // refactor PrHz
     | PrHz(array<array<t>>)
 
-  open! Json.Decode
-  open Util.Decode
-  let rec decode: unit => decoder<t> = () =>
+  let rec decode: unit => Json.Decode.decoder<t> = () => {
+    open Json.Decode
+    open Util.Decode
     sum(x =>
       switch x {
       | "Icon" => Contents(pair(string, ClassNames.decode) |> map(((s, cs)) => Icon(s, cs)))
@@ -129,10 +137,11 @@ module Inline = {
       | tag => raise(DecodeError("[Element.Inline] Unknown constructor: " ++ tag))
       }
     )
+  }
   let decode = decode()
 
-  open! Json.Encode
-  let rec encode: encoder<t> = x =>
+  let rec encode: Json.Encode.encoder<t> = x => {
+    open Json.Encode
     switch x {
     | Icon(s, cs) =>
       object_(list{
@@ -177,6 +186,7 @@ module Inline = {
     | Parn(x) => object_(list{("tag", string("Parn")), ("contents", x |> array(encode))})
     | PrHz(xs) => object_(list{("tag", string("PrHz")), ("contents", xs |> array(array(encode)))})
     }
+  }
 }
 
 type t = Element(array<Inline.t>)
@@ -278,14 +288,17 @@ let rec make = (~value: t, ~history: History.t) => {
   </span>
 }
 
-open! Json.Decode
-let decode: decoder<t> = array(Inline.decode) |> map(elems => Element(elems))
+let decode: Json.Decode.decoder<t> = {
+  open Json.Decode
+  array(Inline.decode) |> map(elems => Element(elems))
+}
 
-open! Json.Encode
-let encode: encoder<t> = x =>
+let encode: Json.Encode.encoder<t> = x => {
+  open Json.Encode
   switch x {
   | Element(elemss) => elemss |> array(Inline.encode)
   }
+}
 
 @react.component
 let make = (~value: t, ~history: History.t) => make(~value, ~history)
