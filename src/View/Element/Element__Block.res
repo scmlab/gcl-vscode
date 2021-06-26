@@ -36,7 +36,7 @@ module Code = {
         </div>
         <Inlines value onSubst />
       </pre>
-      <Trace.View hidden trace />
+      <TraceView hidden trace />
     </>
   }
 }

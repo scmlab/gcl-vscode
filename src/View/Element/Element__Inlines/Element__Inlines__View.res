@@ -63,8 +63,6 @@ module Sbst = {
     let (substituted, setSubstitute) = React.useState(_ => false)
     let undo = () => setSubstitute(_ => false)
 
-    // let trace = React.useContext(Trace.Context.context)
-
     let onClick = _ => {
       onSubst->Option.forEach(onSubst =>
         onSubst({
