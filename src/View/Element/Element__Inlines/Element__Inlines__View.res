@@ -79,14 +79,16 @@ module Sbst = {
       <span className="element-sbst"> after </span>
     } else {
       let before = makeInline(~value=Element(before), ~onSubst)
-      // render ENV only if it is non-empty
       if Js.Array.length(mapping) > 0 {
+        // "mapping" is not empty
         let env = makeInline(~value=Element(mapping), ~onSubst)
         <span className="element-sbst">
           before {React.string(" ")} <span className="element-sbst-env" onClick> env </span>
+          // before {React.string(" ")} <span className="element-sbst-env" onClick> env </span>
         </span>
       } else {
-        <span className="element-sbst"> before </span>
+        // "mapping" is empty, make "before" clickable
+        <span className="element-sbst-env" onClick> before </span>
       }
     }
   }
