@@ -87,8 +87,14 @@ module Sbst = {
           // before {React.string(" ")} <span className="element-sbst-env" onClick> env </span>
         </span>
       } else {
-        // "mapping" is empty, make "before" clickable
-        <span className="element-sbst-env" onClick> before </span>
+        // // "mapping" is empty, make "before" clickable
+        // <span className="element-sbst-env" onClick> before </span>
+
+        // TEMP: display "[temp]" for debugging instead
+        <span className="element-sbst">
+          before {React.string(" ")} <span className="element-sbst-env" onClick> {React.string("[temp]")}  </span>
+        </span>
+
       }
     }
   }
