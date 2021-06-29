@@ -69,9 +69,28 @@
             font-weight : bolder;
 
             .element-block-header-range {
+                margin-left: 1ch;
                 font-variant: normal;
                 font-weight : normal;
-                float       : right;
+
+                &:hover {
+                    cursor: pointer;
+                }
+            }
+
+
+            .element-block-anchor-range {
+                float: right;
+                color: @foreground-tenuous;
+
+                &:hover {
+                    cursor: pointer;
+                    color: @blue;
+                }
+
+                &.linked {
+                    color: @blue;
+                }
             }
         }
 

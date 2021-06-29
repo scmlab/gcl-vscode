@@ -107,28 +107,32 @@ let make = (~value: t) => {
         <header>
           {string(header)}
           <span className="element-block-header-range">
-            {string(SrcLoc.Range.toString(range))}
+            {string("at " ++ SrcLoc.Range.toString(range))}
           </span>
         </header>
       </Link>
     }
   | HeaderWithAnchor(header, hash, anchor, range) =>
-    switch range {
-    | None => <header> {string(header)} </header>
+    let range = switch range {
+    | None => <> </>
     | Some(range) =>
-      let header = switch anchor {
-      | None => header ++ " #" ++ hash
-      | Some(anchor) => header ++ " #" ++ hash ++ " anchored at " ++ SrcLoc.Range.toString(anchor)
-      }
       <Link range>
-        <header>
-          {string(header)}
-          <span className="element-block-header-range">
-            {string(SrcLoc.Range.toString(range))}
-          </span>
-        </header>
+        <span className="element-block-header-range"> {string("at " ++ SrcLoc.Range.toString(range))} </span>
       </Link>
     }
+
+    // crop the hash value and display only the first 7 characters
+    let hash = "#" ++ Js.String2.slice(hash, ~from=0, ~to_=7)
+
+    let anchor = switch anchor {
+    | None => <span className="element-block-anchor-range"> {string(hash)} </span>
+    | Some(range) =>
+      <Link range>
+        <span className="element-block-anchor-range linked"> {string(hash)} </span>
+      </Link>
+    }
+
+    <header> {string(header)} {anchor} {range} </header>
   | Paragraph(value) => <p> <Inlines value /> </p>
   | Code(value) => <Code value />
   }
