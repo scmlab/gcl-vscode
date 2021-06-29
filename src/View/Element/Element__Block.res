@@ -5,17 +5,16 @@ module Code = {
   open React
   @react.component
   let make = (~value: Inlines.t) => {
-    let (trace, setTrace) = useState(_ => ([]: array<Trace.t>))
+    let (trace, setTrace) = useState((_): array<Trace.t> => [])
     let (hidden, setHidden) = useState(_ => true)
 
     let stepBack = _ => {
       setTrace(trace => {
-
         let popped = Js.Array2.slice(trace, ~start=0, ~end_=Js.Array2.length(trace) - 1)
         Js.Array2.pop(trace)->Option.forEach((step: Trace.t) => {
           step.undo()
         })
-        popped 
+        popped
       })
     }
     let toggleView = _ => {
@@ -43,6 +42,7 @@ module Code = {
 
 type t =
   | Header(string, option<SrcLoc.Range.t>)
+  | HeaderWithAnchor(string, string, option<SrcLoc.Range.t>, option<SrcLoc.Range.t>)
   | Paragraph(Inlines.t)
   | Code(Inlines.t)
 
@@ -53,6 +53,15 @@ let decode: Json.Decode.decoder<t> = json => {
     switch x {
     | "Header" =>
       Contents(tuple2(string, optional(SrcLoc.Range.decode)) |> map(((a, b)) => Header(a, b)))
+    | "HeaderWithAnchor" =>
+      Contents(
+        tuple4(
+          string,
+          string,
+          optional(SrcLoc.Range.decode),
+          optional(SrcLoc.Range.decode),
+        ) |> map(((a, b, c, d)) => HeaderWithAnchor(a, b, c, d)),
+      )
     | "Paragraph" => Contents(Inlines.decode |> map(a => Paragraph(a)))
     | "Code" => Contents(Inlines.decode |> map(a => Code(a)))
     | tag => raise(DecodeError("[Element.Block] Unknown constructor: " ++ tag))
@@ -68,6 +77,19 @@ let encode: Json.Encode.encoder<t> = x => {
       ("tag", string("Header")),
       ("contents", (a, b) |> tuple2(string, nullable(SrcLoc.Range.encode))),
     })
+  | HeaderWithAnchor(a, b, c, d) =>
+    object_(list{
+      ("tag", string("HeaderWithAnchor")),
+      (
+        "contents",
+        (a, b, c, d) |> tuple4(
+          string,
+          string,
+          nullable(SrcLoc.Range.encode),
+          nullable(SrcLoc.Range.encode),
+        ),
+      ),
+    })
   | Paragraph(a) => object_(list{("tag", string("Paragraph")), ("contents", a |> Inlines.encode)})
   | Code(a) => object_(list{("tag", string("Code")), ("contents", a |> Inlines.encode)})
   }
@@ -81,6 +103,23 @@ let make = (~value: t) => {
     switch range {
     | None => <header> {string(header)} </header>
     | Some(range) =>
+      <Link range>
+        <header>
+          {string(header)}
+          <span className="element-block-header-range">
+            {string(SrcLoc.Range.toString(range))}
+          </span>
+        </header>
+      </Link>
+    }
+  | HeaderWithAnchor(header, hash, anchor, range) =>
+    switch range {
+    | None => <header> {string(header)} </header>
+    | Some(range) =>
+      let header = switch anchor {
+      | None => header ++ " #" ++ hash
+      | Some(anchor) => header ++ " #" ++ hash ++ " anchored at " ++ SrcLoc.Range.toString(anchor)
+      }
       <Link range>
         <header>
           {string(header)}
