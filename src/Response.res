@@ -11,19 +11,16 @@ module Specification = {
 
   let destroy = self => self.decorations->Array.forEach(VSCode.TextEditorDecorationType.dispose)
 
-  open Json.Decode
-  let decode: decoder<t> = tuple4(int, string, string, SrcLoc.Range.decode) |> map(((
-    id,
-    pre,
-    post,
-    range,
-  )) => {
-    id: id,
-    pre: pre,
-    post: post,
-    range: range,
-    decorations: [],
-  })
+  let decode: Json.Decode.decoder<t> = {
+    open Json.Decode
+    tuple4(int, string, string, SrcLoc.Range.decode) |> map(((id, pre, post, range)) => {
+      id: id,
+      pre: pre,
+      post: post,
+      range: range,
+      decorations: [],
+    })
+  }
 }
 
 module Kind = {
@@ -32,19 +29,25 @@ module Kind = {
     | UpdateSpecs(array<Specification.t>)
     | ConsoleLog(string)
 
-  open Json.Decode
-  open Util.Decode
-  let decode: decoder<t> = sum(x =>
-    switch x {
-    | "ResDisplay" =>
-      Contents(
-        tuple2(int, array(Element.Section.decode)) |> map(((id, sections)) => Display(id, sections)),
-      )
-    | "ResUpdateSpecs" => Contents(array(Specification.decode) |> map(specs => UpdateSpecs(specs)))
-    | "ResConsoleLog" => Contents(string |> map(i => ConsoleLog(i)))
-    | tag => raise(DecodeError("Unknown constructor: " ++ tag))
-    }
-  )
+  let decode: Json.Decode.decoder<t> = {
+    open Json.Decode
+    open Util.Decode
+    sum(x =>
+      switch x {
+      | "ResDisplay" =>
+        Contents(
+          tuple2(int, array(Element.Section.decode)) |> map(((id, sections)) => Display(
+            id,
+            sections,
+          )),
+        )
+      | "ResUpdateSpecs" =>
+        Contents(array(Specification.decode) |> map(specs => UpdateSpecs(specs)))
+      | "ResConsoleLog" => Contents(string |> map(i => ConsoleLog(i)))
+      | tag => raise(DecodeError("Unknown constructor: " ++ tag))
+      }
+    )
+  }
 }
 
 type t =
@@ -53,13 +56,15 @@ type t =
   | CannotDecodeRequest(string)
   | CannotSendRequest(string)
 
-open Json.Decode
-open Util.Decode
-let decode: decoder<t> = sum(x =>
-  switch x {
-  | "Res" =>
-    Contents(pair(string, array(Kind.decode)) |> map(((filePath, kinds)) => Res(filePath, kinds)))
-  | "CannotDecodeRequest" => Contents(string |> map(msg => CannotDecodeRequest(msg)))
-  | tag => raise(DecodeError("Unknown constructor: " ++ tag))
-  }
-)
+let decode: Json.Decode.decoder<t> = {
+  open Json.Decode
+  open Util.Decode
+  sum(x =>
+    switch x {
+    | "Res" =>
+      Contents(pair(string, array(Kind.decode)) |> map(((filePath, kinds)) => Res(filePath, kinds)))
+    | "CannotDecodeRequest" => Contents(string |> map(msg => CannotDecodeRequest(msg)))
+    | tag => raise(DecodeError("Unknown constructor: " ++ tag))
+    }
+  )
+}
