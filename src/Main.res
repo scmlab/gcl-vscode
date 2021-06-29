@@ -57,7 +57,7 @@ let handleViewResponse = response => {
       let selection = VSCode.Selection.make(VSCode.Range.start(range), VSCode.Range.end_(range))
       state.editor->VSCode.TextEditor.setSelection(selection)
     // State.Decoration.remove(key)
-    | ExportProofObligations => sendLSPRequest(state, Request.Kind.ExportProofObligations)->ignore
+    | InsertAnchor(hash) => Js.log("should insert anchor with hash: " ++ hash)
     | Initialized => ()
     | Destroyed => ()
     }

@@ -59,12 +59,12 @@ let encode: Json.Encode.encoder<t> = x => {
 
 open React
 @react.component
-let make = (~value: t) => {
+let make = (~value: t, ~onInsertAnchor: string => unit) => {
   let className = "element-section " ++ Deco.toClassName(value.deco)
   let blocks =
     value.blocks
     ->Array.mapWithIndex((i, value) => {
-      <Block value key={string_of_int(i)} />
+      <Block value key={string_of_int(i)} onInsertAnchor />
     })
     ->array
   <li className> {blocks} </li>

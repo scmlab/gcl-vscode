@@ -97,7 +97,7 @@ let encode: Json.Encode.encoder<t> = x => {
 
 open React
 @react.component
-let make = (~value: t) => {
+let make = (~value: t, ~onInsertAnchor: string => unit) => {
   switch value {
   | Header(header, range) =>
     switch range {
@@ -122,13 +122,13 @@ let make = (~value: t) => {
     }
 
     // crop the hash value and display only the first 7 characters
-    let hash = "#" ++ Js.String2.slice(hash, ~from=0, ~to_=7)
+    let croppedHash = "#" ++ Js.String2.slice(hash, ~from=0, ~to_=7)
 
     let anchor = switch anchor {
-    | None => <span className="element-block-anchor-range"> {string(hash)} </span>
+    | None => <span className="element-block-anchor-range" onClick={_ => onInsertAnchor(hash)}> {string(croppedHash)} </span>
     | Some(range) =>
       <Link range>
-        <span className="element-block-anchor-range linked"> {string(hash)} </span>
+        <span className="element-block-anchor-range linked"> {string(croppedHash)} </span>
       </Link>
     }
 
