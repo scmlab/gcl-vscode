@@ -7,7 +7,7 @@ let make = (~hidden: bool, ~trace: array<Trace.t>) => {
 
   let traceView =
     trace
-    ->Js.Array2.map(({before, mapping, after}) => {
+    ->Belt.Array.mapWithIndex((i, {before, mapping, after}) => {
       open Inline
       let line = Belt.Array.concatMany([[Text("---------", [])]])
       let before = Belt.Array.concatMany([[Text("before: ", [])], before])
@@ -16,7 +16,7 @@ let make = (~hidden: bool, ~trace: array<Trace.t>) => {
 
       let inlines = [Vert([line, before, mapping, after ])]
 
-      <Inlines value=Element(inlines) />
+      <Inlines value=Element(inlines) key={string_of_int(i)} />
     })
     ->React.array
 
