@@ -61,9 +61,11 @@ module Sbst = {
   @react.component
   let make = (~makeInline, ~before, ~mapping, ~after, ~onSubst: option<Trace.t => unit>) => {
     let (substituted, setSubstitute) = React.useState(_ => false)
+    let (hoverSubstitutee, setHoverSubstitutee) = React.useState(_ => false)
     let undo = () => setSubstitute(_ => false)
 
     let onClick = _ => {
+      setHoverSubstitutee(_ => false)
       onSubst->Option.forEach(onSubst =>
         onSubst({
           undo: undo,
@@ -74,6 +76,14 @@ module Sbst = {
       )
       setSubstitute(_ => true)
     }
+
+    let onMouseOver = _ => {
+      setHoverSubstitutee(_ => true)
+    }
+    let onMouseOut = _ => {
+      setHoverSubstitutee(_ => false)
+    }
+
     if substituted {
       let after = makeInline(~value=Element(after), ~onSubst)
       <span className="element-sbst"> after </span>
@@ -83,18 +93,36 @@ module Sbst = {
         // "mapping" is not empty
         let env = makeInline(~value=Element(mapping), ~onSubst)
         <span className="element-sbst">
-          before {React.string(" ")} <span className="element-sbst-env" onClick> env </span>
-          // before {React.string(" ")} <span className="element-sbst-env" onClick> env </span>
+          before {React.string(" ")} <span className="element-sbst-button" onClick> env </span>
         </span>
       } else {
-        // // "mapping" is empty, make "before" clickable
+        // <span className="element-sbst">
+        //   <span className="element-sbst-env" onClick onMouseOver={onMouseOver}>
+        //     before
+        //   </span>
+        // </span>
+
+        // "mapping" is empty, make "before" clickable
         // <span className="element-sbst-env" onClick> before </span>
 
-        // TEMP: display "[temp]" for debugging instead
-        <span className="element-sbst">
-          before {React.string(" ")} <span className="element-sbst-env" onClick> {React.string("[temp]")}  </span>
-        </span>
+        // let substituteeClassName = hoverSubstitutee ? "element-sbst-hovered" : ""
 
+        if hoverSubstitutee {
+          <span className="element-sbst">
+            <span className="element-sbst-hovered"> before </span>
+            <span className="element-sbst-button" onMouseOver onMouseOut onClick>
+              {React.string(" ")}
+              // {React.string(j`⇊`)}
+            </span>
+          </span>
+        } else {
+          <span className="element-sbst">
+            <span> before </span>
+            <span className="element-sbst-button" onMouseOver onMouseOut onClick>
+              {React.string(" ")}
+            </span>
+          </span>
+        }
       }
     }
   }
