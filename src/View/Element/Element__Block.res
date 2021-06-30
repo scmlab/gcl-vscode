@@ -117,15 +117,22 @@ let make = (~value: t, ~onInsertAnchor: string => unit) => {
     | None => <> </>
     | Some(range) =>
       <Link range>
-        <span className="element-block-header-range"> {string("at " ++ SrcLoc.Range.toString(range))} </span>
+        <span className="element-block-header-range">
+          {string("at " ++ SrcLoc.Range.toString(range))}
+        </span>
       </Link>
     }
 
     // crop the hash value and display only the first 7 characters
     let croppedHash = "#" ++ Js.String2.slice(hash, ~from=0, ~to_=7)
 
+    // see if the anchor range is available
     let anchor = switch anchor {
-    | None => <span className="element-block-anchor-range" onClick={_ => onInsertAnchor(hash)}> {string(croppedHash)} </span>
+    // insert anchor when the range is not available
+    | None =>
+      <span className="element-block-anchor-range" onClick={_ => onInsertAnchor(hash)}>
+        {string(croppedHash)}
+      </span>
     | Some(range) =>
       <Link range>
         <span className="element-block-anchor-range linked"> {string(croppedHash)} </span>
