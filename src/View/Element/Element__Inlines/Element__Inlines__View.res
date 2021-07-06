@@ -128,6 +128,69 @@ module Sbst = {
   }
 }
 
+module Expn = {
+  @react.component
+  let make = (~makeInline,  ~reason, ~before, ~after, ~onSubst: option<Trace.t => unit>) => {
+    let (substituted, setSubstitute) = React.useState(_ => false)
+    let (_hoverSubstitutee, setHoverSubstitutee) = React.useState(_ => false)
+    let undo = () => setSubstitute(_ => false)
+
+    let onClick = _ => {
+      setHoverSubstitutee(_ => false)
+      onSubst->Option.forEach(onSubst =>
+        onSubst({
+          undo: undo,
+          before: before,
+          mapping: reason,
+          after: after,
+        })
+      )
+      setSubstitute(_ => true)
+    }
+
+    // let onMouseOver = _ => {
+    //   setHoverSubstitutee(_ => true)
+    // }
+    // let onMouseOut = _ => {
+    //   setHoverSubstitutee(_ => false)
+    // }
+
+    if substituted {
+      let after = makeInline(~value=Element(after), ~onSubst)
+      <span className="element-sbst"> after </span>
+    } else {
+      let before = makeInline(~value=Element(before), ~onSubst)
+        <span className="element-sbst-button" onClick>
+          before
+        </span>
+
+      // if Js.Array.length(reason) > 0 {
+      //   // "mapping" is not empty
+      //   <span className="element-sbst-button">
+      //     before
+      //   </span>
+      // } else {
+      //   if hoverSubstitutee {
+      //     <span className="element-sbst">
+      //       <span className="element-sbst-hovered"> before </span>
+      //       <span className="element-sbst-button" onMouseOver onMouseOut onClick>
+      //         {React.string(" ")}
+      //         // {React.string(j`⇊`)}
+      //       </span>
+      //     </span>
+      //   } else {
+      //     <span className="element-sbst">
+      //       <span> before </span>
+      //       <span className="element-sbst-button" onMouseOver onMouseOut onClick>
+      //         {React.string(" ")}
+      //       </span>
+      //     </span>
+      //   }
+      // }
+    }
+  }
+}
+
 let rec make = (~value: t, ~onSubst: option<Trace.t => unit>) => {
   let Element(elements) = value
   <span>
@@ -146,6 +209,8 @@ let rec make = (~value: t, ~onSubst: option<Trace.t => unit>) => {
         <Link range key={string_of_int(i)}> {child} </Link>
       | Sbst(before, mapping, after, _className) =>
         <Sbst makeInline=make key={string_of_int(i)} before mapping after onSubst />
+      | Expn(reason, before, after) =>
+        <Expn makeInline=make key={string_of_int(i)} before reason after onSubst />
       | Sbst2(_reason, before, mapping, after, _className) =>
         <Sbst makeInline=make key={string_of_int(i)} before mapping after onSubst />
       | Horz(elements) =>

@@ -32,6 +32,7 @@ module Inline = {
     | Text(string, ClassNames.t)
     | Link(SrcLoc.Range.t, array<t>, ClassNames.t)
     | Sbst(array<t>, array<t>, array<t>, ClassNames.t)
+    | Expn(array<t>, array<t>, array<t>)
     | Sbst2(RewriteReason.t, array<t>, array<t>, array<t>, ClassNames.t)
     | Horz(array<array<t>>)
     | Vert(array<array<t>>)
@@ -62,6 +63,14 @@ module Inline = {
             c,
             d,
           )) => Sbst(a, b, c, d)),
+        )
+      | "Expn" =>
+        Contents(
+          tuple3(array(decode()), array(decode()), array(decode())) |> map(((
+            a,
+            b,
+            c,
+          )) => Expn(a, b, c))
         )
       | "Sbst2" =>
         Contents(
@@ -108,6 +117,14 @@ module Inline = {
         (
           "contents",
           (a, b, c, d) |> tuple4(array(encode), array(encode), array(encode), ClassNames.encode),
+        ),
+      })
+    | Expn(a, b, c) =>
+      object_(list{
+        ("tag", string("Expn")),
+        (
+          "contents",
+          (a, b, c) |> tuple3(array(encode), array(encode), array(encode)),
         ),
       })
     | Sbst2(a, b, c, d, e) =>
