@@ -69,7 +69,7 @@
             font-weight : bolder;
 
             .element-block-header-range {
-                margin-left: 1ch;
+                margin-left : 1ch;
                 font-variant: normal;
                 font-weight : normal;
 
@@ -85,7 +85,7 @@
 
                 &:hover {
                     cursor: pointer;
-                    color: @blue;
+                    color : @blue;
                 }
 
                 &.linked {
@@ -241,21 +241,11 @@
     }
 
     // highlight the background of env in <Sbst> on hover
-    .element-sbst-button {
-        &:hover {
-            cursor    : pointer;
-            color     : @warning;
-            background: @body-background;
-
-            .element-horz {
-                background: @body-background
-            }
+    .element-sbst {
+        cursor: pointer;
+        &.element-sbst-hovered {
+            color: @warning;
         }
-    }
-
-    // highlight the background of env in <Sbst> on hover
-    .element-sbst-hovered {
-        color     : @warning;
     }
 
     // for styling parentheses

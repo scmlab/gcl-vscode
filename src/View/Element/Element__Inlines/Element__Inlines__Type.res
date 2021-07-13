@@ -12,20 +12,6 @@ module ClassNames = {
   }
 }
 
-module RewriteReason = {
-  type t = Assigment
-
-  let decode: Json.Decode.decoder<t> = {
-    // open Json.Decode
-    _ => Assigment
-  }
-
-  let encode: Json.Encode.encoder<t> = {
-    open Json.Encode
-    _ => string("RRAssigment")
-  }
-}
-
 module Inline = {
   type rec t =
     | Icon(string, ClassNames.t)
@@ -33,7 +19,6 @@ module Inline = {
     | Link(SrcLoc.Range.t, array<t>, ClassNames.t)
     | Sbst(array<t>, array<t>, array<t>, ClassNames.t)
     | Expn(array<t>, array<t>, array<t>)
-    | Sbst2(RewriteReason.t, array<t>, array<t>, array<t>, ClassNames.t)
     | Horz(array<array<t>>)
     | Vert(array<array<t>>)
     | Parn(array<t>)
@@ -71,16 +56,6 @@ module Inline = {
             b,
             c,
           )) => Expn(a, b, c))
-        )
-      | "Sbst2" =>
-        Contents(
-          tuple5(
-            RewriteReason.decode,
-            array(decode()),
-            array(decode()),
-            array(decode()),
-            ClassNames.decode,
-          ) |> map(((a, b, c, d, e)) => Sbst2(a, b, c, d, e)),
         )
       | "Horz" => Contents(array(array(decode())) |> map(xs => Horz(xs)))
       | "Vert" => Contents(array(array(decode())) |> map(xs => Vert(xs)))
@@ -125,20 +100,6 @@ module Inline = {
         (
           "contents",
           (a, b, c) |> tuple3(array(encode), array(encode), array(encode)),
-        ),
-      })
-    | Sbst2(a, b, c, d, e) =>
-      object_(list{
-        ("tag", string("Sbst2")),
-        (
-          "contents",
-          (a, b, c, d, e) |> Util.Encode.tuple5(
-            RewriteReason.encode,
-            array(encode),
-            array(encode),
-            array(encode),
-            ClassNames.encode,
-          ),
         ),
       })
     | Horz(xs) => object_(list{("tag", string("Horz")), ("contents", xs |> array(array(encode)))})
