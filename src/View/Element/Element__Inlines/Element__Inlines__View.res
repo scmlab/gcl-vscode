@@ -216,6 +216,10 @@ let rec make = (~value: t, ~onSubst: option<Trace.t => unit>) => {
         let className = Array.concat(["codicon", "codicon-" ++ kind], className)
         let className = {String.concat(" ", List.fromArray(className))}
         <div className key={string_of_int(i)} />
+      | Code(code) =>
+        let className = "element-inline-code"
+        let code = make(~value=Element(code), ~onSubst)
+        <span className key={string_of_int(i)}> {code} </span>
       | Link(range, children, _className) =>
         let child = make(~value=Element(children), ~onSubst)
         <Link range key={string_of_int(i)}> {child} </Link>

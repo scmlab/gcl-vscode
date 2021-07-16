@@ -16,13 +16,14 @@ module Inline = {
   type rec t =
     | Icon(string, ClassNames.t)
     | Text(string, ClassNames.t)
+    | Code(array<t>)
     | Link(SrcLoc.Range.t, array<t>, ClassNames.t)
     | Sbst(array<t>, array<t>, array<t>, ClassNames.t)
     | Expn(array<t>, array<t>, array<t>)
     | Horz(array<array<t>>)
     | Vert(array<array<t>>)
     | Parn(array<t>)
-    // refactor PrHz
+    // TODO: refactor PrHz
     | PrHz(array<array<t>>)
 
   let rec decode: unit => Json.Decode.decoder<t> = () => {
@@ -32,6 +33,7 @@ module Inline = {
       switch x {
       | "Icon" => Contents(pair(string, ClassNames.decode) |> map(((s, cs)) => Icon(s, cs)))
       | "Text" => Contents(pair(string, ClassNames.decode) |> map(((s, cs)) => Text(s, cs)))
+      | "Snpt" => Contents(array(decode()) |> map(((xs)) => Code(xs)))
       | "Link" =>
         Contents(
           tuple3(SrcLoc.Range.decode, array(decode()), ClassNames.decode) |> map(((
@@ -80,6 +82,11 @@ module Inline = {
       object_(list{
         ("tag", string("Text")),
         ("contents", (s, cs) |> pair(string, ClassNames.encode)),
+      })
+    | Code(xs) =>
+      object_(list{
+        ("tag", string("Snpt")),
+        ("contents", xs |> array(encode)),
       })
     | Link(r, s, cs) =>
       object_(list{
