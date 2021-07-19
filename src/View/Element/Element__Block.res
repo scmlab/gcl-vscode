@@ -97,7 +97,10 @@ let encode: Json.Encode.encoder<t> = x => {
 
 open React
 @react.component
-let make = (~value: t, ~onInsertAnchor: string => unit) => {
+let make = (~value: t, ~onInsertAnchor: string => unit, ~onDisplayExplanation: bool => unit) => {
+  // for `HeaderWithButtons`
+  let (headerClicked, setHeaderClicked) = useState(_ => false)
+
   switch value {
   | Header(header, range) =>
     switch range {
@@ -113,32 +116,48 @@ let make = (~value: t, ~onInsertAnchor: string => unit) => {
       </Link>
     }
   | HeaderWithButtons(header, range, hash, anchor) =>
-    let range = switch range {
-    | None => <> </>
-    | Some(range) =>
-      <Link range title="location of proof obligation">
-        <span className="element-block-header-range">
-          {string("at " ++ SrcLoc.Range.toString(range))}
+    let header = {
+      let range = switch range {
+      | None => <> </>
+      | Some(range) =>
+        <Link range title="location of proof obligation">
+          <span className="element-block-header-range">
+            {string("at " ++ SrcLoc.Range.toString(range))}
+          </span>
+        </Link>
+      }
+      // toggle on clicked
+      let onClick = _ => {
+        onDisplayExplanation(!headerClicked)
+        setHeaderClicked(x => !x)
+      }
+      let className = headerClicked
+        ? "element-block-header-text toggled"
+        : "element-block-header-text"
+
+      <> <span className onClick> {string(header)} </span> {range} </>
+    }
+    let anchor = {
+      // crop the hash value and display only the first 7 characters
+      let croppedHash = "#" ++ Js.String2.slice(hash, ~from=0, ~to_=7)
+      // see if the anchor range is available
+      switch anchor {
+      // insert anchor when the range is not available
+      | None =>
+        <span
+          className="element-block-anchor-range"
+          title="click to create a corresponding proof"
+          onClick={_ => onInsertAnchor(hash)}>
+          {string(croppedHash)}
         </span>
-      </Link>
+      | Some(range) =>
+        <Link range title="location of the corresponding proof">
+          <span className="element-block-anchor-range linked"> {string(croppedHash)} </span>
+        </Link>
+      }
     }
 
-    // crop the hash value and display only the first 7 characters
-    let croppedHash = "#" ++ Js.String2.slice(hash, ~from=0, ~to_=7)
-
-    // see if the anchor range is available
-    let anchor = switch anchor {
-    // insert anchor when the range is not available
-    | None =>
-      <span className="element-block-anchor-range" title="click to create a corresponding proof" onClick={_ => onInsertAnchor(hash)}>
-        {string(croppedHash)}
-      </span>
-    | Some(range) =>
-      <Link range title="location of the corresponding proof">
-        <span className="element-block-anchor-range linked"> {string(croppedHash)} </span>
-      </Link>
-    }
-    <header> {string(header)} {anchor} {range} </header>
+    <header> {header} {anchor} </header>
   | Paragraph(value) => <p> <Inlines value /> </p>
   | Code(value) => <Code value />
   }

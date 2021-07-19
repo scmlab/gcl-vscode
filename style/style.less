@@ -68,6 +68,25 @@
             font-variant: small-caps;
             font-weight : bolder;
 
+            .element-block-header-text {
+
+                // make the text un selectable
+                user-select: none;
+
+                &:hover {
+                    cursor: help;
+                    color : @foreground
+                }
+            }
+
+            .element-block-header-text.toggled {
+                color: @foreground;
+
+                &:hover {
+                    color: @foreground-highlight
+                }
+            }
+
             .element-block-header-range {
                 margin-left : 1ch;
                 font-variant: normal;
@@ -75,6 +94,7 @@
 
                 &:hover {
                     cursor: pointer;
+                    color : @foreground
                 }
             }
 
@@ -212,14 +232,14 @@
 
     .element-inline-code {
         // dimensions
-        padding            : 0 0.5ch;
-        margin             : 0 0.5ch;
+        padding         : 0 0.5ch;
+        margin          : 0 0.5ch;
         // colors 
         background-color: @header-background;
-        color              : @foreground-highlight;
+        color           : @foreground-highlight;
         // text 
-        font-family        : Menlo, Monaco, 'Courier New', monospace;
-        white-space        : pre-wrap;
+        font-family     : Menlo, Monaco, 'Courier New', monospace;
+        white-space     : pre-wrap;
 
         &:hover {
             color: @info;

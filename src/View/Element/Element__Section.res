@@ -42,24 +42,38 @@ type t = {
 }
 
 let decode: Json.Decode.decoder<t> = {
-  open Json.Decode 
-  tuple2(Deco.decode, array(Block.decode)) |> map(((deco, blocks)) => { deco, blocks })
+  open Json.Decode
+  tuple2(Deco.decode, array(Block.decode)) |> map(((deco, blocks)) => {deco: deco, blocks: blocks})
 }
 
-let encode: Json.Encode.encoder<t> = ({ deco, blocks }) => {
-  open Json.Encode 
+let encode: Json.Encode.encoder<t> = ({deco, blocks}) => {
+  open Json.Encode
   (deco, blocks) |> tuple2(Deco.encode, array(Block.encode))
 }
 
 open React
 @react.component
 let make = (~value: t, ~onInsertAnchor: string => unit) => {
+  // displaying explanations for POs when `displayExplanation` is true
+  // we expect the last block to be the explanation
+  let (displayExplanation, setDisplayExplanation) = useState(_ => false)
+  let onDisplayExplanation = x => setDisplayExplanation(_ => x)
+
   let className = "element-section " ++ Deco.toClassName(value.deco)
+
   let blocks =
     value.blocks
-    ->Array.mapWithIndex((i, value) => {
-      <Block value key={string_of_int(i)} onInsertAnchor />
+    ->Array.mapWithIndex((index, block) => {
+      // see if this is the last block, which might be the block for displaying explanations
+      let isForExplanation = index == Array.length(value.blocks) - 1
+
+      if !isForExplanation || (isForExplanation && displayExplanation) {
+        <Block value=block key={string_of_int(index)} onInsertAnchor onDisplayExplanation />
+      } else {
+        <> </>
+      }
     })
     ->array
+
   <li className> {blocks} </li>
 }
