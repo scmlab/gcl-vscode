@@ -42,7 +42,7 @@ module Code = {
 
 type t =
   | Header(string, option<SrcLoc.Range.t>)
-  | HeaderWithAnchor(string, string, option<SrcLoc.Range.t>, option<SrcLoc.Range.t>)
+  | HeaderWithButtons(string, option<SrcLoc.Range.t>, string, option<SrcLoc.Range.t>)
   | Paragraph(Inlines.t)
   | Code(Inlines.t)
 
@@ -53,14 +53,14 @@ let decode: Json.Decode.decoder<t> = json => {
     switch x {
     | "Header" =>
       Contents(tuple2(string, optional(SrcLoc.Range.decode)) |> map(((a, b)) => Header(a, b)))
-    | "HeaderWithAnchor" =>
+    | "HeaderWithButtons" =>
       Contents(
         tuple4(
           string,
+          optional(SrcLoc.Range.decode),
           string,
           optional(SrcLoc.Range.decode),
-          optional(SrcLoc.Range.decode),
-        ) |> map(((a, b, c, d)) => HeaderWithAnchor(a, b, c, d)),
+        ) |> map(((a, b, c, d)) => HeaderWithButtons(a, b, c, d)),
       )
     | "Paragraph" => Contents(Inlines.decode |> map(a => Paragraph(a)))
     | "Code" => Contents(Inlines.decode |> map(a => Code(a)))
@@ -77,15 +77,15 @@ let encode: Json.Encode.encoder<t> = x => {
       ("tag", string("Header")),
       ("contents", (a, b) |> tuple2(string, nullable(SrcLoc.Range.encode))),
     })
-  | HeaderWithAnchor(a, b, c, d) =>
+  | HeaderWithButtons(a, b, c, d) =>
     object_(list{
-      ("tag", string("HeaderWithAnchor")),
+      ("tag", string("HeaderWithButtons")),
       (
         "contents",
         (a, b, c, d) |> tuple4(
           string,
-          string,
           nullable(SrcLoc.Range.encode),
+          string,
           nullable(SrcLoc.Range.encode),
         ),
       ),
@@ -112,7 +112,7 @@ let make = (~value: t, ~onInsertAnchor: string => unit) => {
         </header>
       </Link>
     }
-  | HeaderWithAnchor(header, hash, anchor, range) =>
+  | HeaderWithButtons(header, range, hash, anchor) =>
     let range = switch range {
     | None => <> </>
     | Some(range) =>

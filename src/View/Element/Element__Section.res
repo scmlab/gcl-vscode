@@ -41,20 +41,14 @@ type t = {
   blocks: array<Block.t>,
 }
 
-let decode: Json.Decode.decoder<t> = json => {
-  open Json.Decode
-  {
-    deco: json |> field("sectionDeco", Deco.decode),
-    blocks: json |> field("sectionBlocks", array(Block.decode)),
-  }
+let decode: Json.Decode.decoder<t> = {
+  open Json.Decode 
+  tuple2(Deco.decode, array(Block.decode)) |> map(((deco, blocks)) => { deco, blocks })
 }
 
-let encode: Json.Encode.encoder<t> = x => {
-  open Json.Encode
-  object_(list{
-    ("sectionDeco", x.deco |> Deco.encode),
-    ("sectionBlocks", x.blocks |> array(Block.encode)),
-  })
+let encode: Json.Encode.encoder<t> = ({ deco, blocks }) => {
+  open Json.Encode 
+  (deco, blocks) |> tuple2(Deco.encode, array(Block.encode))
 }
 
 open React
