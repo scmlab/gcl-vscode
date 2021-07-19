@@ -69,18 +69,18 @@
             font-weight : bolder;
 
             .element-block-header-text {
-
+                color : @foreground;
                 // make the text un selectable
                 user-select: none;
 
                 &:hover {
                     cursor: help;
-                    color : @foreground
+                    color : @foreground-highlight
                 }
             }
 
             .element-block-header-text.toggled {
-                color: @foreground;
+                color : @foreground;
 
                 &:hover {
                     color: @foreground-highlight
