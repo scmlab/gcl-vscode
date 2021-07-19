@@ -43,10 +43,12 @@ module Provider = {
 }
 
 @react.component
-let make = (~range, ~children) => {
+let make = (~range, ~children, ~title=?) => {
   let link = React.useContext(eventContext)
   let onMouseOver = _ => link->Chan.emit(MouseOver(range))
   let onMouseOut = _ => link->Chan.emit(MouseOut(range))
   let onClick = _ => link->Chan.emit(MouseClick(range))
-  <span className="element-link" onMouseOver onMouseOut onClick> children </span>
+
+  let title = title->Belt.Option.getWithDefault("")
+  <span className="element-link" onMouseOver onMouseOut onClick title > children </span>
 }

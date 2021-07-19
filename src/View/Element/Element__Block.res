@@ -116,7 +116,7 @@ let make = (~value: t, ~onInsertAnchor: string => unit) => {
     let range = switch range {
     | None => <> </>
     | Some(range) =>
-      <Link range>
+      <Link range title="location of proof obligation">
         <span className="element-block-header-range">
           {string("at " ++ SrcLoc.Range.toString(range))}
         </span>
@@ -130,15 +130,14 @@ let make = (~value: t, ~onInsertAnchor: string => unit) => {
     let anchor = switch anchor {
     // insert anchor when the range is not available
     | None =>
-      <span className="element-block-anchor-range" onClick={_ => onInsertAnchor(hash)}>
+      <span className="element-block-anchor-range" title="click to create a corresponding proof" onClick={_ => onInsertAnchor(hash)}>
         {string(croppedHash)}
       </span>
     | Some(range) =>
-      <Link range>
+      <Link range title="location of the corresponding proof">
         <span className="element-block-anchor-range linked"> {string(croppedHash)} </span>
       </Link>
     }
-
     <header> {string(header)} {anchor} {range} </header>
   | Paragraph(value) => <p> <Inlines value /> </p>
   | Code(value) => <Code value />
