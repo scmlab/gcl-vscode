@@ -3,9 +3,9 @@ open Belt
 
 type t =
   // probe
-  | CannotConnectViaStdIO(LanguageServerMule.Search.Path.Error.t)
+  | CannotConnectViaStdIO(LanguageServerMule.Source.Path.Error.t)
   | CannotConnectViaTCP(Js.Exn.t)
-  | CannotConnectViaPrebuilt(Connection__Prebuilt.Error.t)
+  | CannotConnectViaPrebuilt(LanguageServerMule.Source.Prebuilt.Error.t)
   // connection
   | ConnectionError(Js.Exn.t)
   | CannotSendRequest(Js.Exn.t)
@@ -15,7 +15,7 @@ type t =
 let toString = error =>
   switch error {
   | CannotConnectViaStdIO(e) =>
-    let body = LanguageServerMule.Search.Path.Error.toString(e)
+    let body = LanguageServerMule.Source.Path.Error.toString(e)
     ("Cannot locate \"gcl\"", body ++ "\nPlease make sure that the executable is in the path")
   | CannotConnectViaTCP(_) => (
       "Cannot connect with the server via TCP",
@@ -23,7 +23,7 @@ let toString = error =>
     )
   | CannotConnectViaPrebuilt(e) => (
       "Cannot download prebuilt language server",
-      Connection__Prebuilt.Error.toString(e),
+      LanguageServerMule.Source.Prebuilt.Error.toString(e),
     )
   | ConnectionError(exn) =>
     let isECONNREFUSED =

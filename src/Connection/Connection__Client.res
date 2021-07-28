@@ -1,7 +1,7 @@
 type method = ViaStdIO(string, string) | ViaTCP(int) | ViaPrebuilt(string, string)
 
 module Error = Connection__Error
-module LSP = LanguageServerMule.LSP
+module LSP = LanguageServerMule.Client__LSP__Binding
 
 module type Module = {
   type t

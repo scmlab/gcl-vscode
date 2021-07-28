@@ -21,7 +21,7 @@ module Module: Module = {
     module StdIO = {
       // see if "gcl" is available
       let probe = name => {
-        LanguageServerMule.Search.Path.search(name)
+        LanguageServerMule.Source.Path.search(name)
         ->Promise.mapOk(path => Client.ViaStdIO(name, Js.String.trim(path)))
         ->Promise.mapError(e => Error.CannotConnectViaStdIO(e))
       }
@@ -30,7 +30,7 @@ module Module: Module = {
     module Prebuilt = {
       // see if the prebuilt is available
       let probe = context => {
-        Connection__Prebuilt.get(context)
+        LanguageServerMule.Source.Prebuilt.get(context)
         ->Promise.mapOk(path => Client.ViaPrebuilt(Config.version, Js.String.trim(path)))
         ->Promise.mapError(e => Error.CannotConnectViaPrebuilt(e))
       }
@@ -39,9 +39,10 @@ module Module: Module = {
     // see if the server is available
     // priorities: TCP => Prebuilt => StdIO
     let probe = globalStoragePath => {
+      Js.log2("globalStoragePath", globalStoragePath)
       let port = 3000
       let name = "gcl"
-      LanguageServerMule.Search.Port.probe(port, "localhost")
+      LanguageServerMule.Source.Port.probe(port, "localhost")
       ->Promise.map(result =>
         switch result {
         | Ok() => Ok(Client.ViaTCP(port))
@@ -50,7 +51,13 @@ module Module: Module = {
       )
       ->Promise.flatMapError(error => {
         Js.log(Error.toString(error))
-        Prebuilt.probe(globalStoragePath)
+        Prebuilt.probe({
+          username: "scmlab",
+          repository: "gcl",
+          userAgent: "gcl-vscode",
+          globalStoragePath: globalStoragePath,
+          expectedVersion: Config.version,
+        })
       })
       ->Promise.flatMapError(error => {
         Js.log(Error.toString(error))
