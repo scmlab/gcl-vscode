@@ -39,7 +39,6 @@ module Module: Module = {
     // see if the server is available
     // priorities: TCP => Prebuilt => StdIO
     let probe = globalStoragePath => {
-      Js.log2("globalStoragePath", globalStoragePath)
       let port = 3000
       let name = "gcl"
       LanguageServerMule.Source.Port.probe(port, "localhost")
@@ -51,12 +50,54 @@ module Module: Module = {
       )
       ->Promise.flatMapError(error => {
         Js.log(Error.toString(error))
+        let chooseFromReleases = (
+          releases: array<LanguageServerMule.Source.Prebuilt.Release.t>,
+        ): option<LanguageServerMule.Source.Prebuilt.Target.t> => {
+          open LanguageServerMule.Source.Prebuilt
+          let getRelease = (releases: array<Release.t>) => {
+            let matched = releases->Array.keep(release => release.tagName == Config.version)
+            matched[0]
+          }
+
+          let toFileName = (release: Release.t, asset: Asset.t) => {
+            // take the "macos" part from names like "gcl-macos.zip"
+            let osName = Js.String2.slice(asset.name, ~from=4, ~to_=-4)
+            // the file name of the language server
+            release.tagName ++ "-" ++ osName
+          }
+
+          let getAsset = (release: Release.t) => {
+            // expected asset name
+            let os = Node_process.process["platform"]
+            let expectedName = switch os {
+            | "darwin" => Some("gcl-macos.zip")
+            | "linux" => Some("gcl-ubuntu.zip")
+            | "win32" => Some("gcl-windows.zip")
+            | _others => None
+            }
+
+            // find the corresponding asset
+            expectedName
+            ->Option.flatMap(name => {
+              let matched = release.assets->Array.keep(asset => asset.name == name)
+              matched[0]
+            })
+            ->Option.map(asset => {
+              Target.srcUrl: asset.url,
+              fileName: toFileName(release, asset),
+            })
+          }
+
+          let result = getRelease(releases)->Option.flatMap(getAsset)
+          result 
+        }
+
         Prebuilt.probe({
           username: "scmlab",
           repository: "gcl",
           userAgent: "gcl-vscode",
           globalStoragePath: globalStoragePath,
-          expectedVersion: Config.version,
+          chooseFromReleases: chooseFromReleases,
         })
       })
       ->Promise.flatMapError(error => {
