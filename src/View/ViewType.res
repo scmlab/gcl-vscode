@@ -1,43 +1,43 @@
-module ConnectionMethod = {
-  let decode: Json.Decode.decoder<Connection.method> = {
-    open Json.Decode
-    open Util.Decode
-    sum(x =>
-      switch x {
-      | "ViaTCP" => Contents(int |> map(port => Connection.Client.ViaTCP(port)))
-      | "ViaStdIO" =>
-        Contents(
-          pair(string, string) |> map(((name, path)) => Connection.Client.ViaStdIO(name, path)),
-        )
-      | "ViaPrebuilt" =>
-        Contents(
-          pair(string, string) |> map(((version, path)) => Connection.Client.ViaPrebuilt(
-            version,
-            path,
-          )),
-        )
-      | tag => raise(DecodeError("[ConnectionMethod] Unknown constructor: " ++ tag))
-      }
-    )
-  }
+// module ConnectionMethod = {
+//   let decode: Json.Decode.decoder<Connection.method> = {
+//     open Json.Decode
+//     open Util.Decode
+//     sum(x =>
+//       switch x {
+//       | "ViaTCP" => Contents(int |> map(port => Connection.Client.ViaTCP(port)))
+//       | "ViaStdIO" =>
+//         Contents(
+//           pair(string, string) |> map(((name, path)) => Connection.Client.ViaStdIO(name, path)),
+//         )
+//       | "ViaPrebuilt" =>
+//         Contents(
+//           pair(string, string) |> map(((version, path)) => Connection.Client.ViaPrebuilt(
+//             version,
+//             path,
+//           )),
+//         )
+//       | tag => raise(DecodeError("[ConnectionMethod] Unknown constructor: " ++ tag))
+//       }
+//     )
+//   }
 
-  let encode: Json.Encode.encoder<Connection.method> = x => {
-    open Json.Encode
-    switch x {
-    | ViaStdIO(name, path) =>
-      object_(list{("tag", string("ViaStdIO")), ("contents", (name, path) |> pair(string, string))})
-    | ViaTCP(port) => object_(list{("tag", string("ViaTCP")), ("contents", port |> int)})
-    | ViaPrebuilt(version, path) =>
-      object_(list{
-        ("tag", string("ViaPrebuilt")),
-        ("contents", (version, path) |> pair(string, string)),
-      })
-    }
-  }
-}
+//   let encode: Json.Encode.encoder<Connection.method> = x => {
+//     open Json.Encode
+//     switch x {
+//     | ViaStdIO(name, path) =>
+//       object_(list{("tag", string("ViaStdIO")), ("contents", (name, path) |> pair(string, string))})
+//     | ViaTCP(port) => object_(list{("tag", string("ViaTCP")), ("contents", port |> int)})
+//     | ViaPrebuilt(version, path) =>
+//       object_(list{
+//         ("tag", string("ViaPrebuilt")),
+//         ("contents", (version, path) |> pair(string, string)),
+//       })
+//     }
+//   }
+// }
 module Request = {
   type t =
-    | UpdateConnection(option<Connection.method>)
+    | UpdateConnection(option<string>)
     | Display(int, array<Element.Section.t>)
 
   let decode: Json.Decode.decoder<t> = {
@@ -46,7 +46,7 @@ module Request = {
     sum(x =>
       switch x {
       | "UpdateConnection" =>
-        Contents(optional(ConnectionMethod.decode) |> map(method => UpdateConnection(method)))
+        Contents(optional(string) |> map(method => UpdateConnection(method)))
       | "Display" =>
         Contents(
           tuple2(int, array(Element.Section.decode)) |> map(((id, sections)) => Display(
@@ -65,7 +65,7 @@ module Request = {
     | UpdateConnection(method) =>
       object_(list{
         ("tag", string("UpdateConnection")),
-        ("contents", method |> nullable(ConnectionMethod.encode)),
+        ("contents", method |> nullable(string)),
       })
     | Display(id, ws) =>
       object_(list{

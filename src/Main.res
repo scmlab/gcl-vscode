@@ -179,8 +179,8 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     ->Promise.flatMap(() => Connection.start(globalStoragePath))
     ->Promise.get(result =>
       switch result {
-      | Ok(method) => State.updateConnection(Some(method))->ignore
-      | Error(error) => Js.log(error)
+      | Ok(method) => State.updateConnection(Some(Connection.methodToString(method)))->ignore
+      | Error(error) => Js.log(Connection.Error.toString(error))
       }
     )
   })->subscribe
@@ -250,8 +250,8 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       ->Promise.flatMap(() => Connection.start(globalStoragePath))
       ->Promise.get(result =>
         switch result {
-        | Ok(method) => State.updateConnection(Some(method))->ignore
-        | Error(error) => Js.log(error)
+        | Ok(method) => State.updateConnection(Some(Connection.methodToString(method)))->ignore
+        | Error(error) => Js.log(Connection.Error.toString(error))
         }
       )
 

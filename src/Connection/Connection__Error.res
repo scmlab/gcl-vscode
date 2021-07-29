@@ -3,9 +3,11 @@ open Belt
 
 type t =
   // probe
-  | CannotConnectViaStdIO(LanguageServerMule.Source.Path.Error.t)
-  | CannotConnectViaTCP(Js.Exn.t)
-  | CannotConnectViaPrebuilt(LanguageServerMule.Source.Prebuilt.Error.t)
+  | CannotAcquireHandle(LanguageServerMule.Source.Error.t)
+  | LSPClientError(LanguageServerMule.Client.LSP.Error.t)
+  // | CannotConnectViaStdIO(LanguageServerMule.Source.Path.Error.t)
+  // | CannotConnectViaTCP(Js.Exn.t)
+  // | CannotConnectViaPrebuilt(LanguageServerMule.Source.Prebuilt.Error.t)
   // connection
   | ConnectionError(Js.Exn.t)
   | CannotSendRequest(Js.Exn.t)
@@ -14,17 +16,21 @@ type t =
 
 let toString = error =>
   switch error {
-  | CannotConnectViaStdIO(e) =>
-    let body = LanguageServerMule.Source.Path.Error.toString(e)
-    ("Cannot locate \"gcl\"", body ++ "\nPlease make sure that the executable is in the path")
-  | CannotConnectViaTCP(_) => (
-      "Cannot connect with the server via TCP",
-      "Please enter \":main -d\" in ghci",
-    )
-  | CannotConnectViaPrebuilt(e) => (
-      "Cannot download prebuilt language server",
-      LanguageServerMule.Source.Prebuilt.Error.toString(e),
-    )
+  | CannotAcquireHandle(e) =>
+    ("Cannot acquire \"gcl\"", LanguageServerMule.Source.Error.toString(e))
+  | LSPClientError(e) =>
+    ("LSP client error", LanguageServerMule.Client.LSP.Error.toString(e))
+  // | CannotConnectViaStdIO(e) =>
+  //   let body = LanguageServerMule.Source.Path.Error.toString(e)
+  //   ("Cannot locate \"gcl\"", body ++ "\nPlease make sure that the executable is in the path")
+  // | CannotConnectViaTCP(_) => (
+  //     "Cannot connect with the server via TCP",
+  //     "Please enter \":main -d\" in ghci",
+  //   )
+  // | CannotConnectViaPrebuilt(e) => (
+  //     "Cannot download prebuilt language server",
+  //     LanguageServerMule.Source.Prebuilt.Error.toString(e),
+  //   )
   | ConnectionError(exn) =>
     let isECONNREFUSED =
       Js.Exn.message(exn)->Option.mapWithDefault(

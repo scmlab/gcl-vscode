@@ -4,36 +4,77 @@ module Error = Connection__Error
 open Belt
 
 module type Module = {
-  type method = Client.method
   // lifecycle
-  let start: string => Promise.t<result<Client.method, Error.t>>
+  let start: string => Promise.t<result<LanguageServerMule.Handle.t, Error.t>>
   let stop: unit => Promise.t<unit>
   // input / output / event
   let sendRequest: (string, Request.t) => Promise.t<result<Response.t, Error.t>>
   let onResponse: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
   let onError: (Error.t => unit) => VSCode.Disposable.t
+
+  let methodToString: LanguageServerMule.Handle.t => string
 }
 
 module Module: Module = {
-  type method = Client.method
-
   module Probe = {
-    module StdIO = {
-      // see if "gcl" is available
-      let probe = name => {
-        LanguageServerMule.Source.Path.search(name)
-        ->Promise.mapOk(path => Client.ViaStdIO(name, Js.String.trim(path)))
-        ->Promise.mapError(e => Error.CannotConnectViaStdIO(e))
-      }
-    }
+    // module StdIO = {
+    //   // see if "gcl" is available
+    //   let probe = name => {
+    //     LanguageServerMule.Source.Path.search(name)
+    //     ->Promise.mapOk(path => Client.ViaStdIO(name, Js.String.trim(path)))
+    //     ->Promise.mapError(e => Error.CannotConnectViaStdIO(e))
+    //   }
+    // }
 
-    module Prebuilt = {
-      // see if the prebuilt is available
-      let probe = context => {
-        LanguageServerMule.Source.Prebuilt.get(context)
-        ->Promise.mapOk(path => Client.ViaPrebuilt(Config.version, Js.String.trim(path)))
-        ->Promise.mapError(e => Error.CannotConnectViaPrebuilt(e))
+    // module Prebuilt = {
+    //   // see if the prebuilt is available
+    //   let probe = context => {
+    //     LanguageServerMule.Source.Prebuilt.get(context)
+    //     ->Promise.mapOk(path => Client.ViaPrebuilt(Config.version, Js.String.trim(path)))
+    //     ->Promise.mapError(e => Error.CannotConnectViaPrebuilt(e))
+    //   }
+    // }
+
+    let chooseFromReleases = (releases: array<LanguageServerMule.Source.GitHub.Release.t>): option<
+      LanguageServerMule.Source.GitHub.Target.t,
+    > => {
+      open LanguageServerMule.Source.GitHub
+      let getRelease = (releases: array<Release.t>) => {
+        let matched = releases->Array.keep(release => release.tagName == Config.version)
+        matched[0]
       }
+
+      let toFileName = (release: Release.t, asset: Asset.t) => {
+        // take the "macos" part from names like "gcl-macos.zip"
+        let osName = Js.String2.slice(asset.name, ~from=4, ~to_=-4)
+        // the file name of the language server
+        release.tagName ++ "-" ++ osName
+      }
+
+      let getAsset = (release: Release.t) => {
+        // expected asset name
+        let os = Node_process.process["platform"]
+        let expectedName = switch os {
+        | "darwin" => Some("gcl-macos.zip")
+        | "linux" => Some("gcl-ubuntu.zip")
+        | "win32" => Some("gcl-windows.zip")
+        | _others => None
+        }
+
+        // find the corresponding asset
+        expectedName
+        ->Option.flatMap(name => {
+          let matched = release.assets->Array.keep(asset => asset.name == name)
+          matched[0]
+        })
+        ->Option.map(asset => {
+          Target.srcUrl: asset.url,
+          fileName: toFileName(release, asset),
+        })
+      }
+
+      let result = getRelease(releases)->Option.flatMap(getAsset)
+      result
     }
 
     // see if the server is available
@@ -41,70 +82,78 @@ module Module: Module = {
     let probe = globalStoragePath => {
       let port = 3000
       let name = "gcl"
-      LanguageServerMule.Source.Port.probe(port, "localhost")
-      ->Promise.map(result =>
-        switch result {
-        | Ok() => Ok(Client.ViaTCP(port))
-        | Error(exn) => Error(Error.CannotConnectViaTCP(exn))
-        }
-      )
-      ->Promise.flatMapError(error => {
-        Js.log(Error.toString(error))
-        let chooseFromReleases = (
-          releases: array<LanguageServerMule.Source.Prebuilt.Release.t>,
-        ): option<LanguageServerMule.Source.Prebuilt.Target.t> => {
-          open LanguageServerMule.Source.Prebuilt
-          let getRelease = (releases: array<Release.t>) => {
-            let matched = releases->Array.keep(release => release.tagName == Config.version)
-            matched[0]
-          }
 
-          let toFileName = (release: Release.t, asset: Asset.t) => {
-            // take the "macos" part from names like "gcl-macos.zip"
-            let osName = Js.String2.slice(asset.name, ~from=4, ~to_=-4)
-            // the file name of the language server
-            release.tagName ++ "-" ++ osName
-          }
-
-          let getAsset = (release: Release.t) => {
-            // expected asset name
-            let os = Node_process.process["platform"]
-            let expectedName = switch os {
-            | "darwin" => Some("gcl-macos.zip")
-            | "linux" => Some("gcl-ubuntu.zip")
-            | "win32" => Some("gcl-windows.zip")
-            | _others => None
-            }
-
-            // find the corresponding asset
-            expectedName
-            ->Option.flatMap(name => {
-              let matched = release.assets->Array.keep(asset => asset.name == name)
-              matched[0]
-            })
-            ->Option.map(asset => {
-              Target.srcUrl: asset.url,
-              fileName: toFileName(release, asset),
-            })
-          }
-
-          let result = getRelease(releases)->Option.flatMap(getAsset)
-          result 
-        }
-
-        Prebuilt.probe({
+      LanguageServerMule.Source.searchUntilSuccess([
+        LanguageServerMule.Source.FromTCP(port, "localhost"),
+        LanguageServerMule.Source.FromPath(name),
+        LanguageServerMule.Source.FromGitHub({
           username: "scmlab",
           repository: "gcl",
           userAgent: "gcl-vscode",
           globalStoragePath: globalStoragePath,
           chooseFromReleases: chooseFromReleases,
-        })
+        }),
+      ])->Promise.mapError(e => {
+        Js.log(
+          "LanguageServerMule.Source.searchUntilSuccess " ++
+          LanguageServerMule.Source.Error.toString(e),
+        )
+        Error.CannotAcquireHandle(e)
       })
-      ->Promise.flatMapError(error => {
-        Js.log(Error.toString(error))
-        StdIO.probe(name)
-      })
+      // ->Promise.flatMapOk(handle => LanguageServerMule.Client.LSP.make("gcl", "Guabao Language Server", handle)->Promise.mapError(e => LanguageServerMule.Source.Error.))
+
+      // .probe(port, "localhost")
+      // ->Promise.map(result =>
+      //   switch result {
+      //   | Ok() => Ok(Client.ViaTCP(port))
+      //   | Error(exn) => Error(Error.CannotConnectViaTCP(exn))
+      //   }
+      // )
+      // ->Promise.flatMapError(error => {
+      //   Js.log(Error.toString(error))
+
+      //   Prebuilt.probe({
+      //     username: "scmlab",
+      //     repository: "gcl",
+      //     userAgent: "gcl-vscode",
+      //     globalStoragePath: globalStoragePath,
+      //     chooseFromReleases: chooseFromReleases,
+      //   })
+      // })
+      // ->Promise.flatMapError(error => {
+      //   Js.log(Error.toString(error))
+      //   StdIO.probe(name)
+      // })
     }
+
+    // see if the server is available
+    // priorities: TCP => Prebuilt => StdIO
+    // let probe = globalStoragePath => {
+    //   let port = 3000
+    //   let name = "gcl"
+    //   LanguageServerMule.Source.Port.probe(port, "localhost")
+    //   ->Promise.map(result =>
+    //     switch result {
+    //     | Ok() => Ok(Client.ViaTCP(port))
+    //     | Error(exn) => Error(Error.CannotConnectViaTCP(exn))
+    //     }
+    //   )
+    //   ->Promise.flatMapError(error => {
+    //     Js.log(Error.toString(error))
+
+    //     Prebuilt.probe({
+    //       username: "scmlab",
+    //       repository: "gcl",
+    //       userAgent: "gcl-vscode",
+    //       globalStoragePath: globalStoragePath,
+    //       chooseFromReleases: chooseFromReleases,
+    //     })
+    //   })
+    //   ->Promise.flatMapError(error => {
+    //     Js.log(Error.toString(error))
+    //     StdIO.probe(name)
+    //   })
+    // }
   }
 
   // internal singleton
@@ -113,9 +162,9 @@ module Module: Module = {
     | Connecting(
         // pending requests & callbacks
         array<(Request.t, result<Response.t, Error.t> => unit)>,
-        Promise.t<result<Client.method, Error.t>>,
+        Promise.t<result<LanguageServerMule.Handle.t, Error.t>>,
       )
-    | Connected(Client.t)
+    | Connected(LanguageServerMule.Client.LSP.t)
   let singleton: ref<state> = ref(Disconnected)
 
   let getPendingRequests = () =>
@@ -133,31 +182,45 @@ module Module: Module = {
 
   let start = globalStoragePath =>
     switch singleton.contents {
-    | Connected(client) => Promise.resolved(Ok(Client.getMethod(client)))
-    | Connecting(_, promise) => promise
+    | Connected(client) =>
+      Js.log2("[ connection ] already established", client)
+      Promise.resolved(Ok(LanguageServerMule.Client.LSP.getHandle(client)))
+    | Connecting(_, promise) =>
+      Js.log("[ connection ] still connecting ...")
+      promise
     | Disconnected =>
+      Js.log("[ connection ] not established")
       let (promise, resolve) = Promise.pending()
       singleton := Connecting([], promise)
       Probe.probe(globalStoragePath)
-      ->Promise.flatMapOk(Client.make)
+      ->Promise.flatMapOk(handle => {
+        Js.log2("[ connection ] got handle", handle)
+        LanguageServerMule.Client.LSP.make(
+          "guabao",
+          "Guabao Language Server",
+          handle,
+        )->Promise.tap(Js.log2("WTF"))->Promise.mapError(e => Error.LSPClientError(e))
+      })
       ->Promise.map(result =>
         switch result {
         | Error(error) =>
+          Js.log2("[ connection ] error when connecting", Error.toString(error))
           singleton := Disconnected
           getPendingRequests()->Array.forEach(((_req, callback)) => callback(Error(error)))
           resolve(Error(error))
           Error(error)
         | Ok(client) =>
+          Js.log("[ connection ] established")
           singleton := Connected(client)
           getPendingRequests()->Array.forEach(((request, callback)) => {
             client
-            ->Client.sendRequest(Request.encode(request))
+            ->LanguageServerMule.Client.LSP.sendRequest(Request.encode(request))
+            ->Promise.mapError(e => Error.LSPClientError(e))
             ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
             ->Promise.get(callback)
           })
-          resolve(Ok(Client.getMethod(client)))
-          Js.log("[ connection ] established")
-          Ok(Client.getMethod(client))
+          resolve(Ok(LanguageServerMule.Client.LSP.getHandle(client)))
+          Ok(LanguageServerMule.Client.LSP.getHandle(client))
         }
       )
     }
@@ -168,7 +231,7 @@ module Module: Module = {
       // update the status
       singleton := Disconnected
       Js.log("[ connection ] severed")
-      Client.destroy(client)
+      LanguageServerMule.Client.LSP.destroy(client)
     | Connecting(_, promise) => promise->Promise.flatMap(_ => stop())
     | Disconnected => Promise.resolved()
     }
@@ -183,13 +246,20 @@ module Module: Module = {
       promise
     | Connected(client) =>
       client
-      ->Client.sendRequest(Request.encode(request))
+      ->LanguageServerMule.Client.LSP.sendRequest(Request.encode(request))
+      ->Promise.mapError(e => Error.LSPClientError(e))
       ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
     }
 
   let onResponse = handler => Client.onResponse(json => handler(decodeResponse(json)))
 
   let onError = Client.onError
+
+  let methodToString = x =>
+    switch x {
+    | LanguageServerMule.Handle.ViaTCP(_, _) => "ViaTCP"
+    | ViaStdIO(_) => "ViaStdIO"
+    }
 }
 
 include Module
