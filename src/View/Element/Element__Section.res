@@ -54,8 +54,19 @@ let encode: Json.Encode.encoder<t> = ({deco, blocks}) => {
 open React
 @react.component
 let make = (~value: t, ~onInsertAnchor: string => unit) => {
-  // displaying explanations for POs when `displayExplanation` is true
-  // we expect the last block to be the explanation
+  // HACK:
+  //    if the first block is "HeaderWithButtons"
+  //    then we assume that this section is a PO
+  //    and the last block (the explanation for the PO) should be hidden
+
+  let isPO = value.blocks[0]->Option.flatMap(block =>
+    switch block {
+    | HeaderWithButtons(_) => Some()
+    | _ => None
+    }
+  )->Option.isSome
+
+  // effects for the button for toggle display th eexplanation
   let (displayExplanation, setDisplayExplanation) = useState(_ => false)
   let onDisplayExplanation = x => setDisplayExplanation(_ => x)
 
@@ -65,7 +76,7 @@ let make = (~value: t, ~onInsertAnchor: string => unit) => {
     value.blocks
     ->Array.keepWithIndex((_, index) => {
       // see if this is the last block, which might be the block for displaying explanations
-      let isForExplanation = index == Array.length(value.blocks) - 1
+      let isForExplanation = isPO && index == Array.length(value.blocks) - 1
       !isForExplanation || (isForExplanation && displayExplanation)
     })
     ->Array.mapWithIndex((index, block) => {
