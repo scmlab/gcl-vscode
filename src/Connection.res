@@ -182,8 +182,6 @@ module Module: Module = {
       ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
     }
 
-  // let onResponse = handler => Client.onResponse(json => handler(decodeResponse(json)))
-
   let onNotification = handler => notificationChan->Chan.on(handler)->VSCode.Disposable.make
   let onError = handler => errorChan->Chan.on(handler)->VSCode.Disposable.make
 
