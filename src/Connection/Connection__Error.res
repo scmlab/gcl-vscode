@@ -1,36 +1,19 @@
 open Belt
 
-
 type t =
-  // probe
+  // server probing
   | CannotAcquireHandle(LanguageServerMule.Source.Error.t)
-  | LSPClientError(Js.Exn.t)
-  // | CannotConnectViaStdIO(LanguageServerMule.Source.Path.Error.t)
-  // | CannotConnectViaTCP(Js.Exn.t)
-  // | CannotConnectViaPrebuilt(LanguageServerMule.Source.Prebuilt.Error.t)
   // connection
   | ConnectionError(Js.Exn.t)
-  | CannotSendRequest(Js.Exn.t)
   // decoding
   | CannotDecodeResponse(string, Js.Json.t)
 
 let toString = error =>
   switch error {
-  | CannotAcquireHandle(e) =>
-    ("Cannot acquire \"gcl\"", LanguageServerMule.Source.Error.toString(e))
-  | LSPClientError(e) =>
-    ("LSP connection error", Util.Exn.toString(e))
-  // | CannotConnectViaStdIO(e) =>
-  //   let body = LanguageServerMule.Source.Path.Error.toString(e)
-  //   ("Cannot locate \"gcl\"", body ++ "\nPlease make sure that the executable is in the path")
-  // | CannotConnectViaTCP(_) => (
-  //     "Cannot connect with the server via TCP",
-  //     "Please enter \":main -d\" in ghci",
-  //   )
-  // | CannotConnectViaPrebuilt(e) => (
-  //     "Cannot download prebuilt language server",
-  //     LanguageServerMule.Source.Prebuilt.Error.toString(e),
-  //   )
+  | CannotAcquireHandle(e) => (
+      "Cannot acquire \"gcl\"",
+      LanguageServerMule.Source.Error.toString(e),
+    )
   | ConnectionError(exn) =>
     let isECONNREFUSED =
       Js.Exn.message(exn)->Option.mapWithDefault(
@@ -41,10 +24,6 @@ let toString = error =>
     isECONNREFUSED
       ? ("LSP Connection Error", "Please enter \":main -d\" in ghci")
       : ("LSP Client Error", Js.Exn.message(exn)->Option.getWithDefault(""))
-  | CannotSendRequest(exn) => (
-      "PANIC: Cannot send request",
-      "Please file an issue\n" ++ Js.Exn.message(exn)->Option.getWithDefault(""),
-    )
   | CannotDecodeResponse(msg, json) => (
       "PANIC: Cannot decode response",
       "Please file an issue\n\n" ++ msg ++ "\n" ++ Json.stringify(json),
