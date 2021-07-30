@@ -4,7 +4,7 @@ open Belt
 type t =
   // probe
   | CannotAcquireHandle(LanguageServerMule.Source.Error.t)
-  | LSPClientError(LanguageServerMule.Client.LSP.Error.t)
+  | LSPClientError(Js.Exn.t)
   // | CannotConnectViaStdIO(LanguageServerMule.Source.Path.Error.t)
   // | CannotConnectViaTCP(Js.Exn.t)
   // | CannotConnectViaPrebuilt(LanguageServerMule.Source.Prebuilt.Error.t)
@@ -19,7 +19,7 @@ let toString = error =>
   | CannotAcquireHandle(e) =>
     ("Cannot acquire \"gcl\"", LanguageServerMule.Source.Error.toString(e))
   | LSPClientError(e) =>
-    ("LSP client error", LanguageServerMule.Client.LSP.Error.toString(e))
+    ("LSP connection error", Util.Exn.toString(e))
   // | CannotConnectViaStdIO(e) =>
   //   let body = LanguageServerMule.Source.Path.Error.toString(e)
   //   ("Cannot locate \"gcl\"", body ++ "\nPlease make sure that the executable is in the path")

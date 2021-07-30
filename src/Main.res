@@ -128,14 +128,14 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
   // on response/notification from the server
-  Connection.onNotification(result =>
-    switch result {
-    | Ok(response) => handleResponse(response)->ignore
-    | Error(error) =>
-      let (header, body) = Connection.Error.toString(error)
-      State.displayError(header, body)->ignore
-    }
-  )->subscribe
+  // Connection.onNotification(result =>
+  //   switch result {
+  //   | Ok(response) => handleResponse(response)->ignore
+  //   | Error(error) =>
+  //     let (header, body) = Connection.Error.toString(error)
+  //     State.displayError(header, body)->ignore
+  //   }
+  // )->subscribe
 
   // on LSP client-server error
   Connection.onError(error => {

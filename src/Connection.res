@@ -9,7 +9,7 @@ module type Module = {
   let stop: unit => Promise.t<unit>
   // input / output / event
   let sendRequest: (string, Request.t) => Promise.t<result<Response.t, Error.t>>
-  let onNotification: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
+  // let onNotification: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
   let onError: (Error.t => unit) => VSCode.Disposable.t
 
   let methodToString: LanguageServerMule.Handle.t => string
@@ -93,7 +93,7 @@ module Module: Module = {
         array<(Request.t, result<Response.t, Error.t> => unit)>,
         Promise.t<result<LanguageServerMule.Handle.t, Error.t>>,
       )
-    | Connected(LanguageServerMule.Client.LSP.t)
+    | Connected(LanguageServerMule.Client.LSP.t, array<VSCode.Disposable.t>)
   let singleton: ref<state> = ref(Disconnected)
   let errorChan: Chan.t<Error.t> = Chan.make()
   let notificationChan: Chan.t<result<Response.t, Error.t>> = Chan.make()
@@ -113,36 +113,28 @@ module Module: Module = {
 
   let start = globalStoragePath =>
     switch singleton.contents {
-    | Connected(client) =>
-      Js.log2("[ connection ] already established", client)
+    | Connected(client, _subsriptions) =>
       Promise.resolved(Ok(LanguageServerMule.Client.LSP.getHandle(client)))
     | Connecting(_, promise) =>
-      Js.log("[ connection ] still connecting ...")
       promise
     | Disconnected =>
-      Js.log("[ connection ] not established")
       let (promise, resolve) = Promise.pending()
       singleton := Connecting([], promise)
       Probe.probe(globalStoragePath)
       ->Promise.flatMapOk(handle => {
-        Js.log2("[ connection ] got handle", handle)
-        LanguageServerMule.Client.LSP.make(
-          "guabao",
-          "Guabao Language Server",
-          handle,
-        )->Promise.tap(Js.log2("WTF"))->Promise.mapError(e => Error.LSPClientError(e))
+        LanguageServerMule.Client.LSP.make("guabao", "Guabao Language Server", handle)
+        ->Promise.mapError(e => Error.LSPClientError(e))
       })
       ->Promise.map(result =>
         switch result {
         | Error(error) =>
-          Js.log2("[ connection ] error when connecting", Error.toString(error))
           singleton := Disconnected
           getPendingRequests()->Array.forEach(((_req, callback)) => callback(Error(error)))
           resolve(Error(error))
           Error(error)
         | Ok(client) =>
-          Js.log("[ connection ] established")
-          singleton := Connected(client)
+          let subsriptions = []
+          singleton := Connected(client, subsriptions)
           getPendingRequests()->Array.forEach(((request, callback)) => {
             client
             ->LanguageServerMule.Client.LSP.sendRequest(Request.encode(request))
@@ -151,6 +143,15 @@ module Module: Module = {
             ->Promise.get(callback)
           })
           resolve(Ok(LanguageServerMule.Client.LSP.getHandle(client)))
+          // pipe error and notifications
+          client
+          ->Client.onNotification(json => notificationChan->Chan.emit(decodeResponse(json)))
+          ->Js.Array.push(subsriptions)
+          ->ignore
+          client->Client.onError(error => errorChan->Chan.emit(Error.LSPClientError(error)))
+          ->Js.Array.push(subsriptions)
+          ->ignore
+
           Ok(LanguageServerMule.Client.LSP.getHandle(client))
         }
       )
@@ -158,10 +159,11 @@ module Module: Module = {
 
   let rec stop = () =>
     switch singleton.contents {
-    | Connected(client) =>
+    | Connected(client, subscriptions) =>
       // update the status
       singleton := Disconnected
       Js.log("[ connection ] severed")
+      subscriptions->Array.forEach(VSCode.Disposable.dispose)
       LanguageServerMule.Client.LSP.destroy(client)
     | Connecting(_, promise) => promise->Promise.flatMap(_ => stop())
     | Disconnected => Promise.resolved()
@@ -175,14 +177,14 @@ module Module: Module = {
       let (promise, resolve) = Promise.pending()
       Js.Array.push((request, resolve), queue)->ignore
       promise
-    | Connected(client) =>
+    | Connected(client, _) =>
       client
       ->LanguageServerMule.Client.LSP.sendRequest(Request.encode(request))
       ->Promise.mapError(e => Error.LSPClientError(e))
       ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
     }
 
-  let onNotification = handler => notificationChan->Chan.on(handler)->VSCode.Disposable.make
+  // let onNotification = handler => notificationChan->Chan.on(handler)->VSCode.Disposable.make
   let onError = handler => errorChan->Chan.on(handler)->VSCode.Disposable.make
 
   let methodToString = x =>

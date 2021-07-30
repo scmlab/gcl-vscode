@@ -198,6 +198,7 @@ module Module: {
   let emit: (t<'a>, 'a) => unit
   let on: (t<'a>, 'a => unit, unit) => unit
   let once: t<'a> => Promise.t<'a>
+  let pipe: (t<'a>, t<'a>, unit) => unit
   let destroy: t<'a> => unit
 } = {
   type t<'a> = EventEmitter3.t
@@ -211,6 +212,9 @@ module Module: {
     let (promise, resolve) = Promise.pending()
     self->EventEmitter3.once("data", resolve)->ignore
     promise
+  }
+  let pipe = (self, other) => {
+    self->on(val => other->emit(val))
   }
   let destroy = self => self->EventEmitter3.removeAllListeners->ignore
 }
