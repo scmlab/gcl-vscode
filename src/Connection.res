@@ -1,4 +1,4 @@
-module Client = Connection__Client
+module Client = LanguageServerMule.Client.LSP
 module Error = Connection__Error
 
 open Belt
@@ -9,7 +9,7 @@ module type Module = {
   let stop: unit => Promise.t<unit>
   // input / output / event
   let sendRequest: (string, Request.t) => Promise.t<result<Response.t, Error.t>>
-  let onResponse: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
+  let onNotification: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
   let onError: (Error.t => unit) => VSCode.Disposable.t
 
   let methodToString: LanguageServerMule.Handle.t => string
@@ -17,24 +17,6 @@ module type Module = {
 
 module Module: Module = {
   module Probe = {
-    // module StdIO = {
-    //   // see if "gcl" is available
-    //   let probe = name => {
-    //     LanguageServerMule.Source.Path.search(name)
-    //     ->Promise.mapOk(path => Client.ViaStdIO(name, Js.String.trim(path)))
-    //     ->Promise.mapError(e => Error.CannotConnectViaStdIO(e))
-    //   }
-    // }
-
-    // module Prebuilt = {
-    //   // see if the prebuilt is available
-    //   let probe = context => {
-    //     LanguageServerMule.Source.Prebuilt.get(context)
-    //     ->Promise.mapOk(path => Client.ViaPrebuilt(Config.version, Js.String.trim(path)))
-    //     ->Promise.mapError(e => Error.CannotConnectViaPrebuilt(e))
-    //   }
-    // }
-
     let chooseFromReleases = (releases: array<LanguageServerMule.Source.GitHub.Release.t>): option<
       LanguageServerMule.Source.GitHub.Target.t,
     > => {
@@ -100,72 +82,21 @@ module Module: Module = {
         )
         Error.CannotAcquireHandle(e)
       })
-      // ->Promise.flatMapOk(handle => LanguageServerMule.Client.LSP.make("gcl", "Guabao Language Server", handle)->Promise.mapError(e => LanguageServerMule.Source.Error.))
-
-      // .probe(port, "localhost")
-      // ->Promise.map(result =>
-      //   switch result {
-      //   | Ok() => Ok(Client.ViaTCP(port))
-      //   | Error(exn) => Error(Error.CannotConnectViaTCP(exn))
-      //   }
-      // )
-      // ->Promise.flatMapError(error => {
-      //   Js.log(Error.toString(error))
-
-      //   Prebuilt.probe({
-      //     username: "scmlab",
-      //     repository: "gcl",
-      //     userAgent: "gcl-vscode",
-      //     globalStoragePath: globalStoragePath,
-      //     chooseFromReleases: chooseFromReleases,
-      //   })
-      // })
-      // ->Promise.flatMapError(error => {
-      //   Js.log(Error.toString(error))
-      //   StdIO.probe(name)
-      // })
     }
-
-    // see if the server is available
-    // priorities: TCP => Prebuilt => StdIO
-    // let probe = globalStoragePath => {
-    //   let port = 3000
-    //   let name = "gcl"
-    //   LanguageServerMule.Source.Port.probe(port, "localhost")
-    //   ->Promise.map(result =>
-    //     switch result {
-    //     | Ok() => Ok(Client.ViaTCP(port))
-    //     | Error(exn) => Error(Error.CannotConnectViaTCP(exn))
-    //     }
-    //   )
-    //   ->Promise.flatMapError(error => {
-    //     Js.log(Error.toString(error))
-
-    //     Prebuilt.probe({
-    //       username: "scmlab",
-    //       repository: "gcl",
-    //       userAgent: "gcl-vscode",
-    //       globalStoragePath: globalStoragePath,
-    //       chooseFromReleases: chooseFromReleases,
-    //     })
-    //   })
-    //   ->Promise.flatMapError(error => {
-    //     Js.log(Error.toString(error))
-    //     StdIO.probe(name)
-    //   })
-    // }
   }
 
   // internal singleton
   type state =
     | Disconnected
     | Connecting(
-        // pending requests & callbacks
+        // here queues all the requests & callbacks accumulated before the connection is established
         array<(Request.t, result<Response.t, Error.t> => unit)>,
         Promise.t<result<LanguageServerMule.Handle.t, Error.t>>,
       )
     | Connected(LanguageServerMule.Client.LSP.t)
   let singleton: ref<state> = ref(Disconnected)
+  let errorChan: Chan.t<Error.t> = Chan.make()
+  let notificationChan: Chan.t<result<Response.t, Error.t>> = Chan.make()
 
   let getPendingRequests = () =>
     switch singleton.contents {
@@ -251,9 +182,10 @@ module Module: Module = {
       ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
     }
 
-  let onResponse = handler => Client.onResponse(json => handler(decodeResponse(json)))
+  // let onResponse = handler => Client.onResponse(json => handler(decodeResponse(json)))
 
-  let onError = Client.onError
+  let onNotification = handler => notificationChan->Chan.on(handler)->VSCode.Disposable.make
+  let onError = handler => errorChan->Chan.on(handler)->VSCode.Disposable.make
 
   let methodToString = x =>
     switch x {

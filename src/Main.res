@@ -128,7 +128,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
   // on response/notification from the server
-  Connection.onResponse(result =>
+  Connection.onNotification(result =>
     switch result {
     | Ok(response) => handleResponse(response)->ignore
     | Error(error) =>
