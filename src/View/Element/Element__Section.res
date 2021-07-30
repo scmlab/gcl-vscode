@@ -63,15 +63,13 @@ let make = (~value: t, ~onInsertAnchor: string => unit) => {
 
   let blocks =
     value.blocks
-    ->Array.mapWithIndex((index, block) => {
+    ->Array.keepWithIndex((_, index) => {
       // see if this is the last block, which might be the block for displaying explanations
       let isForExplanation = index == Array.length(value.blocks) - 1
-
-      if !isForExplanation || (isForExplanation && displayExplanation) {
-        <Block value=block key={string_of_int(index)} onInsertAnchor onDisplayExplanation />
-      } else {
-        <> </>
-      }
+      !isForExplanation || (isForExplanation && displayExplanation)
+    })
+    ->Array.mapWithIndex((index, block) => {
+      <Block value=block key={string_of_int(index)} onInsertAnchor onDisplayExplanation />
     })
     ->array
 
