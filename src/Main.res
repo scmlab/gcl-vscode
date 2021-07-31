@@ -179,7 +179,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     ->Promise.flatMap(() => Connection.start(globalStoragePath))
     ->Promise.get(result =>
       switch result {
-      | Ok(method) => State.updateConnection(Some(Connection.methodToString(method)))->ignore
+      | Ok(sourceAndMethod) => State.updateConnection(Some(Connection.methodToString(sourceAndMethod)))->ignore
       | Error(error) => Js.log(Connection.Error.toString(error))
       }
     )

@@ -6,25 +6,24 @@ open Belt
 
 module type Module = {
   // lifecycle
-  let start: string => Promise.t<result<LanguageServerMule.Handle.t, Error.t>>
+  let start: string => Promise.t<result<LanguageServerMule.Method.t, Error.t>>
   let stop: unit => Promise.t<unit>
   // input / output / event
   let sendRequest: (string, Request.t) => Promise.t<result<Response.t, Error.t>>
   // let onNotification: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
   let onError: (Error.t => unit) => VSCode.Disposable.t
 
-  let methodToString: LanguageServerMule.Handle.t => string
+  let methodToString: LanguageServerMule.Method.t => string
 }
 
 module Module: Module = {
-
   // internal singleton
   type state =
     | Disconnected
     | Connecting(
         // here queues all the requests & callbacks accumulated before the connection is established
         array<(Request.t, result<Response.t, Error.t> => unit)>,
-        Promise.t<result<LanguageServerMule.Handle.t, Error.t>>,
+        Promise.t<result<LanguageServerMule.Method.t, Error.t>>,
       )
     | Connected(LanguageServerMule.Client.LSP.t, array<VSCode.Disposable.t>)
   let singleton: ref<state> = ref(Disconnected)
@@ -47,16 +46,18 @@ module Module: Module = {
   let start = globalStoragePath =>
     switch singleton.contents {
     | Connected(client, _subsriptions) =>
-      Promise.resolved(Ok(LanguageServerMule.Client.LSP.getHandle(client)))
-    | Connecting(_, promise) =>
-      promise
+      Promise.resolved(Ok(LanguageServerMule.Client.LSP.getMethod(client)))
+    | Connecting(_, promise) => promise
     | Disconnected =>
       let (promise, resolve) = Promise.pending()
       singleton := Connecting([], promise)
       Probe.probe(globalStoragePath)
-      ->Promise.flatMapOk(handle => {
-        LanguageServerMule.Client.LSP.make("guabao", "Guabao Language Server", handle)
-        ->Promise.mapError(e => Error.ConnectionError(e))
+      ->Promise.flatMapOk(method => {
+        LanguageServerMule.Client.LSP.make(
+          "guabao",
+          "Guabao Language Server",
+          method,
+        )->Promise.mapError(e => Error.ConnectionError(e))
       })
       ->Promise.map(result =>
         switch result {
@@ -75,17 +76,18 @@ module Module: Module = {
             ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
             ->Promise.get(callback)
           })
-          resolve(Ok(LanguageServerMule.Client.LSP.getHandle(client)))
+          resolve(Ok(LanguageServerMule.Client.LSP.getMethod(client)))
           // pipe error and notifications
           client
           ->Client.onNotification(json => notificationChan->Chan.emit(decodeResponse(json)))
           ->Js.Array.push(subsriptions)
           ->ignore
-          client->Client.onError(error => errorChan->Chan.emit(Error.ConnectionError(error)))
+          client
+          ->Client.onError(error => errorChan->Chan.emit(Error.ConnectionError(error)))
           ->Js.Array.push(subsriptions)
           ->ignore
 
-          Ok(LanguageServerMule.Client.LSP.getHandle(client))
+          Ok(LanguageServerMule.Client.LSP.getMethod(client))
         }
       )
     }
@@ -120,11 +122,13 @@ module Module: Module = {
   // let onNotification = handler => notificationChan->Chan.on(handler)->VSCode.Disposable.make
   let onError = handler => errorChan->Chan.on(handler)->VSCode.Disposable.make
 
-  let methodToString = x =>
-    switch x {
-    | LanguageServerMule.Handle.ViaTCP(_, _) => "ViaTCP"
-    | ViaStdIO(_) => "ViaStdIO"
-    }
+  let methodToString = method =>{
+    open LanguageServerMule.Method
+    switch method {
+    | ViaTCP(_) => "TCP"
+    | ViaStdIO(_, FromGitHub(_, release, _)) => "Prebuilt " ++ release.tagName
+    | ViaStdIO(_, _) => "ViaStdIO"
+    }}
 }
 
 include Module

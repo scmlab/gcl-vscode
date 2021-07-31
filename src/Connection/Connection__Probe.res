@@ -2,9 +2,8 @@ open LanguageServerMule
 open Source.GitHub
 open Belt
 
-let chooseFromReleases = (releases: array<Release.t>): option<
-  Target.t,
-> => {
+let chooseFromReleases = (releases: array<Release.t>): option<Target.t> => {
+  Js.log("chooseFromReleases")
   let getRelease = (releases: array<Release.t>) => {
     let matched = releases->Array.keep(release => release.tagName == Config.version)
     matched[0]
@@ -36,6 +35,8 @@ let chooseFromReleases = (releases: array<Release.t>): option<
     ->Option.map(asset => {
       Target.srcUrl: asset.url,
       fileName: toFileName(release, asset),
+      release: release,
+      asset: asset,
     })
   }
 
@@ -49,7 +50,7 @@ let probe = globalStoragePath => {
   let port = 3000
   let name = "gcl"
 
-  Source.searchUntilSuccess([
+  Source.Module.searchUntilSuccess([
     Source.FromTCP(port, "localhost"),
     Source.FromPath(name),
     Source.FromGitHub({
@@ -60,10 +61,7 @@ let probe = globalStoragePath => {
       chooseFromReleases: chooseFromReleases,
     }),
   ])->Promise.mapError(e => {
-    Js.log(
-      "Source.searchUntilSuccess " ++
-      Source.Error.toString(e),
-    )
+    Js.log("Source.searchUntilSuccess " ++ Source.Error.toString(e))
     Connection__Error.CannotAcquireHandle(e)
   })
 }
