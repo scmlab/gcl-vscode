@@ -10,7 +10,7 @@ module type Module = {
   let stop: unit => Promise.t<unit>
   // input / output / event
   let sendRequest: (string, Request.t) => Promise.t<result<Response.t, Error.t>>
-  // let onNotification: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
+  let onNotification: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
   let onError: (Error.t => unit) => VSCode.Disposable.t
 
   let methodToString: LanguageServerMule.Method.t => string
@@ -79,7 +79,9 @@ module Module: Module = {
           resolve(Ok(LanguageServerMule.Client.LSP.getMethod(client)))
           // pipe error and notifications
           client
-          ->Client.onNotification(json => notificationChan->Chan.emit(decodeResponse(json)))
+          ->Client.onNotification(json => {
+            notificationChan->Chan.emit(decodeResponse(json))
+          })
           ->Js.Array.push(subsriptions)
           ->ignore
           client
@@ -119,7 +121,7 @@ module Module: Module = {
       ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
     }
 
-  // let onNotification = handler => notificationChan->Chan.on(handler)->VSCode.Disposable.make
+  let onNotification = handler => notificationChan->Chan.on(handler)->VSCode.Disposable.make
   let onError = handler => errorChan->Chan.on(handler)->VSCode.Disposable.make
 
   let methodToString = method =>{
