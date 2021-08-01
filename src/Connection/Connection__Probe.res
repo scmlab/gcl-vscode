@@ -3,8 +3,7 @@ open Source.GitHub
 open Belt
 
 let chooseFromReleases = (releases: array<Release.t>): option<Target.t> => {
-  Js.log("chooseFromReleases")
-  let getRelease = (releases: array<Release.t>) => {
+  let chooseRelease = (releases: array<Release.t>) => {
     let matched = releases->Array.keep(release => release.tagName == Config.version)
     matched[0]
   }
@@ -16,7 +15,7 @@ let chooseFromReleases = (releases: array<Release.t>): option<Target.t> => {
     release.tagName ++ "-" ++ osName
   }
 
-  let getAsset = (release: Release.t) => {
+  let chooseAsset = (release: Release.t) => {
     // expected asset name
     let os = Node_process.process["platform"]
     let expectedName = switch os {
@@ -40,8 +39,23 @@ let chooseFromReleases = (releases: array<Release.t>): option<Target.t> => {
     })
   }
 
-  let result = getRelease(releases)->Option.flatMap(getAsset)
-  result
+  // // see if the chosen Asset has already been downloaded
+  // let checkExistingDownload = (target: Target.t) => {
+  //   let matchedFiles = NodeJs.Fs.readdirSync(globalStoragePath)->Array.keep(path => {
+  //     Js.log3(path, target.fileName, target.fileName == path)
+  //     path == target.fileName
+  //   })
+
+  //   if Array.length(matchedFiles) > 0 {
+  //     Js.log("has existsing download")
+  //     None
+  //   } else {
+  //     Js.log("no existsing download")
+  //     Some(target)
+  //   }
+  // }
+
+  chooseRelease(releases)->Option.flatMap(chooseAsset)
 }
 
 // see if the server is available
