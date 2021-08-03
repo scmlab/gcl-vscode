@@ -72,6 +72,7 @@ let probe = globalStoragePath => {
       userAgent: "gcl-vscode",
       globalStoragePath: globalStoragePath,
       chooseFromReleases: chooseFromReleases,
+      cacheInvalidateExpirationSecs: 86400
     }),
     Source.FromPath(name),
   ])->Promise.mapError(e => {
