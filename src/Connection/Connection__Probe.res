@@ -66,7 +66,6 @@ let probe = globalStoragePath => {
 
   Source.Module.searchUntilSuccess([
     Source.FromTCP(port, "localhost"),
-    Source.FromPath(name),
     Source.FromGitHub({
       username: "scmlab",
       repository: "gcl",
@@ -74,8 +73,8 @@ let probe = globalStoragePath => {
       globalStoragePath: globalStoragePath,
       chooseFromReleases: chooseFromReleases,
     }),
+    Source.FromPath(name),
   ])->Promise.mapError(e => {
-    Js.log("Source.searchUntilSuccess " ++ Source.Error.toString(e))
     Connection__Error.CannotAcquireHandle(e)
   })
 }
