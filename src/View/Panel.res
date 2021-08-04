@@ -3,7 +3,7 @@ open React
 
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
-  let (connection, setConnection) = React.useState(_ => None)
+  let (connectionStatus, setConnectionStatus) = React.useState(_ => "Disconnected")
   let ((id, sections), setDisplay) = React.useState(() => (0, []))
   let onClickLink = React.useRef(Chan.make())
 
@@ -18,7 +18,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     open ViewType.Request
     let destructor = onRequest->Chan.on(req =>
       switch req {
-      | ViewType.Request.UpdateConnection(method) => setConnection(_ => method)
+      | ViewType.Request.UpdateConnectionStatus(status) => setConnectionStatus(_ => status)
       | Display(id, blocks) => setDisplay(_ => (id, blocks))
       }
     )
@@ -50,7 +50,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
 
   <Link.Provider value=onClickLink.current>
     <ReqID.Provider value=Some(id)>
-      <section className tabIndex={-1}> <Status method=connection /> sections </section>
+      <section className tabIndex={-1}> <Status status=connectionStatus /> sections </section>
     </ReqID.Provider>
   </Link.Provider>
 }

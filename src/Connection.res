@@ -6,7 +6,7 @@ open Belt
 
 module type Module = {
   // lifecycle
-  let start: string => Promise.t<result<LanguageServerMule.Method.t, Error.t>>
+  let start: string => (LanguageServerMule.Source.GitHub.Download.Event.t => unit) => Promise.t<result<LanguageServerMule.Method.t, Error.t>>
   let stop: unit => Promise.t<unit>
   // input / output / event
   let sendRequest: (string, Request.t) => Promise.t<result<Response.t, Error.t>>
@@ -29,6 +29,7 @@ module Module: Module = {
   let singleton: ref<state> = ref(Disconnected)
   let errorChan: Chan.t<Error.t> = Chan.make()
   let notificationChan: Chan.t<result<Response.t, Error.t>> = Chan.make()
+  // let downloadChan: Chan.t<result<Response.t, Error.t>> = Chan.make()
 
   let getPendingRequests = () =>
     switch singleton.contents {
@@ -43,7 +44,7 @@ module Module: Module = {
     | exception Json.Decode.DecodeError(msg) => Error(Error.CannotDecodeResponse(msg, json))
     }
 
-  let start = globalStoragePath =>
+  let start = globalStoragePath => onDownload =>
     switch singleton.contents {
     | Connected(client, _subsriptions) =>
       Promise.resolved(Ok(LanguageServerMule.Client.LSP.getMethod(client)))
@@ -51,7 +52,15 @@ module Module: Module = {
     | Disconnected =>
       let (promise, resolve) = Promise.pending()
       singleton := Connecting([], promise)
-      Probe.probe(globalStoragePath)
+      Probe.probe(globalStoragePath, onDownload)
+      ->Promise.flatMap(((result, errors)) =>
+        switch result {
+        | None => Promise.resolved(Error(Error.CannotAcquireHandle(errors)))
+        | Some(client) => 
+          Js.log(errors->Array.map(LanguageServerMule.Source.Error.toString))
+          Promise.resolved(Ok(client))
+        }
+      )
       ->Promise.flatMapOk(method => {
         LanguageServerMule.Client.LSP.make(
           "guabao",
@@ -109,7 +118,7 @@ module Module: Module = {
   let rec sendRequest = (globalStoragePath, request) =>
     switch singleton.contents {
     | Disconnected =>
-      start(globalStoragePath)->Promise.flatMapOk(_ => sendRequest(globalStoragePath, request))
+      start(globalStoragePath, _ => ())->Promise.flatMapOk(_ => sendRequest(globalStoragePath, request))
     | Connecting(queue, _) =>
       let (promise, resolve) = Promise.pending()
       Js.Array.push((request, resolve), queue)->ignore
@@ -124,13 +133,14 @@ module Module: Module = {
   let onNotification = handler => notificationChan->Chan.on(handler)->VSCode.Disposable.make
   let onError = handler => errorChan->Chan.on(handler)->VSCode.Disposable.make
 
-  let methodToString = method =>{
+  let methodToString = method => {
     open LanguageServerMule.Method
     switch method {
     | ViaTCP(_) => "TCP"
     | ViaStdIO(_, FromGitHub(_, release, _)) => "Prebuilt " ++ release.tagName
     | ViaStdIO(_, _) => "ViaStdIO"
-    }}
+    }
+  }
 }
 
 include Module

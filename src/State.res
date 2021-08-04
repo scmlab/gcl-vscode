@@ -27,7 +27,7 @@ let displayError = (header, message) =>
     }],
   )
 
-let updateConnection = status => View.send(UpdateConnection(status))->Promise.map(_ => ())
+let updateConnectionStatus = status => View.send(UpdateConnectionStatus(status))->Promise.map(_ => ())
 
 let focus = state =>
   VSCode.Window.showTextDocument(state.document, ~column=VSCode.ViewColumn.Beside, ())->ignore

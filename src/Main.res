@@ -171,18 +171,42 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     Registry.destroy(filePath)
   })->subscribe
 
+  // helper function for starting a connection to the language server
+  let connect = () => {
+    open LanguageServerMule.Source.GitHub.Download.Event
+    let onDownload = event =>
+      switch event {
+      | Progress(accum, total) =>
+        // if the file is larger than 10MB than we use MB as the unit
+        let message =
+          total > 10485760
+            ? "Downloading ( " ++
+              string_of_int(accum / 1048576) ++
+              " MB / " ++
+              string_of_int(total / 1048576) ++ " MB )"
+            : "Downloading ( " ++
+              string_of_int(accum / 1024) ++
+              " KB / " ++
+              string_of_int(total / 1024) ++ " MB )"
+        State.updateConnectionStatus(message)->ignore
+      | _ => ()
+      }
+    Connection.start(globalStoragePath, onDownload)->Promise.flatMap(result =>
+      switch result {
+      | Ok(sourceAndMethod) =>
+        State.updateConnectionStatus(Connection.methodToString(sourceAndMethod))
+      | Error(error) =>
+        let (header, body) = Connection.Error.toString(error)
+        State.displayError(header, body)
+      }
+    )
+  }
+
   // on extension activation
   Events.onActivateExtension(() => {
     // 1. activate the view
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
-    View.activate(extensionPath)
-    ->Promise.flatMap(() => Connection.start(globalStoragePath))
-    ->Promise.get(result =>
-      switch result {
-      | Ok(sourceAndMethod) => State.updateConnection(Some(Connection.methodToString(sourceAndMethod)))->ignore
-      | Error(error) => Js.log(Connection.Error.toString(error))
-      }
-    )
+    View.activate(extensionPath)->Promise.flatMap(connect)->ignore
   })->subscribe
 
   // on extension deactivation
@@ -247,15 +271,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       View.activate(extensionPath)
       // reconnect with GCL
       ->Promise.flatMap(Connection.stop)
-      ->Promise.flatMap(() => Connection.start(globalStoragePath))
-      ->Promise.get(result =>
-        switch result {
-        | Ok(method) => State.updateConnection(Some(Connection.methodToString(method)))->ignore
-        | Error(error) => Js.log(Connection.Error.toString(error))
-        }
-      )
-
-      Promise.resolved()
+      ->Promise.flatMap(connect)
     })
   )->subscribe
 

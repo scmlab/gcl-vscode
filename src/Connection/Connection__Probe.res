@@ -39,28 +39,12 @@ let chooseFromReleases = (releases: array<Release.t>): option<Target.t> => {
     })
   }
 
-  // // see if the chosen Asset has already been downloaded
-  // let checkExistingDownload = (target: Target.t) => {
-  //   let matchedFiles = NodeJs.Fs.readdirSync(globalStoragePath)->Array.keep(path => {
-  //     Js.log3(path, target.fileName, target.fileName == path)
-  //     path == target.fileName
-  //   })
-
-  //   if Array.length(matchedFiles) > 0 {
-  //     Js.log("has existsing download")
-  //     None
-  //   } else {
-  //     Js.log("no existsing download")
-  //     Some(target)
-  //   }
-  // }
-
   chooseRelease(releases)->Option.flatMap(chooseAsset)
 }
 
 // see if the server is available
 // priorities: TCP => Prebuilt => StdIO
-let probe = globalStoragePath => {
+let probe = (globalStoragePath, onDownload) => {
   let port = 3000
   let name = "gcl"
 
@@ -72,11 +56,10 @@ let probe = globalStoragePath => {
       userAgent: "gcl-vscode",
       globalStoragePath: globalStoragePath,
       chooseFromReleases: chooseFromReleases,
+      onDownload: onDownload,
       cacheInvalidateExpirationSecs: 86400,
-      cacheID: Config.version
+      cacheID: Config.version,
     }),
     Source.FromPath(name),
-  ])->Promise.mapError(e => {
-    Connection__Error.CannotAcquireHandle(e)
-  })
+  ])
 }

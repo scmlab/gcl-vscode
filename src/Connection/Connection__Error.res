@@ -2,7 +2,7 @@ open Belt
 
 type t =
   // server probing
-  | CannotAcquireHandle(LanguageServerMule.Source.Error.t)
+  | CannotAcquireHandle(array<LanguageServerMule.Source.Error.t>)
   // connection
   | ConnectionError(Js.Exn.t)
   // decoding
@@ -10,9 +10,10 @@ type t =
 
 let toString = error =>
   switch error {
-  | CannotAcquireHandle(e) => (
-      "Cannot acquire \"gcl\"",
-      LanguageServerMule.Source.Error.toString(e),
+  | CannotAcquireHandle(es) => (
+      "Cannot connect with \"gcl\"",
+      "Here are the error messages from all the attempts: \n" ++ 
+      es->Array.map(LanguageServerMule.Source.Error.toString)->Js.Array2.joinWith("\n")
     )
   | ConnectionError(exn) =>
     let isECONNREFUSED =
