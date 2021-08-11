@@ -53,14 +53,7 @@ module Module: Module = {
       let (promise, resolve) = Promise.pending()
       singleton := Connecting([], promise)
       Probe.probe(globalStoragePath, onDownload)
-      ->Promise.flatMap(((result, errors)) =>
-        switch result {
-        | None => Promise.resolved(Error(Error.CannotAcquireHandle(errors)))
-        | Some(client) => 
-          Js.log(errors->Array.map(LanguageServerMule.Source.Error.toString))
-          Promise.resolved(Ok(client))
-        }
-      )
+      ->Promise.mapError(error => Error.CannotAcquireHandle(error))
       ->Promise.flatMapOk(method => {
         LanguageServerMule.Client.LSP.make(
           "guabao",

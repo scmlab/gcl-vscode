@@ -12,8 +12,8 @@ let toString = error =>
   switch error {
   | CannotAcquireHandle(es) => (
       "Cannot connect with \"gcl\"",
-      "Here are the error messages from all the attempts: \n" ++ 
-      es->Array.map(LanguageServerMule.Source.Error.toString)->Js.Array2.joinWith("\n")
+      "After these attempts: \n" ++
+      es->Array.mapWithIndex((index, error) => string_of_int(index) ++ ". " ++ LanguageServerMule.Source.Error.toString(error))->Js.Array2.joinWith("\n"),
     )
   | ConnectionError(exn) =>
     let isECONNREFUSED =

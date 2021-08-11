@@ -48,7 +48,7 @@ let probe = (globalStoragePath, onDownload) => {
   let port = 3000
   let name = "gcl"
 
-  Source.Module.searchUntilSuccess([
+  Source.searchUntilSuccess([
     Source.FromTCP(port, "localhost"),
     Source.FromGitHub({
       username: "scmlab",
@@ -61,5 +61,5 @@ let probe = (globalStoragePath, onDownload) => {
       cacheID: Config.version,
     }),
     Source.FromCommand(name),
-  ])
+  ])->Promise.map(Source.consumeResult)
 }
