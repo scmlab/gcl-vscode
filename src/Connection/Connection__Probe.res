@@ -60,6 +60,6 @@ let probe = (globalStoragePath, onDownload) => {
       cacheInvalidateExpirationSecs: 86400,
       cacheID: Config.version,
     }),
-    Source.FromPath(name),
+    Source.FromCommand(name),
   ])
 }

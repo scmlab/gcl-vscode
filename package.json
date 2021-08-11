@@ -40,7 +40,7 @@
 		"bs-vscode": "github:banacorn/bs-vscode#v0.0.16",
 		"bs-webapi": ">=0.19.0",
 		"eventemitter3": ">=4.0.0",
-		"language-server-mule": "github:banacorn/language-server-mule#e012f9c",
+		"language-server-mule": "github:banacorn/language-server-mule#367f301",
 		"reason-nodejs": "github:banacorn/reason-nodejs#temp",
 		"reason-promise": ">=1.1.0",
 		"rescript": "^9.1.4",
