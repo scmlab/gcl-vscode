@@ -18,7 +18,7 @@
   "suffix": ".bs.js",
   "namespace": true,
   "bs-dependencies": [
-    "bs-vscode",
+    "rescript-vscode",
     "language-server-mule",
     "@glennsl/bs-json",
     "bs-webapi",
