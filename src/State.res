@@ -18,22 +18,45 @@ let display = (id, sections) =>
 let displayError = (header, message) =>
   display(
     0,
-    [{
-      Element.Section.deco: Red,
-      blocks: [
-        Element.Block.Header(header, None),
-        Element.Block.Paragraph(Element.Inlines.string(message)),
-      ],
-    }],
+    [
+      {
+        Element.Section.deco: Red,
+        blocks: [
+          Element.Block.Header(header, None),
+          Element.Block.Paragraph(Element.Inlines.string(message)),
+        ],
+      },
+    ],
   )
-
-let updateConnectionStatus = status => View.send(UpdateConnectionStatus(status))->Promise.map(_ => ())
 
 let focus = state =>
   VSCode.Window.showTextDocument(state.document, ~column=VSCode.ViewColumn.Beside, ())->ignore
 
+let updateConnectionStatus = status =>
+  View.send(UpdateConnectionStatus(status))->Promise.map(_ => ())
+
+let onDownload = event => {
+  open LanguageServerMule.Source.GitHub.Download.Event
+  switch event {
+  | Progress(accum, total) =>
+    // if the file is larger than 10MB than we use MB as the unit
+    let message =
+      total > 10485760
+        ? "Downloading ( " ++
+          string_of_int(accum / 1048576) ++
+          " MB / " ++
+          string_of_int(total / 1048576) ++ " MB )"
+        : "Downloading ( " ++
+          string_of_int(accum / 1024) ++
+          " KB / " ++
+          string_of_int(total / 1024) ++ " MB )"
+    updateConnectionStatus(message)->ignore
+  | _ => ()
+  }
+}
+
 let sendLSPRequest = (state, kind) => {
-  Connection.sendRequest(state.globalStoragePath, Request.Req(state.filePath, kind))
+  Connection.sendRequest(state.globalStoragePath, onDownload, Request.Req(state.filePath, kind))
 }
 
 module Spec = {

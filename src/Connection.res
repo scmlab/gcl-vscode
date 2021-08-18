@@ -6,10 +6,17 @@ open Belt
 
 module type Module = {
   // lifecycle
-  let start: string => (LanguageServerMule.Source.GitHub.Download.Event.t => unit) => Promise.t<result<LanguageServerMule.Method.t, Error.t>>
+  let start: (
+    string,
+    LanguageServerMule.Source.GitHub.Download.Event.t => unit,
+  ) => Promise.t<result<LanguageServerMule.Method.t, Error.t>>
   let stop: unit => Promise.t<unit>
   // input / output / event
-  let sendRequest: (string, Request.t) => Promise.t<result<Response.t, Error.t>>
+  let sendRequest: (
+    string,
+    LanguageServerMule.Source.GitHub.Download.Event.t => unit,
+    Request.t,
+  ) => Promise.t<result<Response.t, Error.t>>
   let onNotification: (result<Response.t, Error.t> => unit) => VSCode.Disposable.t
   let onError: (Error.t => unit) => VSCode.Disposable.t
 
@@ -44,7 +51,7 @@ module Module: Module = {
     | exception Json.Decode.DecodeError(msg) => Error(Error.CannotDecodeResponse(msg, json))
     }
 
-  let start = globalStoragePath => onDownload =>
+  let start = (globalStoragePath, onDownload) =>
     switch singleton.contents {
     | Connected(client, _subsriptions) =>
       Promise.resolved(Ok(LanguageServerMule.Client.LSP.getMethod(client)))
@@ -108,10 +115,12 @@ module Module: Module = {
     | Disconnected => Promise.resolved()
     }
 
-  let rec sendRequest = (globalStoragePath, request) =>
+  let rec sendRequest = (globalStoragePath, onDownload, request) =>
     switch singleton.contents {
     | Disconnected =>
-      start(globalStoragePath, _ => ())->Promise.flatMapOk(_ => sendRequest(globalStoragePath, request))
+      start(globalStoragePath, onDownload)->Promise.flatMapOk(_ =>
+        sendRequest(globalStoragePath, onDownload, request)
+      )
     | Connecting(queue, _) =>
       let (promise, resolve) = Promise.pending()
       Js.Array.push((request, resolve), queue)->ignore

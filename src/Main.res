@@ -173,25 +173,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // helper function for starting a connection to the language server
   let connect = () => {
-    open LanguageServerMule.Source.GitHub.Download.Event
-    let onDownload = event =>
-      switch event {
-      | Progress(accum, total) =>
-        // if the file is larger than 10MB than we use MB as the unit
-        let message =
-          total > 10485760
-            ? "Downloading ( " ++
-              string_of_int(accum / 1048576) ++
-              " MB / " ++
-              string_of_int(total / 1048576) ++ " MB )"
-            : "Downloading ( " ++
-              string_of_int(accum / 1024) ++
-              " KB / " ++
-              string_of_int(total / 1024) ++ " MB )"
-        State.updateConnectionStatus(message)->ignore
-      | _ => ()
-      }
-    Connection.start(globalStoragePath, onDownload)->Promise.flatMap(result =>
+    Connection.start(globalStoragePath, State.onDownload)->Promise.flatMap(result =>
       switch result {
       | Ok(sourceAndMethod) =>
         State.updateConnectionStatus(Connection.methodToString(sourceAndMethod))
