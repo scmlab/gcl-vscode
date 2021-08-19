@@ -1,11 +1,27 @@
+open! Util.Version
 open LanguageServerMule
 open Source.GitHub
 open Belt
 
 let chooseFromReleases = (releases: array<Release.t>): option<Target.t> => {
+  // CURRENT RANGE: [v0.2, v0.3)
   let chooseRelease = (releases: array<Release.t>) => {
-    let matched = releases->Array.keep(release => release.tagName == Config.version)
-    matched[0]
+    let lowerBound = "v0.2.0"
+    let upperBound = "v0.3.0"
+    let withinBound = x => {
+      let lower = compare(x, lowerBound)
+      let upper = compare(x, upperBound)
+      (lower == EQ || lower == GT) && upper == LT
+    }
+    let matched = releases->Array.keep(release => withinBound(release.tagName))
+    let compare = (x: Release.t, y: Release.t) =>
+      switch compare(x.tagName , y.tagName) {
+      | GT => -1
+      | EQ => 0
+      | LT => 1
+      }
+    let sorted = Js.Array.sortInPlaceWith(compare, matched)
+    sorted[0]
   }
 
   let toFileName = (release: Release.t, asset: Asset.t) => {
@@ -58,7 +74,7 @@ let probe = (globalStoragePath, onDownload) => {
       chooseFromReleases: chooseFromReleases,
       onDownload: onDownload,
       cacheInvalidateExpirationSecs: 86400,
-      cacheID: Config.version,
+      cacheID: "we use the same key everytime, and provide other means for invalidating the cache instead",
     }),
     Source.FromCommand(name),
   ])->Promise.map(Source.consumeResult)

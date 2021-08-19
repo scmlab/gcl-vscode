@@ -124,3 +124,28 @@ module Exn = {
     %raw("_e.toString()")
   }
 }
+
+
+
+module Version = {
+  type ordering =
+    | LT
+    | EQ
+    | GT
+
+  @bs.module
+  external compareVersionsPrim: (string, string) => int = "compare-versions"
+  let trim = Js.String.replaceByRe(%re("/-.*/"), "")
+  let compare = (a, b) =>
+    switch compareVersionsPrim(trim(a), trim(b)) {
+    | -1 => LT
+    | 0 => EQ
+    | _ => GT
+    }
+  let gte = (a, b) =>
+    switch compare(a, b) {
+    | EQ
+    | GT => true
+    | LT => false
+    }
+}
