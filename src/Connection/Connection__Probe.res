@@ -74,7 +74,8 @@ let probe = (globalStoragePath, onDownload) => {
       chooseFromReleases: chooseFromReleases,
       onDownload: onDownload,
       cacheInvalidateExpirationSecs: 86400,
-      cacheID: "we use the same key everytime, and provide other means for invalidating the cache instead",
+      // we use the same key everytime, and provide other means for invalidating the cache instead
+      cacheID: "",
     }),
     Source.FromCommand(name),
   ])->Promise.map(Source.consumeResult)

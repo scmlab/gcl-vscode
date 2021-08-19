@@ -263,6 +263,15 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       sendLSPRequest(state, Debug)
     })
   )->subscribe
+
+  // on force check update
+  VSCode.Commands.registerCommand("guabao.force-check-update", () =>{
+    let releaseDataPath = NodeJs.Path.join2( globalStoragePath, "releases-cache-.json")
+    // invalidate the release data cache by deleting it 
+    if NodeJs.Fs.existsSync(releaseDataPath) {
+      NodeJs.Fs.unlinkSync(releaseDataPath)
+    }
+  })->subscribe
 }
 
 let deactivate = () => ()
