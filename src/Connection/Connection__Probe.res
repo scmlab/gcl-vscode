@@ -15,7 +15,7 @@ let chooseFromReleases = (releases: array<Release.t>): option<Target.t> => {
     }
     let matched = releases->Array.keep(release => withinBound(release.tagName))
     let compare = (x: Release.t, y: Release.t) =>
-      switch compare(x.tagName , y.tagName) {
+      switch compare(x.tagName, y.tagName) {
       | GT => -1
       | EQ => 0
       | LT => 1
@@ -58,6 +58,26 @@ let chooseFromReleases = (releases: array<Release.t>): option<Target.t> => {
   chooseRelease(releases)->Option.flatMap(chooseAsset)
 }
 
+let afterDownload = (fromCached, (path, target)) => {
+  let executablePath = NodeJs.Path.join2(path, "gcl")
+  if fromCached {
+    // already chmod after download
+    Promise.resolved(Ok((executablePath, [], None, target)))
+  } else {
+    // no need of chmod on Windows
+    switch Node_process.process["platform"] {
+    | "win32" => Promise.resolved(Ok((executablePath, [], None, target)))
+    | _others => 
+      // wait for 100ms after chmod to prevent some mysterious "spawn Unknown system error -88"
+    chmodExecutable(executablePath)->Promise.flatMapOk(() => {
+      let (promise, resolve) = Promise.pending()
+      Js.Global.setTimeout(() => resolve(Ok((executablePath, [], None, target))), 100)->ignore
+      promise
+    })
+    }
+  }
+}
+
 // see if the server is available
 // priorities: TCP => Prebuilt => StdIO
 let probe = (globalStoragePath, onDownload) => {
@@ -72,10 +92,10 @@ let probe = (globalStoragePath, onDownload) => {
       userAgent: "gcl-vscode",
       globalStoragePath: globalStoragePath,
       chooseFromReleases: chooseFromReleases,
+      afterDownload: afterDownload,
+      log: Js.log,
       onDownload: onDownload,
       cacheInvalidateExpirationSecs: 86400,
-      // we use the same key everytime, and provide other means for invalidating the cache instead
-      cacheID: "",
     }),
     Source.FromCommand(name),
   ])->Promise.map(Source.consumeResult)

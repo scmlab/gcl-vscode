@@ -37,22 +37,22 @@ let updateConnectionStatus = status =>
 
 let onDownload = event => {
   open LanguageServerMule.Source.GitHub.Download.Event
-  switch event {
+  let message = switch event {
+  | Start => "Downloading ..."
   | Progress(accum, total) =>
     // if the file is larger than 10MB than we use MB as the unit
-    let message =
-      total > 10485760
-        ? "Downloading ( " ++
-          string_of_int(accum / 1048576) ++
-          " MB / " ++
-          string_of_int(total / 1048576) ++ " MB )"
-        : "Downloading ( " ++
-          string_of_int(accum / 1024) ++
-          " KB / " ++
-          string_of_int(total / 1024) ++ " MB )"
-    updateConnectionStatus(message)->ignore
-  | _ => ()
+    total > 10485760
+      ? "Downloading ( " ++
+        string_of_int(accum / 1048576) ++
+        " MB / " ++
+        string_of_int(total / 1048576) ++ " MB )"
+      : "Downloading ( " ++
+        string_of_int(accum / 1024) ++
+        " KB / " ++
+        string_of_int(total / 1024) ++ " MB )"
+  | Finish => "Downloaded"
   }
+  updateConnectionStatus(message)->ignore
 }
 
 let sendLSPRequest = (state, kind) => {

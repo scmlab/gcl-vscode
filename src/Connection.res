@@ -139,8 +139,8 @@ module Module: Module = {
     open LanguageServerMule.Method
     switch method {
     | ViaTCP(_) => "TCP"
-    | ViaStdIO(_, FromGitHub(_, release, _)) => "Prebuilt " ++ release.tagName
-    | ViaStdIO(_, _) => "ViaStdIO"
+    | ViaCommand(_, _, _, FromGitHub(_, release, _)) => "Prebuilt " ++ release.tagName
+    | ViaCommand(_) => "ViaStdIO"
     }
   }
 }
