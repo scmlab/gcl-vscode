@@ -57,77 +57,6 @@ module Parens2 = {
   }
 }
 
-module Sbst = {
-  @react.component
-  let make = (~makeInline, ~before, ~mapping, ~after, ~onSubst: option<Trace.t => unit>) => {
-    let (substituted, setSubstitute) = React.useState(_ => false)
-    let (hoverSubstitutee, setHoverSubstitutee) = React.useState(_ => false)
-    let undo = () => setSubstitute(_ => false)
-
-    let onClick = _ => {
-      setHoverSubstitutee(_ => false)
-      onSubst->Option.forEach(onSubst =>
-        onSubst({
-          undo: undo,
-          before: before,
-          mapping: mapping,
-          after: after,
-        })
-      )
-      setSubstitute(_ => true)
-    }
-
-    let onMouseOver = _ => {
-      setHoverSubstitutee(_ => true)
-    }
-    let onMouseOut = _ => {
-      setHoverSubstitutee(_ => false)
-    }
-
-    if substituted {
-      let after = makeInline(~value=Element(after), ~onSubst)
-      <span className="element-sbst"> after </span>
-    } else {
-      let before = makeInline(~value=Element(before), ~onSubst)
-      if Js.Array.length(mapping) > 0 {
-        // "mapping" is not empty
-        let env = makeInline(~value=Element(mapping), ~onSubst)
-        <span className="element-sbst">
-          before {React.string(" ")} <span className="element-sbst-button" onClick> env </span>
-        </span>
-      } else if (
-        // <span className="element-sbst">
-        //   <span className="element-sbst-env" onClick onMouseOver={onMouseOver}>
-        //     before
-        //   </span>
-        // </span>
-
-        // "mapping" is empty, make "before" clickable
-        // <span className="element-sbst-env" onClick> before </span>
-
-        // let substituteeClassName = hoverSubstitutee ? "element-sbst-hovered" : ""
-
-        hoverSubstitutee
-      ) {
-        <span className="element-sbst">
-          <span className="element-sbst-hovered"> before </span>
-          <span className="element-sbst-button" onMouseOver onMouseOut onClick>
-            {React.string(" ")}
-            // {React.string(j`⇊`)}
-          </span>
-        </span>
-      } else {
-        <span className="element-sbst">
-          <span> before </span>
-          <span className="element-sbst-button" onMouseOver onMouseOut onClick>
-            {React.string(" ")}
-          </span>
-        </span>
-      }
-    }
-  }
-}
-
 module Expn = {
   @react.component
   let make = (~makeInline, ~mapping, ~before, ~after, ~onSubst: option<Trace.t => unit>) => {
@@ -171,9 +100,7 @@ module Expn = {
 
       let className = hoverSubstitutee ? "element-sbst element-sbst-hovered" : "element-sbst"
 
-        <span className onClick onMouseOver onMouseOut>
-          before {mapping}
-        </span>
+      <span className onClick onMouseOver onMouseOut> before {mapping} </span>
       //   let mapping = makeInline(~value=Element(mapping), ~onSubst)
       //   <span className="element-sbst">
       //     <span className="element-sbst-button" onClick onMouseOver onMouseOut> before {React.string(" ")}  mapping </span>
@@ -223,8 +150,6 @@ let rec make = (~value: t, ~onSubst: option<Trace.t => unit>) => {
       | Link(range, children, _className) =>
         let child = make(~value=Element(children), ~onSubst)
         <Link range key={string_of_int(i)}> {child} </Link>
-      | Sbst(before, mapping, after, _className) =>
-        <Sbst makeInline=make key={string_of_int(i)} before mapping after onSubst />
       | Expn(before, mapping, after) =>
         <Expn makeInline=make key={string_of_int(i)} before mapping after onSubst />
       | Horz(elements) =>

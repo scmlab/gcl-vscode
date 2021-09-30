@@ -18,7 +18,6 @@ module Inline = {
     | Text(string, ClassNames.t)
     | Code(array<t>)
     | Link(SrcLoc.Range.t, array<t>, ClassNames.t)
-    | Sbst(array<t>, array<t>, array<t>, ClassNames.t)
     | Expn(array<t>, array<t>, array<t>)
     | Horz(array<array<t>>)
     | Vert(array<array<t>>)
@@ -33,7 +32,7 @@ module Inline = {
       switch x {
       | "Icon" => Contents(pair(string, ClassNames.decode) |> map(((s, cs)) => Icon(s, cs)))
       | "Text" => Contents(pair(string, ClassNames.decode) |> map(((s, cs)) => Text(s, cs)))
-      | "Snpt" => Contents(array(decode()) |> map(((xs)) => Code(xs)))
+      | "Snpt" => Contents(array(decode()) |> map(xs => Code(xs)))
       | "Link" =>
         Contents(
           tuple3(SrcLoc.Range.decode, array(decode()), ClassNames.decode) |> map(((
@@ -42,22 +41,13 @@ module Inline = {
             cs,
           )) => Link(r, xs, cs)),
         )
-      | "Sbst" =>
-        Contents(
-          tuple4(array(decode()), array(decode()), array(decode()), ClassNames.decode) |> map(((
-            a,
-            b,
-            c,
-            d,
-          )) => Sbst(a, b, c, d)),
-        )
       | "Expn" =>
         Contents(
-          tuple3(array(decode()), array(decode()), array(decode())) |> map(((
+          tuple3(array(decode()), array(decode()), array(decode())) |> map(((a, b, c)) => Expn(
             a,
             b,
             c,
-          )) => Expn(a, b, c))
+          )),
         )
       | "Horz" => Contents(array(array(decode())) |> map(xs => Horz(xs)))
       | "Vert" => Contents(array(array(decode())) |> map(xs => Vert(xs)))
@@ -83,31 +73,16 @@ module Inline = {
         ("tag", string("Text")),
         ("contents", (s, cs) |> pair(string, ClassNames.encode)),
       })
-    | Code(xs) =>
-      object_(list{
-        ("tag", string("Snpt")),
-        ("contents", xs |> array(encode)),
-      })
+    | Code(xs) => object_(list{("tag", string("Snpt")), ("contents", xs |> array(encode))})
     | Link(r, s, cs) =>
       object_(list{
         ("tag", string("Link")),
         ("contents", (r, s, cs) |> tuple3(SrcLoc.Range.encode, array(encode), ClassNames.encode)),
       })
-    | Sbst(a, b, c, d) =>
-      object_(list{
-        ("tag", string("Sbst")),
-        (
-          "contents",
-          (a, b, c, d) |> tuple4(array(encode), array(encode), array(encode), ClassNames.encode),
-        ),
-      })
     | Expn(a, b, c) =>
       object_(list{
         ("tag", string("Expn")),
-        (
-          "contents",
-          (a, b, c) |> tuple3(array(encode), array(encode), array(encode)),
-        ),
+        ("contents", (a, b, c) |> tuple3(array(encode), array(encode), array(encode))),
       })
     | Horz(xs) => object_(list{("tag", string("Horz")), ("contents", xs |> array(array(encode)))})
     | Vert(xs) => object_(list{("tag", string("Vert")), ("contents", xs |> array(array(encode)))})
