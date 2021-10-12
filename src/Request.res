@@ -6,7 +6,7 @@ module Kind = {
     | Inspect(SrcLoc.Range.t)
     | Refine(SrcLoc.Range.t)
     | InsertAnchor(string)
-    | Eval(string)
+    | Substitute(int)
     | Debug
 
   let encode: Json.Encode.encoder<t> = x => {
@@ -18,8 +18,8 @@ module Kind = {
       object_(list{("tag", string("ReqRefine")), ("contents", range |> SrcLoc.Range.encode)})
     | InsertAnchor(hash) =>
       object_(list{("tag", string("ReqInsertAnchor")), ("contents", hash |> string)})
-    | Eval(hash) =>
-      object_(list{("tag", string("ReqEval")), ("contents", hash |> string)})
+    | Substitute(id) =>
+      object_(list{("tag", string("ReqSubst")), ("contents", id |> int)})
     | Debug => object_(list{("tag", string("ReqDebug"))})
     }
   }

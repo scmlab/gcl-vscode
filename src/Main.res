@@ -58,6 +58,7 @@ let handleViewResponse = response => {
       state.editor->VSCode.TextEditor.setSelection(selection)
     // State.Decoration.remove(key)
     | InsertAnchor(hash) => sendLSPRequest(state, InsertAnchor(hash))->ignore
+    | Substitute(id) => Js.log("should send request for substitution " ++ string_of_int(id))
     | Initialized => ()
     | Destroyed => ()
     }

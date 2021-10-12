@@ -22,6 +22,7 @@ module Code = {
     }
 
     let onSubst = step => {
+      Js.log2("[view] onSubst", step.Trace.id)
       setTrace(trace => {
         Js.Array2.concat(trace, [step])
       })

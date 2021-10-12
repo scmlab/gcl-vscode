@@ -57,17 +57,17 @@ module Parens2 = {
   }
 }
 
-module Expn = {
+module Sbst = {
   @react.component
-  let make = (~makeInline, ~mapping, ~before, ~after, ~onSubst: option<Trace.t => unit>) => {
+  let make = (~makeInline, ~id, ~mapping, ~before, ~after, ~onSubst: option<Trace.t => unit>) => {
     let (substituted, setSubstitute) = React.useState(_ => false)
     let (hoverSubstitutee, setHoverSubstitutee) = React.useState(_ => false)
     let undo = () => setSubstitute(_ => false)
-
     let onClick = ev => {
       setHoverSubstitutee(_ => false)
       onSubst->Option.forEach(onSubst =>
         onSubst({
+          id: id,
           undo: undo,
           before: before,
           mapping: mapping,
@@ -92,40 +92,8 @@ module Expn = {
       <span className="element-sbst"> after </span>
     } else {
       let before = makeInline(~value=Element(before), ~onSubst)
-
-      let mapping =
-        Js.Array.length(mapping) > 0
-          ? <> {React.string(" ")} {makeInline(~value=Element(mapping), ~onSubst)} </>
-          : makeInline(~value=Element(mapping), ~onSubst)
-
       let className = hoverSubstitutee ? "element-sbst element-sbst-hovered" : "element-sbst"
-
-      <span className onClick onMouseOver onMouseOut> before {mapping} </span>
-      //   let mapping = makeInline(~value=Element(mapping), ~onSubst)
-      //   <span className="element-sbst">
-      //     <span className="element-sbst-button" onClick onMouseOver onMouseOut> before {React.string(" ")}  mapping </span>
-      //   </span>
-      // } else {
-      //   <span className="element-sbst">
-      //     <span className="element-sbst-button" onClick onMouseOver onMouseOut> before </span>
-      //   </span>
-
-      // if hoverSubstitutee {
-      //   <span className="element-sbst">
-      //     <span className="element-sbst-hovered"> before </span>
-      //     <span className="element-sbst-button" onMouseOver onMouseOut onClick>
-      //       {React.string(" ")}
-      //       // {React.string(j`⇊`)}
-      //     </span>
-      //   </span>
-      // } else {
-      //   <span className="element-sbst">
-      //     <span> before </span>
-      //     <span className="element-sbst-button" onMouseOver onMouseOut onClick>
-      //       {React.string(" ")}
-      //     </span>
-      //   </span>
-      // }
+      <span className onClick onMouseOver onMouseOut> before </span>
     }
   }
 }
@@ -150,8 +118,10 @@ let rec make = (~value: t, ~onSubst: option<Trace.t => unit>) => {
       | Link(range, children, _className) =>
         let child = make(~value=Element(children), ~onSubst)
         <Link range key={string_of_int(i)}> {child} </Link>
-      | Expn(before, mapping, after) =>
-        <Expn makeInline=make key={string_of_int(i)} before mapping after onSubst />
+      | Sbst(id, expr) =>
+        <Sbst
+          makeInline=make key={string_of_int(id)} id before={expr} mapping={[]} after={expr} onSubst
+        />
       | Horz(elements) =>
         let children =
           elements->Array.mapWithIndex((j, element) =>

@@ -18,7 +18,7 @@ module Inline = {
     | Text(string, ClassNames.t)
     | Code(array<t>)
     | Link(SrcLoc.Range.t, array<t>, ClassNames.t)
-    | Expn(array<t>, array<t>, array<t>)
+    | Sbst(int, array<t>)
     | Horz(array<array<t>>)
     | Vert(array<array<t>>)
     | Parn(array<t>)
@@ -41,14 +41,7 @@ module Inline = {
             cs,
           )) => Link(r, xs, cs)),
         )
-      | "Expn" =>
-        Contents(
-          tuple3(array(decode()), array(decode()), array(decode())) |> map(((a, b, c)) => Expn(
-            a,
-            b,
-            c,
-          )),
-        )
+      | "Sbst" => Contents(tuple2(int, array(decode())) |> map(((a, b)) => Sbst(a, b)))
       | "Horz" => Contents(array(array(decode())) |> map(xs => Horz(xs)))
       | "Vert" => Contents(array(array(decode())) |> map(xs => Vert(xs)))
       | "Parn" => Contents(array(decode()) |> map(x => Parn(x)))
@@ -79,11 +72,8 @@ module Inline = {
         ("tag", string("Link")),
         ("contents", (r, s, cs) |> tuple3(SrcLoc.Range.encode, array(encode), ClassNames.encode)),
       })
-    | Expn(a, b, c) =>
-      object_(list{
-        ("tag", string("Expn")),
-        ("contents", (a, b, c) |> tuple3(array(encode), array(encode), array(encode))),
-      })
+    | Sbst(a, b) =>
+      object_(list{("tag", string("Sbst")), ("contents", (a, b) |> tuple2(int, array(encode)))})
     | Horz(xs) => object_(list{("tag", string("Horz")), ("contents", xs |> array(array(encode)))})
     | Vert(xs) => object_(list{("tag", string("Vert")), ("contents", xs |> array(array(encode)))})
     | Parn(x) => object_(list{("tag", string("Parn")), ("contents", x |> array(encode))})
