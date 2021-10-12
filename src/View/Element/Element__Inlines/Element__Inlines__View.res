@@ -57,47 +57,6 @@ module Parens2 = {
   }
 }
 
-module Sbst = {
-  @react.component
-  let make = (~makeInline, ~id, ~mapping, ~before, ~after, ~onSubst: option<Trace.t => unit>) => {
-    let (substituted, setSubstitute) = React.useState(_ => false)
-    let (hoverSubstitutee, setHoverSubstitutee) = React.useState(_ => false)
-    let undo = () => setSubstitute(_ => false)
-    let onClick = ev => {
-      setHoverSubstitutee(_ => false)
-      onSubst->Option.forEach(onSubst =>
-        onSubst({
-          id: id,
-          undo: undo,
-          before: before,
-          mapping: mapping,
-          after: after,
-        })
-      )
-      setSubstitute(_ => true)
-      ReactEvent.Mouse.stopPropagation(ev)
-    }
-
-    let onMouseOver = ev => {
-      setHoverSubstitutee(_ => true)
-      ReactEvent.Mouse.stopPropagation(ev)
-    }
-    let onMouseOut = ev => {
-      setHoverSubstitutee(_ => false)
-      ReactEvent.Mouse.stopPropagation(ev)
-    }
-
-    if substituted {
-      let after = makeInline(~value=Element(after), ~onSubst)
-      <span className="element-sbst"> after </span>
-    } else {
-      let before = makeInline(~value=Element(before), ~onSubst)
-      let className = hoverSubstitutee ? "element-sbst element-sbst-hovered" : "element-sbst"
-      <span className onClick onMouseOver onMouseOut> before </span>
-    }
-  }
-}
-
 let rec make = (~value: t, ~onSubst: option<Trace.t => unit>) => {
   let Element(elements) = value
   <span>
@@ -119,7 +78,7 @@ let rec make = (~value: t, ~onSubst: option<Trace.t => unit>) => {
         let child = make(~value=Element(children), ~onSubst)
         <Link range key={string_of_int(i)}> {child} </Link>
       | Sbst(id, expr) =>
-        <Sbst
+        <Substitution
           makeInline=make key={string_of_int(id)} id before={expr} mapping={[]} after={expr} onSubst
         />
       | Horz(elements) =>
