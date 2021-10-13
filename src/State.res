@@ -148,6 +148,9 @@ module Spec = {
 let handleResponseKind = (state: t, kind) =>
   switch kind {
   | Response.Kind.Display(i, sections) => display(i, sections)
+  | Substitute(i, result) =>
+    Js.log3("response from ther server", i, result)
+    Promise.resolved()
   | UpdateSpecs(specs) =>
     Spec.redecorate(state, specs)
     Promise.resolved()

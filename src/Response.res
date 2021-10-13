@@ -26,6 +26,7 @@ module Specification = {
 module Kind = {
   type t =
     | Display(int, array<Element.Section.t>)
+    | Substitute(int, Element.Inlines.t)
     | UpdateSpecs(array<Specification.t>)
     | ConsoleLog(string)
 
@@ -40,6 +41,10 @@ module Kind = {
             id,
             sections,
           )),
+        )
+      | "ResSubstitute" =>
+        Contents(
+          tuple2(int, Element.Inlines.decode) |> map(((id, result)) => Substitute(id, result)),
         )
       | "ResUpdateSpecs" =>
         Contents(array(Specification.decode) |> map(specs => UpdateSpecs(specs)))

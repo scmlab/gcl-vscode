@@ -26,7 +26,6 @@ let make = (~makeInline, ~id, ~mapping, ~before, ~after, ~onSubst: option<Trace.
     setHoverSubstitutee(_ => false)
     onSubst->Option.forEach(onSubst =>
       onSubst({
-        id: id,
         undo: undo,
         before: before,
         mapping: mapping,

@@ -19,7 +19,7 @@ module Kind = {
     | InsertAnchor(hash) =>
       object_(list{("tag", string("ReqInsertAnchor")), ("contents", hash |> string)})
     | Substitute(id) =>
-      object_(list{("tag", string("ReqSubst")), ("contents", id |> int)})
+      object_(list{("tag", string("ReqSubstitute")), ("contents", id |> int)})
     | Debug => object_(list{("tag", string("ReqDebug"))})
     }
   }
