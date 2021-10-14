@@ -1,6 +1,7 @@
 module Request = {
   type t =
     | UpdateConnectionStatus(string)
+    | Substitute(int, Element.Inlines.t)
     | Display(int, array<Element.Section.t>)
 
   let decode: Json.Decode.decoder<t> = {
@@ -10,6 +11,8 @@ module Request = {
       switch x {
       | "UpdateConnectionStatus" =>
         Contents(string |> map(method => UpdateConnectionStatus(method)))
+      | "Substitute" =>
+        Contents(tuple2(int, Element.Inlines.decode) |> map(((id, expr)) => Substitute(id, expr)))
       | "Display" =>
         Contents(
           tuple2(int, array(Element.Section.decode)) |> map(((id, sections)) => Display(
@@ -27,6 +30,11 @@ module Request = {
     switch x {
     | UpdateConnectionStatus(method) =>
       object_(list{("tag", string("UpdateConnectionStatus")), ("contents", method |> string)})
+    | Substitute(id, expr) =>
+      object_(list{
+        ("tag", string("Substitute")),
+        ("contents", (id, expr) |> tuple2(int, Element.Inlines.encode)),
+      })
     | Display(id, ws) =>
       object_(list{
         ("tag", string("Display")),

@@ -5,7 +5,6 @@ open React
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (connectionStatus, setConnectionStatus) = React.useState(_ => "Disconnected")
   let ((id, sections), setDisplay) = React.useState(() => (0, []))
-  let onClickLink = React.useRef(Chan.make())
 
   // response with Initialized on mount
   React.useEffect1(() => {
@@ -13,12 +12,25 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     None
   }, [])
 
+  // relay <Substitution> events to "onResponse"
+  let substitutionChan = React.useRef(Chan.make())
+  React.useEffect1(() => Some(
+    substitutionChan.current->Chan.on(event =>
+      switch event {
+      | Substitution.Event.SubstReq(id) =>onResponse->Chan.emit(Substitute(id))
+      | SubstRes(_) => ()
+      }
+    ),
+  ), [])
+
   // for receiving requests from the extension
   React.useEffect1(() => {
     open ViewType.Request
     let destructor = onRequest->Chan.on(req =>
       switch req {
       | ViewType.Request.UpdateConnectionStatus(status) => setConnectionStatus(_ => status)
+      | Substitute(id, expr) =>
+        substitutionChan.current->Chan.emit(Substitution.Event.SubstRes(id, expr))
       | Display(id, blocks) => setDisplay(_ => (id, blocks))
       }
     )
@@ -26,6 +38,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   }, [])
 
   // relay <Link> events to "onResponse"
+  let onClickLink = React.useRef(Chan.make())
   React.useEffect1(
     () => Some(onClickLink.current->Chan.on(ev => onResponse->Chan.emit(Link(ev)))),
     [],
@@ -33,9 +46,6 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
 
   // onInsertAnchor
   let onInsertAnchor = hash => onResponse->Chan.emit(InsertAnchor(hash))
-
-  // onSubst
-  let onSubst = id => onResponse->Chan.emit(Substitute(id))
 
   let className = "gcl-panel native-key-bindings"
 
@@ -52,7 +62,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   }
 
   <Link.Provider value=onClickLink.current>
-    <Substitution.Provider value=Some(onSubst)>
+    <Substitution.Provider value=substitutionChan.current>
       <ReqID.Provider value=Some(id)>
         <section className tabIndex={-1}> <Status status=connectionStatus /> sections </section>
       </ReqID.Provider>

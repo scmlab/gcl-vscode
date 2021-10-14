@@ -35,6 +35,9 @@ let focus = state =>
 let updateConnectionStatus = status =>
   View.send(UpdateConnectionStatus(status))->Promise.map(_ => ())
 
+let substitute = (id, expr) =>
+  View.send(ViewType.Request.Substitute(id, expr))->Promise.map(_ => ())
+
 let onDownload = event => {
   open LanguageServerMule.Source.GitHub.Download.Event
   let message = switch event {
@@ -149,8 +152,8 @@ let handleResponseKind = (state: t, kind) =>
   switch kind {
   | Response.Kind.Display(i, sections) => display(i, sections)
   | Substitute(i, result) =>
-    Js.log3("response from ther server", i, result)
-    Promise.resolved()
+    // we need to relay this response for substitution to the view
+    substitute(i, result)
   | UpdateSpecs(specs) =>
     Spec.redecorate(state, specs)
     Promise.resolved()
