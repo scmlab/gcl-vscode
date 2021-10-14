@@ -1,3 +1,4 @@
+open Belt
 module Inlines = Element__Inlines__Type
 
 module Event = {
@@ -20,10 +21,10 @@ module Provider = {
 type status = Unreduced | Reduced(Inlines.t) | Reducing
 
 @react.component
-let make = (~makeInline, ~id, ~before, ~onSubst: option<Trace.t => unit>) => {
+let make = (~makeInline, ~id, ~expr, ~onSubst: option<Trace.t => unit>) => {
   let (status, setStatus) = React.useState(_ => Unreduced)
   let (hoverSubstitutee, setHoverSubstitutee) = React.useState(_ => false)
-  // let undo = () => setSubstitute(_ => false)
+  let undo = () => setStatus(_ => Unreduced)
   let channel = React.useContext(context)
 
   React.useEffect1(() => Some(
@@ -43,14 +44,12 @@ let make = (~makeInline, ~id, ~before, ~onSubst: option<Trace.t => unit>) => {
     channel->Chan.emit(Event.SubstReq(id))
     setHoverSubstitutee(_ => false)
     setStatus(_ => Reducing)
-    // onSubst->Option.forEach(onSubst =>
-    //   onSubst({
-    //     undo: undo,
-    //     before: before,
-    //     mapping: mapping,
-    //     after: after,
-    //   })
-    // )
+    onSubst->Option.forEach(onSubst =>
+      onSubst({
+        undo: undo,
+        expr: expr,
+      })
+    )
     ReactEvent.Mouse.stopPropagation(ev)
   }
 
@@ -64,13 +63,13 @@ let make = (~makeInline, ~id, ~before, ~onSubst: option<Trace.t => unit>) => {
   }
 
   switch status {
-  | Unreduced =>
-    let before = makeInline(~value=Inlines.Element(before), ~onSubst)
+  | Unreduced
+  | Reducing =>
+    let expr = makeInline(~value=Inlines.Element(expr), ~onSubst)
     let className = hoverSubstitutee ? "element-sbst element-sbst-hovered" : "element-sbst"
-    <span className onClick onMouseOver onMouseOut> before </span>
-  | Reducing => <span> {React.string("...")} </span>
-  | Reduced(after) =>
-    let after = makeInline(~value=after, ~onSubst)
-    <span className="element-sbst"> after </span>
+    <span className onClick onMouseOver onMouseOut> expr </span>
+  | Reduced(result) =>
+    let result = makeInline(~value=result, ~onSubst)
+    <span className="element-sbst"> result </span>
   }
 }

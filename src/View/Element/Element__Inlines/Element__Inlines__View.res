@@ -77,8 +77,7 @@ let rec make = (~value: t, ~onSubst: option<Trace.t => unit>) => {
       | Link(range, children, _className) =>
         let child = make(~value=Element(children), ~onSubst)
         <Link range key={string_of_int(i)}> {child} </Link>
-      | Sbst(id, expr) =>
-        <Substitution makeInline=make key={string_of_int(id)} id before={expr} onSubst />
+      | Sbst(id, expr) => <Substitution makeInline=make key={string_of_int(id)} id expr onSubst />
       | Horz(elements) =>
         let children =
           elements->Array.mapWithIndex((j, element) =>
