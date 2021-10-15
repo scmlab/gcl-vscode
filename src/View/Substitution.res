@@ -25,8 +25,11 @@ let make = (~makeInline, ~id, ~expr, ~onSubst: option<Trace.t => unit>) => {
   let (status, setStatus) = React.useState(_ => Unreduced)
   let (hoverSubstitutee, setHoverSubstitutee) = React.useState(_ => false)
   let undo = () => setStatus(_ => Unreduced)
+
+  // for broadcasting Request/Response regarding substitution
   let channel = React.useContext(context)
 
+  // Listens to the broadcast and see if the ID matches with this component
   React.useEffect1(() => Some(
     channel->Chan.on(event =>
       switch event {

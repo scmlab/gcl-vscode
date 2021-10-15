@@ -4,7 +4,7 @@ open React
 @react.component
 let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType.Response.t>) => {
   let (connectionStatus, setConnectionStatus) = React.useState(_ => "Disconnected")
-  let ((id, sections), setDisplay) = React.useState(() => (0, []))
+  let ((requestID, sections), setDisplay) = React.useState(() => (0, []))
 
   // response with Initialized on mount
   React.useEffect1(() => {
@@ -63,7 +63,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
 
   <Link.Provider value=onClickLink.current>
     <Substitution.Provider value=substitutionChan.current>
-      <ReqID.Provider value=Some(id)>
+      <ReqID.Provider value=Some(requestID)>
         <section className tabIndex={-1}> <Status status=connectionStatus /> sections </section>
       </ReqID.Provider>
     </Substitution.Provider>
