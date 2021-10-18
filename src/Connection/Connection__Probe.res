@@ -4,10 +4,10 @@ open Source.GitHub
 open Belt
 
 let chooseFromReleases = (releases: array<Release.t>): option<Target.t> => {
-  // CURRENT RANGE: [v0.2, v0.3)
+  // CURRENT RANGE: [v0.3, v0.4)
   let chooseRelease = (releases: array<Release.t>) => {
-    let lowerBound = "v0.2.0"
-    let upperBound = "v0.3.0"
+    let lowerBound = "v0.3.0"
+    let upperBound = "v0.4.0"
     let withinBound = x => {
       let lower = compare(x, lowerBound)
       let upper = compare(x, upperBound)
