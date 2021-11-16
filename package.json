@@ -3,7 +3,7 @@
 	"displayName": "Guabao",
 	"description": "Frontend for Guabao",
 	"publisher": "scmlab",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"repository": "https://github.com/scmlab/gcl-vscode",
 	"engines": {
 		"vscode": "^1.41.0"
@@ -40,7 +40,7 @@
 		"bs-webapi": ">=0.19.0",
 		"compare-versions": "^3.5.1",
 		"eventemitter3": ">=4.0.0",
-		"language-server-mule": "github:banacorn/language-server-mule#v0.2.1",
+		"language-server-mule": "github:banacorn/language-server-mule#v0.2.3",
 		"reason-nodejs": "github:banacorn/reason-nodejs#temp",
 		"reason-promise": ">=1.1.0",
 		"rescript": "^9.1.4",

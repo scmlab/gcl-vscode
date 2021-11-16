@@ -66,6 +66,7 @@ module Module: Module = {
           "guabao",
           "Guabao Language Server",
           method,
+          Js.Json.null  // command line options
         )->Promise.mapError(e => Error.ConnectionError(e))
       })
       ->Promise.map(result =>
