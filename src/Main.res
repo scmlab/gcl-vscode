@@ -159,7 +159,8 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       state.editor = editor
       state.document = editor->VSCode.TextEditor.document
       state.filePath = filePath
-      State.Spec.redecorate(state, state.specifications)
+      State.decorateAndUpdateSpecs(state, state.specifications)
+      State.decorateAndUpdatePOs(state, state.proofObligations)
       state
     }
 
