@@ -275,4 +275,6 @@ let destroy = state => {
   state.subscriptions = []
   state.specifications->Array.forEach(Response.Specification.destroy)
   state.specifications = []
+  state.proofObligations->Array.forEach(Response.ProofObligation.destroy)
+  state.proofObligations = []
 }
