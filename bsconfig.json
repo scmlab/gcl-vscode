@@ -21,7 +21,7 @@
     "rescript-vscode",
     "language-server-mule",
     "@glennsl/bs-json",
-    "bs-webapi",
+    "rescript-webapi",
     "reason-promise",
     "@rescript/react",
     "reason-nodejs"

@@ -37,7 +37,7 @@
 	"dependencies": {
 		"@glennsl/bs-json": "github:banacorn/bs-json#0c900d3",
 		"@rescript/react": "^0.10.3",
-		"bs-webapi": ">=0.19.0",
+		"rescript-webapi": "^0.2.0",
 		"compare-versions": "^3.5.1",
 		"eventemitter3": ">=4.0.0",
 		"language-server-mule": "github:banacorn/language-server-mule#v0.2.3",

@@ -19,6 +19,6 @@ let _ =
   )
 
 // mount the view at the "root" element
-Webapi.Dom.Document.getElementById("root", Webapi.Dom.document)->Option.forEach(element =>
+Webapi.Dom.Document.getElementById(Webapi.Dom.document, "root")->Option.forEach(element =>
   ReactDOM.render(<Panel onRequest onResponse />, element)
 )
