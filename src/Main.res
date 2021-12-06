@@ -200,19 +200,23 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     Connection.stop()->ignore
   })->subscribe
 
-  // on change cursor position/selection
+  // on change cursor position/selection, for:
+  // 1. send the `Inspect` request to the backend when the cursor is placed within some proof obligation
+  // 2. see if the cursor is placed within a Spec (hole), and set the keybinding context accordingly 
   Events.onChangeCursorPosition(event => {
     let selections = event->VSCode.TextEditorSelectionChangeEvent.selections
     let editor = event->VSCode.TextEditorSelectionChangeEvent.textEditor
     let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
 
-    // filter selection events out when we are modifying the editor programatically
-    let shouldTrigger = switch event->VSCode.TextEditorSelectionChangeEvent.kind {
+    // we don't want to trigger this event when we are digging holes
+    // we can see if this event is triggered by the user 
+    let triggeredByUser = switch event->VSCode.TextEditorSelectionChangeEvent.kind {
     | Some(VSCode.TextEditorSelectionChangeKind.Mouse)
     | Some(VSCode.TextEditorSelectionChangeKind.Keyboard) => true
     | _ => false
     }
-    if shouldTrigger {
+    if triggeredByUser {
+      // send Inspect 
       Registry.get(filePath)->Option.forEach(state =>
         // TODO, there may be multiple selections at once
         selections[0]->Option.forEach(selection => {
@@ -222,6 +226,26 @@ let activate = (context: VSCode.ExtensionContext.t) => {
         })
       )
     }
+
+    // see if the cursor is placed within some Spec (hole)
+    Registry.get(filePath)->Option.forEach(state => {
+      // see if there's any intersection between selections & Specs
+      let cursorIsInSomeSpec = state.specifications->Array.map(spec => {
+        selections->Array.map(selection => {
+          let specRange = SrcLoc.Range.toVSCodeRange(spec.range);
+          VSCode.Selection.intersection(selection, specRange)->Option.isSome
+        })->Array.some(x => x)
+      })->Array.some(x => x)
+
+      // we wish that the keybindings we use are only in effect when needed
+      // see https://code.visualstudio.com/api/references/when-clause-contexts
+      // set the context "guabao-cursor-in-hole" to `true` so that `guabao:refine` can be triggered
+      if cursorIsInSomeSpec {
+        VSCode.Commands.setContext("guabao-cursor-in-hole", true)->ignore;
+      } else {
+        VSCode.Commands.setContext("guabao-cursor-in-hole", false)->ignore;
+      }
+    });
   })->subscribe
 
   // on events from the view

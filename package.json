@@ -101,12 +101,12 @@
 				"command": "guabao.refine",
 				"key": "ctrl+c ctrl+r",
 				"mac": "ctrl+c ctrl+r",
-				"when": "resourceExtname == .gcl"
+				"when": "resourceExtname == .gcl && guabao-cursor-in-hole"
 			},
 			{
 				"command": "guabao.restart",
-				"key": "ctrl+x ctrl+r",
-				"mac": "ctrl+x ctrl+r",
+				"key": "ctrl+shift+r",
+				"mac": "ctrl+shift+r",
 				"when": "resourceExtname == .gcl"
 			}
 		],
