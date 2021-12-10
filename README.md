@@ -35,7 +35,5 @@ git push --tags
 This should trigger [the deployment process](https://github.com/scmlab/gcl-vscode/runs/2552584344?check_suite_focus=true) on GitHub Actions.
 
 Before publishing, please make sure that:
-1. There's [a corresponding release](https://github.com/scmlab/gcl/releases/tag/v0.0.18) of `gcl` with the exact version and tag name (`v0.0.18` in this case). So that the extension could fetch the correct prebuilt binary from GitHub.
-2. The `version` value is set to `"v0.0.18"` in `src/Config.res`: 
-https://github.com/scmlab/gcl-vscode/blob/e03772c4db11fad9535bf824bff2d74166cdf244/src/Config.res#L1
-
+1. There's [a corresponding release](https://github.com/scmlab/gcl/releases/tag/v0.0.18) of `gcl` within the range specified in `src/Connection__Probe.chooseFromReleases`. So that the extension could fetch the correct prebuilt binary from GitHub.
+2. The `version` field is set to `"v0.0.18"` in `package.json`: 
