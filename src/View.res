@@ -136,7 +136,7 @@ module Panel: {
   let focus = panel => panel->VSCode.WebviewPanel.reveal()
 }
 
-module type View = {
+module type Instance = {
   type t
   // lifecycle
   let make: string => Promise.t<t>
@@ -151,7 +151,7 @@ module type View = {
   let focus: t => unit
 }
 
-module View: View = {
+module Instance: Instance = {
   // Request.t are queued before the view is initialized
   type status =
     | Initialized
@@ -260,7 +260,7 @@ module View: View = {
   let focus = view => view.panel->Panel.focus
 }
 
-module type Controller = {
+module type Singleton = {
   // life cycle
   let activate: string => Promise.t<unit>
   let deactivate: unit => unit
@@ -272,9 +272,9 @@ module type Controller = {
   let focus: unit => unit
 }
 
-module Controller: Controller = {
+module Singleton: Singleton = {
   // internal singleton
-  let singleton: ref<option<View.t>> = ref(None)
+  let singleton: ref<option<Instance.t>> = ref(None)
 
   // save listners registered before view activation here
   let listenersBeforeAcvitation: array<(
@@ -285,7 +285,7 @@ module Controller: Controller = {
   let send = req =>
     switch singleton.contents {
     | None => Promise.resolved(false)
-    | Some(view) => View.send(view, req)
+    | Some(view) => Instance.send(view, req)
     }
 
   let on = callback =>
@@ -294,21 +294,21 @@ module Controller: Controller = {
       let (promise, resolve) = Promise.pending()
       Js.Array.push((callback, resolve), listenersBeforeAcvitation)->ignore
       promise
-    | Some(view) => View.on(view, callback)->Promise.resolved
+    | Some(view) => Instance.on(view, callback)->Promise.resolved
     }
 
   let activate = extensionPath =>
     switch singleton.contents {
     | None =>
-      View.make(extensionPath)->Promise.map(view => {
+      Instance.make(extensionPath)->Promise.map(view => {
         singleton.contents = Some(view)
         // register stored listeners
         listenersBeforeAcvitation->Js.Array2.forEach(((callback, resolve)) => {
-          let dispose = View.on(view, callback)
+          let dispose = Instance.on(view, callback)
           resolve(dispose)
         })
         // free the handle when the view has been forcibly destructed
-        View.onceDestroyed(view)->Promise.get(() => {
+        Instance.onceDestroyed(view)->Promise.get(() => {
           singleton.contents = None
         })
         Js.log("[ view ] activated")
@@ -319,7 +319,7 @@ module Controller: Controller = {
   let deactivate = () =>
     switch singleton.contents {
     | Some(view) =>
-      View.destroy(view)
+      Instance.destroy(view)
       singleton.contents = None
       Js.log("[ view ] deactivated")
     | None => ()
@@ -329,9 +329,9 @@ module Controller: Controller = {
 
   let focus = () =>
     switch singleton.contents {
-    | Some(view) => View.reveal(view)
+    | Some(view) => Instance.reveal(view)
     | None => ()
     }
 }
 
-include Controller
+include Singleton
