@@ -17,7 +17,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   React.useEffect1(() => Some(
     substitutionChan.current->Chan.on(event =>
       switch event {
-      | Substitution.Event.SubstReq(id) =>onResponse->Chan.emit(Substitute(id))
+      | Substitution.Event.SubstReq(id) => onResponse->Chan.emit(Substitute(id))
       | SubstRes(_) => ()
       }
     ),
