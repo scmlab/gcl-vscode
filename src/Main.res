@@ -60,6 +60,7 @@ let handleViewResponse = response => {
     | InsertAnchor(hash) => sendLSPRequest(state, InsertAnchor(hash))->ignore
     | Substitute(id) => sendLSPRequest(state, Substitute(id))->ignore
     | Initialized => ()
+    | Solve => sendLSPRequest(state, Solve)->ignore
     | Destroyed => ()
     }
   })

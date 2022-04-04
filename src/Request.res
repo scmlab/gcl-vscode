@@ -7,6 +7,7 @@ module Kind = {
     | Refine(SrcLoc.Range.t)
     | InsertAnchor(string)
     | Substitute(int)
+    | Solve
     | Debug
 
   let encode: Json.Encode.encoder<t> = x => {
@@ -20,6 +21,7 @@ module Kind = {
       object_(list{("tag", string("ReqInsertAnchor")), ("contents", hash |> string)})
     | Substitute(id) =>
       object_(list{("tag", string("ReqSubstitute")), ("contents", id |> int)})
+    | Solve => object_(list{("tag", string("ReqSolve"))})
     | Debug => object_(list{("tag", string("ReqDebug"))})
     }
   }

@@ -47,6 +47,9 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   // onInsertAnchor
   let onInsertAnchor = hash => onResponse->Chan.emit(InsertAnchor(hash))
 
+  // onSolve
+  let onSolve = () => onResponse->Chan.emit(Solve)
+
   let className = "gcl-panel native-key-bindings"
 
   let sections = if Array.length(sections) == 0 {
@@ -64,7 +67,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   <Link.Provider value=onClickLink.current>
     <Substitution.Provider value=substitutionChan.current>
       <ReqID.Provider value=Some(requestID)>
-        <section className tabIndex={-1}> <Status status=connectionStatus /> sections </section>
+        <section className tabIndex={-1}> <Status status=connectionStatus onSolve /> sections </section>
       </ReqID.Provider>
     </Substitution.Provider>
   </Link.Provider>
