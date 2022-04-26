@@ -50,6 +50,10 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   // onSolve
   let onSolve = () => onResponse->Chan.emit(Solve)
 
+  // onClickSolveButton
+  let onClickSolveButton = hash => Js.log(hash)
+
+
   let className = "gcl-panel native-key-bindings"
 
   let sections = if Array.length(sections) == 0 {
@@ -58,7 +62,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
     <ul>
       {sections
       ->Array.mapWithIndex((i, value) => {
-        <Element.Section value key={string_of_int(i)} onInsertAnchor />
+        <Element.Section value key={string_of_int(i)} onInsertAnchor onClickSolveButton/>
       })
       ->array}
     </ul>

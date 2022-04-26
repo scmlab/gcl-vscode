@@ -122,6 +122,32 @@
                 }
             }
 
+            .element-block-header-solve-button {
+                margin-left: 0.5em;
+
+                // text style 
+                font-size   : 100%;
+                font-weight : bold;
+                font-variant: small-caps;
+                color       : @foreground-tenuous;
+
+                // only display button label on hover
+                .element-block-header-solve-button-label {
+                    padding-left: 0.5em;
+                    display:none;
+                }
+
+                &:hover {
+                    // only display button label on hover
+                    .element-block-header-solve-button-label {
+                        display: inline;
+                    }
+    
+                    color: @foreground;
+                }
+
+            }
+
 
             .element-block-anchor-range {
                 float: right;

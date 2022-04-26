@@ -97,7 +97,10 @@ let encode: Json.Encode.encoder<t> = x => {
 
 open React
 @react.component
-let make = (~value: t, ~onInsertAnchor: string => unit, ~onDisplayExplanation: bool => unit) => {
+let make = (~value: t, 
+  ~onInsertAnchor: string => unit, 
+  ~onClickSolveButton: string => unit,
+  ~onDisplayExplanation: bool => unit) => {
   // for `HeaderWithButtons`
   let (headerClicked, setHeaderClicked) = useState(_ => false)
 
@@ -127,7 +130,7 @@ let make = (~value: t, ~onInsertAnchor: string => unit, ~onDisplayExplanation: b
         </Link>
       }
       // toggle on clicked
-      let onClick = _ => {
+      let onClickHeader = _ => {
         onDisplayExplanation(!headerClicked)
         setHeaderClicked(x => !x)
       }
@@ -135,7 +138,18 @@ let make = (~value: t, ~onInsertAnchor: string => unit, ~onDisplayExplanation: b
         ? "element-block-header-text toggled"
         : "element-block-header-text"
 
-      <> <span className onClick> {string(header)} </span> {range} </>
+      let onClickSolveButton = _ => {
+        onClickSolveButton(hash)
+      }
+
+      let solveBotton = {
+        <button onClick=onClickSolveButton className="element-block-header-solve-button">
+          <span className="codicon codicon-wand" />
+          <span className="element-block-header-solve-button-label"> {string("solve")} </span>
+        </button>
+      }
+
+      <> <span className onClick=onClickHeader> {string(header)} </span> {range} {solveBotton} </>
     }
     let anchor = {
       // crop the hash value and display only the first 7 characters

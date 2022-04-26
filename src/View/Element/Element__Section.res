@@ -53,7 +53,7 @@ let encode: Json.Encode.encoder<t> = ({deco, blocks}) => {
 
 open React
 @react.component
-let make = (~value: t, ~onInsertAnchor: string => unit) => {
+let make = (~value: t, ~onInsertAnchor: string => unit, ~onClickSolveButton: string => unit) => {
   // HACK:
   //    if the first block is "HeaderWithButtons"
   //    then we assume that this section is a PO
@@ -80,7 +80,7 @@ let make = (~value: t, ~onInsertAnchor: string => unit) => {
       !isForExplanation || (isForExplanation && displayExplanation)
     })
     ->Array.mapWithIndex((index, block) => {
-      <Block value=block key={string_of_int(index)} onInsertAnchor onDisplayExplanation />
+      <Block value=block key={string_of_int(index)} onInsertAnchor onClickSolveButton onDisplayExplanation />
     })
     ->array
 
