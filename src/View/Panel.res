@@ -47,12 +47,8 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   // onInsertAnchor
   let onInsertAnchor = hash => onResponse->Chan.emit(InsertAnchor(hash))
 
-  // onSolve
-  let onSolve = () => onResponse->Chan.emit(Solve)
-
   // onClickSolveButton
-  let onClickSolveButton = hash => Js.log(hash)
-
+  let onClickSolveButton = hash => onResponse->Chan.emit(Solve(hash))
 
   let className = "gcl-panel native-key-bindings"
 
@@ -71,7 +67,7 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   <Link.Provider value=onClickLink.current>
     <Substitution.Provider value=substitutionChan.current>
       <ReqID.Provider value=Some(requestID)>
-        <section className tabIndex={-1}> <Status status=connectionStatus onSolve /> sections </section>
+        <section className tabIndex={-1}> <Status status=connectionStatus /> sections </section>
       </ReqID.Provider>
     </Substitution.Provider>
   </Link.Provider>
