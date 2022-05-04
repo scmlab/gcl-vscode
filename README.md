@@ -1,39 +1,20 @@
 # Guabao on VS Code
 
-## Installation
-
 [![MarketPlace Tag](https://vsmarketplacebadge.apphb.com/version/scmlab.guabao.svg)](https://marketplace.visualstudio.com/items?itemName=scmlab.guabao)
 
-Search for "Guabao" and install it from the Visual Studio Marketplace
+Guabao is a programming environment encouraging the methodology that *a program and its correctness proof should be developed hand in hand*,
+and that how a program should be proved could sometimes give hints how the program can be written.
 
-## Development
+Guabao uses a variation of Edsger W. Dijkstra's [Guarded Command Language](https://en.wikipedia.org/wiki/Guarded_Command_Language).
+However, Guabao is also an environment built into an editor.
 
-After cloning this repository, download dependencies and build files with:
+For more info and documentation, see the [homepage](https://scmlab.github.io/guabao/).
 
-```bash
-npm install 
-npm run build
-```
+**The Name**. GUA in Guabao comes from GUArded command language.
+[Guabao (刈包)](https://en.wikipedia.org/wiki/Gua_bao) is a street food popular in places including Taiwan, where Guabao the software was designed.
 
-Fire up this command to enter the "watch mode" so that you don't have to rebuild stuff manually:
+## Links
 
-```bash 
-npm run dev
-```
-
-Press <kbd>F5</kbd> in VS Code and you should have this extension up and running.
-
-### Deployment
-
-Say, we have a new version `v0.0.18` and we want to publish it to the Marketplace, simply run:
-
-```
-git tag v0.0.18
-git push --tags
-```
-
-This should trigger [the deployment process](https://github.com/scmlab/gcl-vscode/runs/2552584344?check_suite_focus=true) on GitHub Actions.
-
-Before publishing, please make sure that:
-1. There's [a corresponding release](https://github.com/scmlab/gcl/releases/tag/v0.0.18) of `gcl` within the range specified in `src/Connection__Probe.chooseFromReleases`. So that the extension could fetch the correct prebuilt binary from GitHub.
-2. The `version` field is set to `"v0.0.18"` in `package.json`: 
+* Guabao Homepage: https://scmlab.github.io/guabao/
+* Frontend Code Repository: https://github.com/scmlab/gcl-vscode
+* Backend Code Repository: https://github.com/scmlab/gcl
