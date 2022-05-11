@@ -48,7 +48,16 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   let onInsertAnchor = hash => onResponse->Chan.emit(InsertAnchor(hash))
 
   // onClickSolveButton
-  let onClickSolveButton = hash => onResponse->Chan.emit(Solve(hash))
+  let onClickSolveButton = hash => {
+    Js.log(connectionStatus)
+    switch connectionStatus {
+      | "TCP" => onResponse->Chan.emit(Solve(hash))
+      | _ => {
+        //show message here using onResponse
+        onResponse->Chan.emit(Solve(""))
+      }
+    }
+  }
 
   let className = "gcl-panel native-key-bindings"
 
