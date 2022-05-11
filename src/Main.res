@@ -1,5 +1,10 @@
 open Belt
 
+/* the interfaces to backend:
+  front=>back: see `View.on(handleViewResponse)`
+  back=>front: see `Connection.onNotification(...`
+*/
+
 let isGCL = Js.Re.test_(%re("/\\.gcl$/i"))
 
 let previouslyActivatedState: ref<option<State.t>> = ref(None)

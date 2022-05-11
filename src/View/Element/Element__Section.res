@@ -76,6 +76,8 @@ let make = (~value: t, ~onInsertAnchor: string => unit, ~onClickSolveButton: str
     value.blocks
     ->Array.keepWithIndex((_, index) => {
       // see if this is the last block, which might be the block for displaying explanations
+      // If this is the last block(which entails it's explanation), and displayExplanation==false,
+      // then drop this block from value.blocks.
       let isForExplanation = isPO && index == Array.length(value.blocks) - 1
       !isForExplanation || (isForExplanation && displayExplanation)
     })
