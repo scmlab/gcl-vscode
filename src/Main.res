@@ -65,7 +65,16 @@ let handleViewResponse = response => {
     | InsertAnchor(hash) => sendLSPRequest(state, InsertAnchor(hash))->ignore
     | Substitute(id) => sendLSPRequest(state, Substitute(id))->ignore
     | Initialized => ()
-    | Solve(hash) => sendLSPRequest(state, Solve(hash))->ignore
+    | Solve(maybehash) => 
+      switch(maybehash){
+        | Some(hash) => sendLSPRequest(state, Solve(hash))->ignore
+        | None => state.commandPathP->Promise.get(commandPath => {
+            let solveMsg = "This functionality is only available under development mode in current version.
+            If you don't know how to activate development mode, please see the instruction:
+             \"https://scmlab.github.io/guabao/#smt-devel\".   The path to the backend executable file is: " ++ commandPath
+            VSCode.Window.showInformationMessage(solveMsg,["OK"])->ignore
+          })
+      }
     | Destroyed => ()
     }
   })
@@ -222,7 +231,8 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // helper function for starting a connection to the language server
   let connect = () => {
-    Connection.start(globalStoragePath, State.onDownload)->Promise.flatMap(result =>
+    let (cont,commandPathP) = Connection.start(globalStoragePath, State.onDownload)
+    let connectResult = cont->Promise.flatMap(result =>
       switch result {
       | Ok(sourceAndMethod) =>
         State.updateConnectionStatus(Connection.methodToString(sourceAndMethod))
@@ -231,13 +241,18 @@ let activate = (context: VSCode.ExtensionContext.t) => {
         State.displayError(header, body)
       }
     )
+    (connectResult,commandPathP)
   }
 
   // on extension activation
   Events.onActivateExtension(() => {
     // 1. activate the view
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
-    View.activate(extensionPath)->Promise.flatMap(connect)->ignore
+    View.activate(extensionPath)->Promise.flatMap(()=>{
+      let (connectResult, commandPathP) = connect()
+      getState()->Option.forEach(state => state.commandPathP = commandPathP)
+      connectResult
+    })->ignore
   })->subscribe
 
   // on extension deactivation
@@ -313,10 +328,15 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       // reactivate the view
       let extensionPath = VSCode.ExtensionContext.extensionPath(context)
       View.deactivate()
-      View.activate(extensionPath)
+      
       // reconnect with GCL
-      ->Promise.flatMap(Connection.stop)
-      ->Promise.flatMap(connect)
+      let stopCont = View.activate(extensionPath)->Promise.flatMap(Connection.stop)
+      
+      stopCont->Promise.flatMap(()=>{
+        let (connectResult,commandPathP)= connect()
+        state.commandPathP = commandPathP
+        connectResult
+      })
     })
   )->subscribe
 

@@ -51,10 +51,10 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
   let onClickSolveButton = hash => {
     Js.log(connectionStatus)
     switch connectionStatus {
-      | "TCP" => onResponse->Chan.emit(Solve(hash))
+      | "TCP" => onResponse->Chan.emit(Solve(Some(hash)))
       | _ => {
         //show message here using onResponse
-        onResponse->Chan.emit(Solve(""))
+        onResponse->Chan.emit(Solve(None))
       }
     }
   }
