@@ -9,8 +9,7 @@ type t = {
   mutable specifications: array<Response.Specification.t>,
   mutable proofObligations: array<Response.ProofObligation.t>,
   // garbage collection
-  mutable subscriptions: array<VSCode.Disposable.t>,
-  mutable commandPathP: Promise.t<string>
+  mutable subscriptions: array<VSCode.Disposable.t>
 }
 
 // helper function for registering new garbage
@@ -268,8 +267,6 @@ let make = (globalStoragePath, editor) => {
     proofObligations: [],
     // garbage
     subscriptions: [],
-    // the path of the backend executable file, will be updated
-    commandPathP: Promise.resolved("Initial meaningless path."),
   }
 }
 

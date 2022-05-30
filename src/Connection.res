@@ -9,8 +9,7 @@ module type Module = {
   let start: (
     string,
     LanguageServerMule.Source.GitHub.Download.Event.t => unit,
-  ) => ( Promise.t<result<LanguageServerMule.Method.t, Error.t>>
-       , Promise.t<string>)
+  ) => Promise.t<result<LanguageServerMule.Method.t, Error.t>>
   let stop: unit => Promise.t<unit>
   // input / output / event
   let sendRequest: (
@@ -55,57 +54,63 @@ module Module: Module = {
   let start = (globalStoragePath, onDownload) =>
     switch singleton.contents {
     | Connected(client, _subsriptions) =>
-      ( Promise.resolved(Ok(LanguageServerMule.Client.LSP.getMethod(client)))
-      , Promise.resolved(""))
-    | Connecting(_, promise) => (promise, Promise.resolved(""))
+      Promise.resolved(Ok(LanguageServerMule.Client.LSP.getMethod(client)))
+    | Connecting(_, promise) => promise
     | Disconnected =>
       let (promise, resolve) = Promise.pending()
       singleton := Connecting([], promise)
-      let (probeResult, commandPathP) = Probe.probe(globalStoragePath, onDownload)
-      let result = probeResult
-        ->Promise.mapError(error => Error.CannotAcquireHandle(error))
-        ->Promise.flatMapOk(method => {
-          LanguageServerMule.Client.LSP.make(
-            "guabao",
-            "Guabao Language Server",
-            method,
-            Js.Json.null  // command line options
-          )->Promise.mapError(e => Error.ConnectionError(e))
-        })
-        ->Promise.map(result =>
-          switch result {
-          | Error(error) =>
-            singleton := Disconnected
-            getPendingRequests()->Array.forEach(((_req, callback)) => callback(Error(error)))
-            resolve(Error(error))
-            Error(error)
-          | Ok(client) =>
-            let subsriptions = []
-            singleton := Connected(client, subsriptions)
-            getPendingRequests()->Array.forEach(((request, callback)) => {
-              client
-              ->LanguageServerMule.Client.LSP.sendRequest(Request.encode(request))
-              ->Promise.mapError(e => Error.ConnectionError(e))
-              ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
-              ->Promise.get(callback)
-            })
-            resolve(Ok(LanguageServerMule.Client.LSP.getMethod(client)))
-            // pipe error and notifications
-            client
-            ->Client.onNotification(json => {
-              notificationChan->Chan.emit(decodeResponse(json))
-            })
-            ->Js.Array.push(subsriptions)
+      Probe.probe(globalStoragePath, onDownload)
+      ->Promise.mapError(error => Error.CannotAcquireHandle(error))
+      ->Promise.flatMapOk(method => {
+        //update the setting variable "guabao.gclPath"
+        switch method{
+          | ViaCommand(path,_,_,_) => {
+            VSCode.Workspace.getConfiguration(None,None)
+            ->VSCode.WorkspaceConfiguration.updateGlobalSettings("guabao.gclPath", path, None)
             ->ignore
-            client
-            ->Client.onError(error => errorChan->Chan.emit(Error.ConnectionError(error)))
-            ->Js.Array.push(subsriptions)
-            ->ignore
-
-            Ok(LanguageServerMule.Client.LSP.getMethod(client))
           }
-        )
-      (result, commandPathP)
+          | _ => ()
+        }
+        LanguageServerMule.Client.LSP.make(
+          "guabao",
+          "Guabao Language Server",
+          method,
+          Js.Json.null  // command line options
+        )->Promise.mapError(e => Error.ConnectionError(e))
+      })
+      ->Promise.map(result =>
+        switch result {
+        | Error(error) =>
+          singleton := Disconnected
+          getPendingRequests()->Array.forEach(((_req, callback)) => callback(Error(error)))
+          resolve(Error(error))
+          Error(error)
+        | Ok(client) =>
+          let subsriptions = []
+          singleton := Connected(client, subsriptions)
+          getPendingRequests()->Array.forEach(((request, callback)) => {
+            client
+            ->LanguageServerMule.Client.LSP.sendRequest(Request.encode(request))
+            ->Promise.mapError(e => Error.ConnectionError(e))
+            ->Promise.flatMapOk(json => Promise.resolved(decodeResponse(json)))
+            ->Promise.get(callback)
+          })
+          resolve(Ok(LanguageServerMule.Client.LSP.getMethod(client)))
+          // pipe error and notifications
+          client
+          ->Client.onNotification(json => {
+            notificationChan->Chan.emit(decodeResponse(json))
+          })
+          ->Js.Array.push(subsriptions)
+          ->ignore
+          client
+          ->Client.onError(error => errorChan->Chan.emit(Error.ConnectionError(error)))
+          ->Js.Array.push(subsriptions)
+          ->ignore
+
+          Ok(LanguageServerMule.Client.LSP.getMethod(client))
+        }
+      )
     }
 
   let rec stop = () =>
@@ -122,12 +127,11 @@ module Module: Module = {
 
   let rec sendRequest = (globalStoragePath, onDownload, request) =>
     switch singleton.contents {
-    | Disconnected =>{
-      let (cont,commandPathP) = start(globalStoragePath, onDownload)
-      cont->Promise.flatMapOk(_ =>
+    | Disconnected =>
+      start(globalStoragePath, onDownload)
+      ->Promise.flatMapOk(_ =>
           sendRequest(globalStoragePath, onDownload, request)
         )
-      }
     | Connecting(queue, _) =>
       let (promise, resolve) = Promise.pending()
       Js.Array.push((request, resolve), queue)->ignore

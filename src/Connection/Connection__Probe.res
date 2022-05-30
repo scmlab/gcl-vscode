@@ -84,7 +84,7 @@ let probe = (globalStoragePath, onDownload) => {
   let port = 3000
   let name = "gcl"
 
-  let result = Source.searchUntilSuccess([
+  Source.searchUntilSuccess([
     Source.FromTCP(port, "localhost"),
     Source.FromGitHub({
       username: "scmlab",
@@ -99,10 +99,4 @@ let probe = (globalStoragePath, onDownload) => {
     }),
     Source.FromCommand(name),
   ])->Promise.map(Source.consumeResult)
-  open Method
-  let commandPathP = result->Promise.map(r => switch r{
-      | Ok(ViaCommand(path,_,_,_)) => path
-      | _ => ""
-    })
-  (result,commandPathP)
 }

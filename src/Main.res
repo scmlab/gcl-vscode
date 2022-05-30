@@ -4,6 +4,26 @@ open Belt
   front=>back: see `View.on(handleViewResponse)`
   back=>front: see `Connection.onNotification(...`
 */
+let directPath = "/Users/scmlab/Library/Application Support/Code/User/globalStorage/scmlab.guabao/v0.3.8-macos/gcl"
+let backendCP = ref(None)
+
+
+let turnOnBackend' = () => {
+  open NodeJs.ChildProcess
+  let newCP = spawn(directPath,[])
+
+  backendCP := Some(newCP)
+  spawnSync("sleep",["2"],spawnSyncOptions(()))->ignore
+}
+let turnOnBackend = () => {
+  turnOnBackend'()
+}
+let turnOffBackend = () => {
+  switch backendCP.contents{
+    | Some(cp) => cp->NodeJs.ChildProcess.kill("SIGTERM")->ignore
+    | None => ()
+  }
+}
 
 let isGCL = Js.Re.test_(%re("/\\.gcl$/i"))
 
@@ -68,12 +88,7 @@ let handleViewResponse = response => {
     | Solve(maybehash) => 
       switch(maybehash){
         | Some(hash) => sendLSPRequest(state, Solve(hash))->ignore
-        | None => state.commandPathP->Promise.get(commandPath => {
-            let solveMsg = "This functionality is only available under development mode in current version.
-            If you don't know how to activate development mode, please see the instruction:
-             \"https://scmlab.github.io/guabao/#smt-devel\".   The path to the backend executable file is: " ++ commandPath
-            VSCode.Window.showInformationMessage(solveMsg,["OK"])->ignore
-          })
+        | None => ()
       }
     | Destroyed => ()
     }
@@ -231,28 +246,22 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // helper function for starting a connection to the language server
   let connect = () => {
-    let (cont,commandPathP) = Connection.start(globalStoragePath, State.onDownload)
-    let connectResult = cont->Promise.flatMap(result =>
+    Connection.start(globalStoragePath, State.onDownload)
+    ->Promise.flatMap(result =>
       switch result {
       | Ok(sourceAndMethod) =>
         State.updateConnectionStatus(Connection.methodToString(sourceAndMethod))
       | Error(error) =>
         let (header, body) = Connection.Error.toString(error)
         State.displayError(header, body)
-      }
-    )
-    (connectResult,commandPathP)
+      })
   }
 
   // on extension activation
   Events.onActivateExtension(() => {
     // 1. activate the view
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
-    View.activate(extensionPath)->Promise.flatMap(()=>{
-      let (connectResult, commandPathP) = connect()
-      getState()->Option.forEach(state => state.commandPathP = commandPathP)
-      connectResult
-    })->ignore
+    View.activate(extensionPath)->Promise.flatMap(connect)->ignore
   })->subscribe
 
   // on extension deactivation
@@ -332,11 +341,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       // reconnect with GCL
       let stopCont = View.activate(extensionPath)->Promise.flatMap(Connection.stop)
       
-      stopCont->Promise.flatMap(()=>{
-        let (connectResult,commandPathP)= connect()
-        state.commandPathP = commandPathP
-        connectResult
-      })
+      stopCont->Promise.flatMap(connect)
     })
   )->subscribe
 
@@ -357,4 +362,6 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   })->subscribe
 }
 
-let deactivate = () => ()
+let deactivate = () => {
+  turnOffBackend()
+}
