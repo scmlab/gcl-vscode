@@ -97,7 +97,7 @@ module Module: Module = {
             // note: If in any case you need to manually turn off the backend server,
             //  use "lsof -i TCP:[portNumber]" in commandline to see the PID of the backend server, then use "kill [PID]" command.
             Js.log("[ connection ] spawned the backend server")
-            spawnSync("sleep",["1"],spawnSyncOptions(()))->ignore //wait 1 seconds to ensure that the backend is launched
+            spawnSync("sleep",["0.5"],spawnSyncOptions(()))->ignore //wait 0.5 seconds to ensure that the backend is launched
 
             let shownMethod = switch source{
               | FromGitHub(_,release,_) =>{

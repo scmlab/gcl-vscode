@@ -48,7 +48,7 @@ module Response = {
   type t =
     | Link(Link.Event.t)
     | InsertAnchor(string)
-    | Solve(option<string>)
+    | Solve(string)
     | Substitute(int)
     | Initialized
     | Destroyed
@@ -62,7 +62,7 @@ module Response = {
       | "Destroyed" => TagOnly(_ => Destroyed)
       | "Link" => Contents(json => Link(Link.Event.decode(json)))
       | "InsertAnchor" => Contents(json => InsertAnchor(string(json)))
-      | "Solve" => Contents(json => Solve(nullable(string,json)->Js.Null.toOption))
+      | "Solve" => Contents(json => Solve(string(json)))
       | "Substitute" => Contents(json => Substitute(int(json)))
       | tag => raise(DecodeError("[Response.t] Unknown constructor: " ++ tag))
       }
@@ -74,7 +74,7 @@ module Response = {
     switch x {
     | Initialized => object_(list{("tag", string("Initialized"))})
     | Destroyed => object_(list{("tag", string("Destroyed"))})
-    | Solve(e) => object_(list{("tag", string("Solve")), ("contents", nullable(string,e))})
+    | Solve(e) => object_(list{("tag", string("Solve")), ("contents", string(e))})
     | Link(e) => object_(list{("tag", string("Link")), ("contents", Link.Event.encode(e))})
     | InsertAnchor(e) => object_(list{("tag", string("InsertAnchor")), ("contents", string(e))})
     | Substitute(e) => object_(list{("tag", string("Substitute")), ("contents", int(e))})
