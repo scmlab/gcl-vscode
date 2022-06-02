@@ -339,9 +339,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       View.deactivate()
       
       // reconnect with GCL
-      let stopCont = View.activate(extensionPath)->Promise.flatMap(Connection.stop)
-      
-      stopCont->Promise.flatMap(connect)
+      View.activate(extensionPath)->Promise.flatMap(Connection.stop)->Promise.flatMap(connect)
     })
   )->subscribe
 
@@ -363,5 +361,5 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 }
 
 let deactivate = () => {
-  turnOffBackend()
+  Connection.stop()
 }
