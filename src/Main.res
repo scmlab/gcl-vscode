@@ -4,26 +4,6 @@ open Belt
   front=>back: see `View.on(handleViewResponse)`
   back=>front: see `Connection.onNotification(...`
 */
-let directPath = "/Users/scmlab/Library/Application Support/Code/User/globalStorage/scmlab.guabao/v0.3.8-macos/gcl"
-let backendCP = ref(None)
-
-
-let turnOnBackend' = () => {
-  open NodeJs.ChildProcess
-  let newCP = spawn(directPath,[])
-
-  backendCP := Some(newCP)
-  spawnSync("sleep",["2"],spawnSyncOptions(()))->ignore
-}
-let turnOnBackend = () => {
-  turnOnBackend'()
-}
-let turnOffBackend = () => {
-  switch backendCP.contents{
-    | Some(cp) => cp->NodeJs.ChildProcess.kill("SIGTERM")->ignore
-    | None => ()
-  }
-}
 
 let isGCL = Js.Re.test_(%re("/\\.gcl$/i"))
 

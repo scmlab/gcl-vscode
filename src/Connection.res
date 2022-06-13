@@ -77,10 +77,6 @@ module Module: Module = {
       let (promise, resolve) = Promise.pending()
       singleton := Connecting([], promise)
 
-      // let probeResult = 
-      // Probe.probe(globalStoragePath, onDownload)
-      // ->Promise.mapError(error => Error.CannotAcquireHandle(error))
-
       Probe.probe(globalStoragePath, onDownload)
       ->Promise.mapError(error => Error.CannotAcquireHandle(error))
       ->Promise.flatMapOk(probedMethod => {
