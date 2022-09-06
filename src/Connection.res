@@ -34,6 +34,7 @@ module type Module = {
   let onError: (Error.t => unit) => VSCode.Disposable.t
 
   let methodToString: Method.t => string
+  let isTurnedOn: ref<bool>
 }
 
 module Module: Module = {
@@ -51,6 +52,9 @@ module Module: Module = {
       // Therefore we need to explicitly record this information, for it being inconsistent with 'getMethod(client)'.
 
   let singleton: ref<state> = ref(Disconnected)
+  let isTurnedOn = ref(true)
+   //Become true by activate the command Guabao.stop, 
+   //and false again by activate the command Guabao.start
   let errorChan: Chan.t<Error.t> = Chan.make()
   let notificationChan: Chan.t<result<Response.t, Error.t>> = Chan.make()
   // let downloadChan: Chan.t<result<Response.t, Error.t>> = Chan.make()

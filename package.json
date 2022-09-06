@@ -94,6 +94,16 @@
 				"command": "guabao.force-check-update",
 				"title": "Force check update",
 				"category": "Guabao"
+			},
+			{
+				"command": "guabao.stop-server",
+				"title": "Stop the backend",
+				"category": "Guabao"
+			},
+			{
+				"command": "guabao.start-server",
+				"title": "Start the backend",
+				"category": "Guabao"
 			}
 		],
 		"keybindings": [

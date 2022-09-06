@@ -71,17 +71,19 @@ let handleViewResponse = response => {
   })
 }
 
+
 module Events = {
   let isGCL = editor =>
     Js.Re.test_(%re("/\\.gcl$/i"), editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName)
   let isGCL' = document => Js.Re.test_(%re("/\\.gcl$/i"), document->VSCode.TextDocument.fileName)
 
   // callback only gets invoked when:
-  //  1. an editor is opened or reactivated
-  //  1. the opened file extension is "gcl"
+  //  0. Connection.isTurnedOff.contents == false
+  //  1. An editor is opened or reactivated.
+  //  2. The opened file extension is "gcl".
   let onOpenEditor = callback => {
     let f = editor =>
-      if isGCL(editor) {
+      if isGCL(editor) && Connection.isTurnedOn.contents {
         callback(editor)
       }
 
@@ -90,16 +92,20 @@ module Events = {
       next->Option.forEach(f)
     })
   }
+  // When the editor of a gcl file is closed.
+  // Plus the condition that Connection.isTurnedOff.contents == false
   let onCloseEditor = callback =>
     VSCode.Workspace.onDidCloseTextDocument(.document =>
-      if isGCL'(document) {
+      if isGCL'(document) && Connection.isTurnedOn.contents {
         callback(document)
       }
     )
+    
 
   // callback only gets invoked when:
-  //  1. no GCL files was opened
-  //  2. the view is closed
+  //  0. Connection.isTurnedOff.contents == false (this is implemented by onOpenEditor)
+  //  1. An editor is opened and no GCL files was opened before.
+  //  2. The view panel is closed.
   let onActivateExtension = callback =>
     onOpenEditor(_ => {
       // number of visible GCL file in the workplace
@@ -113,6 +119,7 @@ module Events = {
     })
 
   // callback only gets invoked when:
+  //  0. Connection.isTurnedOff.contents == false (this is implemented by onCloseEditor)
   //  1. no GCL files was opened
   //  2. the view is opened
   let onDeactivateExtension = callback =>
@@ -127,8 +134,20 @@ module Events = {
       }
     })
 
-  let onChangeCursorPosition = callback => VSCode.Window.onDidChangeTextEditorSelection(. callback)
-  let onChangeTextDocument = callback => VSCode.Workspace.onDidChangeTextDocument(. callback)
+  let onChangeCursorPosition = callback => 
+    if Connection.isTurnedOn.contents {
+      VSCode.Window.onDidChangeTextEditorSelection(. callback)
+    } else {
+      VSCode.Disposable.make(_=>())
+    }
+                     
+  
+  let onChangeTextDocument = callback => 
+    if Connection.isTurnedOn.contents {
+      VSCode.Workspace.onDidChangeTextDocument(. callback)
+    } else {
+      VSCode.Disposable.make(_=>())
+    }
 }
 
 // we wish that the keybindings we use are only in effect when needed
@@ -191,7 +210,8 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     State.displayError(header, body)->ignore
   })->subscribe
 
-  // on open
+  // An editor of a gcl file is opend. (Not necessarily be the first time.)
+  // The state needs to be updated for this file.
   Events.onOpenEditor(editor => {
     let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
 
@@ -233,14 +253,15 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       })
   }
 
-  // on extension activation
+  // First gcl file is opend, the view panel and the connection needs to be created.
   Events.onActivateExtension(() => {
     // 1. activate the view
     let extensionPath = VSCode.ExtensionContext.extensionPath(context)
     View.activate(extensionPath)->Promise.flatMap(connect)->ignore
   })->subscribe
 
-  // on extension deactivation
+  // The last gcl file was closed and the view panel still exists.
+  // -> the view panel needs to be closed.
   Events.onDeactivateExtension(_ => {
     View.deactivate()
     previouslyActivatedState := None
@@ -290,6 +311,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // on refine
   VSCode.Commands.registerCommand("guabao.refine", () =>
+  // When server is stopped, getState() would return None.
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
       let selection = state.editor->VSCode.TextEditor.selection
       let start = SrcLoc.Pos.fromVSCodePos(VSCode.Selection.start(selection), state.document)
@@ -300,6 +322,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
 
   // on restart
   VSCode.Commands.registerCommand("guabao.restart", () =>
+  // When server is stopped, getState() would return None.
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
       previouslyActivatedState.contents = None
       let editor = state.editor
@@ -317,6 +340,48 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       // reconnect with GCL
       View.activate(extensionPath)->Promise.flatMap(Connection.stop)->Promise.flatMap(connect)
     })
+  )->subscribe
+
+  VSCode.Commands.registerCommand("guabao.stop-server", () =>
+    if Connection.isTurnedOn.contents {
+      switch getState() {
+        | None => 
+          // This case presumes that the view panel is not activated and the registry list should be blank.
+          Connection.isTurnedOn := false
+        | Some(_) => {
+          Connection.isTurnedOn := false
+          //Empty the registry list, the related state will be cleared altogether by Registry.destroy
+          Js.Dict.keys(Registry.dict)->Array.forEach(Registry.destroy)
+          //is it possible that nothing to destroy? when does a registry be made?
+          View.deactivate()
+          previouslyActivatedState := None
+          Connection.stop()->ignore
+        }
+      }
+    }
+  )->subscribe
+
+  VSCode.Commands.registerCommand("guabao.start-server", () =>
+    if !Connection.isTurnedOn.contents {
+      Connection.isTurnedOn := true
+      let isGCL = editor =>
+        Js.Re.test_(%re("/\\.gcl$/i"), editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName)
+      VSCode.Window.activeTextEditor
+      ->Option.flatMap(e => if isGCL(e) {Some(e)} else {None})
+      ->Option.forEach(editor=>{
+        // the current editor is opening a gcl file
+        //register the file
+        let filePath = editor->VSCode.TextEditor.document->VSCode.TextDocument.fileName
+        let state = State.make(globalStoragePath, editor)
+        Registry.add(filePath, state)
+        previouslyActivatedState := Some(state)
+
+        //activating the view panel and make the connection (via the connect function)
+        let extensionPath = VSCode.ExtensionContext.extensionPath(context)
+        View.activate(extensionPath)->Promise.flatMap(connect)->ignore
+          
+      })
+    }
   )->subscribe
 
   // on debug
