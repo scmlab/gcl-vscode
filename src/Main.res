@@ -336,13 +336,16 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       // reactivate the view
       let extensionPath = VSCode.ExtensionContext.extensionPath(context)
       View.deactivate()
-      
+      Connection.stop()->ignore
+
+      open NodeJs.ChildProcess
+      spawnSync("sleep",["0.5"],spawnSyncOptions(()))->ignore
       // reconnect with GCL
-      View.activate(extensionPath)->Promise.flatMap(Connection.stop)->Promise.flatMap(connect)
+      View.activate(extensionPath)->Promise.flatMap(connect)
     })
   )->subscribe
 
-  VSCode.Commands.registerCommand("guabao.stop-server", () =>
+  VSCode.Commands.registerCommand("guabao.stop", () =>
     if Connection.isTurnedOn.contents {
       switch getState() {
         | None => 
@@ -361,7 +364,7 @@ let activate = (context: VSCode.ExtensionContext.t) => {
     }
   )->subscribe
 
-  VSCode.Commands.registerCommand("guabao.start-server", () =>
+  VSCode.Commands.registerCommand("guabao.start", () =>
     if !Connection.isTurnedOn.contents {
       Connection.isTurnedOn := true
       let isGCL = editor =>

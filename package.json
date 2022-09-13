@@ -96,13 +96,13 @@
 				"category": "Guabao"
 			},
 			{
-				"command": "guabao.stop-server",
-				"title": "Stop the backend",
+				"command": "guabao.stop",
+				"title": "Stop",
 				"category": "Guabao"
 			},
 			{
-				"command": "guabao.start-server",
-				"title": "Start the backend",
+				"command": "guabao.start",
+				"title": "Start",
 				"category": "Guabao"
 			}
 		],
