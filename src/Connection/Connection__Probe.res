@@ -82,7 +82,10 @@ let afterDownload = (fromCached, (path, target)) => {
 // priorities: TCP => Prebuilt => StdIO
 let probe = (globalStoragePath, onDownload) => {
   let port = 3000
-  let name = "gcl"
+  let name = VSCode.Workspace.getConfiguration(None,None)
+              ->VSCode.WorkspaceConfiguration.get("guabao.gclPath")
+              ->Option.mapWithDefault("",x=>x)
+  // Yet the connection established by FromCommand is still based on stdio, which is not functioning at current version.
 
   Source.searchUntilSuccess([
     Source.FromTCP(port, "localhost"),
