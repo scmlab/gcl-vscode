@@ -328,7 +328,9 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       let editor = state.editor
       let filePath = state.filePath
       // destroy
-      Registry.destroy(filePath)
+      //Registry.destroy(filePath)
+      Js.Dict.keys(Registry.dict)->Array.forEach(Registry.destroy)
+      
       // make
       let state = State.make(globalStoragePath, editor)
       Registry.add(filePath, state)
