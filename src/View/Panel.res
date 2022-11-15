@@ -49,7 +49,8 @@ let make = (~onRequest: Chan.t<ViewType.Request.t>, ~onResponse: Chan.t<ViewType
 
   // onClickSolveButton
   let onClickSolveButton = hash => {
-    onResponse->Chan.emit(Solve(hash))
+    //onResponse->Chan.emit(Solve(hash))
+    ()
   }
 
   let className = "gcl-panel native-key-bindings"
