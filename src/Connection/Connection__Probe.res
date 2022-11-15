@@ -60,6 +60,9 @@ let chooseFromReleases = (releases: array<Release.t>): option<Target.t> => {
 
 let afterDownload = (fromCached, (path, target)) => {
   let executablePath = NodeJs.Path.join2(path, "gcl")
+  VSCode.Workspace.getConfiguration(None,None)
+  ->VSCode.WorkspaceConfiguration.updateGlobalSettings("guabao.gclPath", executablePath, None)
+  ->ignore
   if fromCached {
     // already chmod after download
     Promise.resolved(Ok((executablePath, [], None, target)))
