@@ -129,6 +129,12 @@
 					"scope": "machine-overridable",
 					"description": "Path to the GCL program."
 				}
+				, "guabao.globalStoragePath": {
+					"type": "string",
+					"default": "",
+					"scope": "machine-overridable",
+					"description": "Path at which guabao stores caches."
+				} 
 			}
 		}
 	},

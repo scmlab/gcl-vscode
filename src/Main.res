@@ -192,6 +192,9 @@ let updateCursorInHoleStatus = filePath =>
 
 let activate = (context: VSCode.ExtensionContext.t) => {
   let globalStoragePath = VSCode.ExtensionContext.globalStoragePath(context)
+  VSCode.Workspace.getConfiguration(None,None)
+  ->VSCode.WorkspaceConfiguration.updateGlobalSettings("guabao.globalStoragePath", globalStoragePath, None)
+  ->ignore
   let subscribe = x => x->Js.Array.push(VSCode.ExtensionContext.subscriptions(context))->ignore
 
   // on response/notification from the server
