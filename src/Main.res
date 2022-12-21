@@ -312,9 +312,20 @@ let activate = (context: VSCode.ExtensionContext.t) => {
   // on events from the view
   View.on(handleViewResponse)->Promise.get(subscribe)
 
-  // What the restart command does:
-  let restartConnection = () =>
-    // When server is stopped, getState() would return None.
+  // on refine
+  VSCode.Commands.registerCommand("guabao.refine", () =>
+  // When server is stopped, getState() would return None.
+    getState()->Option.mapWithDefault(Promise.resolved(), state => {
+      let selection = state.editor->VSCode.TextEditor.selection
+      let start = SrcLoc.Pos.fromVSCodePos(VSCode.Selection.start(selection), state.document)
+      let end = SrcLoc.Pos.fromVSCodePos(VSCode.Selection.end_(selection), state.document)
+      sendLSPRequest(state, Refine(Range(start, end)))
+    })
+  )->subscribe
+
+  // on restart
+  VSCode.Commands.registerCommand("guabao.restart", () =>
+  // When server is stopped, getState() would return None.
     getState()->Option.mapWithDefault(Promise.resolved(), state => {
       previouslyActivatedState.contents = None
       let editor = state.editor
@@ -330,34 +341,14 @@ let activate = (context: VSCode.ExtensionContext.t) => {
       // reactivate the view
       let extensionPath = VSCode.ExtensionContext.extensionPath(context)
       View.deactivate()
+      Connection.stop()->ignore
 
-      View.activate(extensionPath)->Promise.flatMap(Connection.stop)->Promise.flatMap(connect)
-
-      //// Since in current version we're not connecting via TCP.
-      // Connection.stop()->ignore
-
-      // open NodeJs.ChildProcess
-      // spawnSync("sleep",["0.5"],spawnSyncOptions(()))->ignore
-      // // reconnect with GCL
-      // View.activate(extensionPath)->Promise.flatMap(connect)
-    })
-
-  // on refine
-  VSCode.Commands.registerCommand("guabao.refine", () =>
-  // When server is stopped, getState() would return None.
-    getState()->Option.mapWithDefault(Promise.resolved(), state => {
-      let selection = state.editor->VSCode.TextEditor.selection
-      let start = SrcLoc.Pos.fromVSCodePos(VSCode.Selection.start(selection), state.document)
-      let end = SrcLoc.Pos.fromVSCodePos(VSCode.Selection.end_(selection), state.document)
-      sendLSPRequest(state, Refine(Range(start, end)))
-    })->Promise.flatMap(()=>{
-      // Invoking "restart" here as a workaround to solve strange behavior issue on windows.
-      restartConnection()
+      open NodeJs.ChildProcess
+      spawnSync("sleep",["0.5"],spawnSyncOptions(()))->ignore
+      // reconnect with GCL
+      View.activate(extensionPath)->Promise.flatMap(connect)
     })
   )->subscribe
-
-  // on restart
-  VSCode.Commands.registerCommand("guabao.restart", restartConnection)->subscribe
 
   VSCode.Commands.registerCommand("guabao.stop", () =>
     if Connection.isTurnedOn.contents {
