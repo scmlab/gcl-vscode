@@ -1,6 +1,5 @@
 # Guabao on VS Code
 
-[![MarketPlace Tag](https://vsmarketplacebadge.apphb.com/version/scmlab.guabao.svg)](https://marketplace.visualstudio.com/items?itemName=scmlab.guabao)
 
 Guabao is a programming environment encouraging the methodology that *a program and its correctness proof should be developed hand in hand*,
 and that how a program should be proved could sometimes give hints how the program can be written.
